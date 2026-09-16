@@ -5,8 +5,6 @@ import { createTanstackQueryUtils } from "@orpc/tanstack-query";
 import { QueryCache, QueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
-import { ENV } from "../env";
-
 export function createQueryClient() {
 	return new QueryClient({
 		queryCache: new QueryCache({
@@ -27,13 +25,7 @@ export function createQueryClient() {
 export const queryClient = createQueryClient();
 
 export const link = new RPCLink({
-	fetch(url, options) {
-		return fetch(url, {
-			...options,
-			credentials: "include",
-		});
-	},
-	url: `${ENV.VITE_SERVER_URL.replace(/\/$/, "")}/rpc`,
+	url: () => new URL("/rpc", window.location.origin),
 });
 
 export const client: AppRouterClient = createORPCClient(link);

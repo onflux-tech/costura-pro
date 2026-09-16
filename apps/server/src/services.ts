@@ -1,11 +1,9 @@
 import { createAuth } from "@costura-pro/auth";
-import { createDb, type Database } from "@costura-pro/db";
+import { createDb } from "@costura-pro/db";
 
-import { desktopOrigins, env } from "./env.server";
+import { env } from "./env.server";
+import { parseCanonicalOrigin } from "./origin";
 
-const db = createDb(env);
-
-export function getDb(): Database {
-	return db;
-}
-export const auth = createAuth(env, db, desktopOrigins);
+export const canonicalOrigin = parseCanonicalOrigin(env.CANONICAL_ORIGIN);
+export const db = createDb(env);
+export const auth = createAuth(env, db, canonicalOrigin);

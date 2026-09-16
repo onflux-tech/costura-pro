@@ -130,6 +130,9 @@ importers:
       '@costura-pro/config':
         specifier: workspace:*
         version: link:../../packages/config
+      '@orpc/client':
+        specifier: 'catalog:'
+        version: 1.15.0
       '@types/bun':
         specifier: 'catalog:'
         version: 1.4.2

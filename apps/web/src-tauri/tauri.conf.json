@@ -4,7 +4,7 @@
   "version": "0.1.0",
   "identifier": "com.tauri.dev",
   "build": {
-    "frontendDist": "../dist",
+    "frontendDist": "http://127.0.0.1:3000",
     "devUrl": "http://localhost:3001",
     "beforeDevCommand": "pnpm run dev",
     "beforeBuildCommand": "pnpm run build"

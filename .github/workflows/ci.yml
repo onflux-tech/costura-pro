@@ -21,9 +21,6 @@ jobs:
       NODE_ENV: test
       # Valores só para validar schema e build no CI; nenhum é segredo real.
       BETTER_AUTH_SECRET: ci-placeholder-not-a-secret-000000
-      BETTER_AUTH_URL: http://localhost:3000
-      CORS_ORIGIN: http://localhost:3001
-      VITE_SERVER_URL: http://localhost:3000
       VARLOCK_TELEMETRY_DISABLED: "true"
     steps:
       - uses: actions/checkout@v7

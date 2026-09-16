@@ -1,15 +1,19 @@
 import type { Context as ApiContext } from "@costura-pro/api/context";
+import type { Auth } from "@costura-pro/auth";
+import type { Database } from "@costura-pro/db";
 import type { Context as HonoContext } from "hono";
-import { auth, getDb } from "./services";
 
 export type CreateContextOptions = {
+	auth: Auth;
 	context: HonoContext;
+	db: Database;
 };
 
 export async function createContext({
+	auth,
 	context,
+	db,
 }: CreateContextOptions): Promise<ApiContext> {
-	const db = await getDb();
 	const session = await auth.api.getSession({
 		headers: context.req.raw.headers,
 	});

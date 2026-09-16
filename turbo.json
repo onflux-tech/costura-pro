@@ -13,6 +13,10 @@
     "test": {
       "cache": false
     },
+    "server#test": {
+      "cache": false,
+      "dependsOn": ["build", "web#build"]
+    },
     "check-types": {
       "dependsOn": ["^check-types"],
       "outputs": ["dist/**"]
@@ -44,16 +48,15 @@
   },
   "globalEnv": [
     "BETTER_AUTH_SECRET",
-    "BETTER_AUTH_URL",
+    "CANONICAL_ORIGIN",
     "CI",
-    "CORS_ORIGIN",
     "DATABASE_FILE",
     "NODE_ENV",
+    "PORT",
     "VERCEL",
     "VERCEL_ENV",
     "VERCEL_PROJECT_PRODUCTION_URL",
     "VERCEL_URL",
-    "VITE_SERVER_URL",
     "_VARLOCK_ENV_KEY"
   ],
   "globalDependencies": [".env*", "apps/*/.env*", "packages/*/.env*"]

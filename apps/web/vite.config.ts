@@ -5,6 +5,10 @@ import react from "@vitejs/plugin-react";
 import { defineConfig } from "vite";
 import { VitePWA } from "vite-plugin-pwa";
 
+const serverPaths = "^/(api|rpc|api-reference)(/|$)";
+const apiNavigation = /^\/api(\/|-reference|$)/;
+const rpcNavigation = /^\/rpc(\/|$)/;
+
 export default defineConfig({
 	plugins: [
 		varlockVitePlugin({ ssrInjectMode: "auto-load" }),
@@ -24,7 +28,10 @@ export default defineConfig({
 			},
 			pwaAssets: { config: true, disabled: false },
 			registerType: "autoUpdate",
-			workbox: { globPatterns: ["**/*.{js,css,html,png,svg,ico}"] },
+			workbox: {
+				globPatterns: ["**/*.{js,css,html,png,svg,ico}"],
+				navigateFallbackDenylist: [apiNavigation, rpcNavigation],
+			},
 		}),
 	],
 	resolve: {
@@ -32,5 +39,12 @@ export default defineConfig({
 	},
 	server: {
 		port: 3001,
+		proxy: {
+			[serverPaths]: { changeOrigin: false, target: "http://127.0.0.1:3000" },
+		},
+		strictPort: true,
+		watch: {
+			ignored: ["**/src-tauri/**"],
+		},
 	},
 });

@@ -8,7 +8,8 @@
     "compile": "bun build --compile --no-compile-autoload-dotenv --minify --sourcemap --bytecode ./src/index.ts --outfile server",
     "dev": "bun run --hot src/index.ts",
     "env:generate": "varlock codegen",
-    "start": "bun run dist/index.mjs"
+    "start": "bun --env-file=production.env dist/index.mjs",
+    "test": "bun test"
   },
   "dependencies": {
     "@costura-pro/api": "workspace:*",
@@ -25,6 +26,7 @@
   },
   "devDependencies": {
     "@costura-pro/config": "workspace:*",
+    "@orpc/client": "catalog:",
     "@types/bun": "catalog:",
     "tsdown": "^0.23.0",
     "typescript": "catalog:"

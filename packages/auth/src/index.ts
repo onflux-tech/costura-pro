@@ -4,25 +4,21 @@ import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 
 export type AuthConfig = {
-	BETTER_AUTH_URL: string;
 	BETTER_AUTH_SECRET: string;
-	CORS_ORIGIN: string;
+	PORT: number;
 };
 
 export function createAuth(
 	env: AuthConfig,
 	database: Database,
-	desktopOrigins: readonly string[] = []
+	canonicalOrigin?: URL
 ) {
 	return betterAuth({
 		advanced: {
-			defaultCookieAttributes: {
-				httpOnly: true,
-				sameSite: "none",
-				secure: true,
-			},
+			cookiePrefix: "costura-pro",
+			useSecureCookies: false,
 		},
-		baseURL: env.BETTER_AUTH_URL,
+		baseURL: `http://127.0.0.1:${env.PORT}`,
 		database: drizzleAdapter(database, {
 			provider: "sqlite",
 			schema,
@@ -30,6 +26,12 @@ export function createAuth(
 		emailAndPassword: { enabled: true },
 		plugins: [],
 		secret: env.BETTER_AUTH_SECRET,
-		trustedOrigins: [env.CORS_ORIGIN, ...desktopOrigins],
+		trustedOrigins: [
+			"http://127.0.0.1:*",
+			"http://localhost:*",
+			...(canonicalOrigin ? [canonicalOrigin.origin] : []),
+		],
 	});
 }
+
+export type Auth = ReturnType<typeof createAuth>;
