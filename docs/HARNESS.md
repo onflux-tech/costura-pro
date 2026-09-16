@@ -36,7 +36,7 @@
 - **MCP mínimo:** `context7` (documentação de bibliotecas) e `shadcn` (registry de componentes), sem credencial versionada.
 - **Skills:** as de processo genérico (Superpowers, grilling, domain-modeling, browser-harness) ficam globais na máquina do dono; o repositório vendoriza as skills da stack e guarda as skills de ciclo de entrega (§4).
 - **Hooks só no Claude por enquanto** (§5). Codex é coberto pelas regras do `AGENTS.md`, pelo Lefthook e pelo CI.
-- **Integração:** merge local na `main` e push só depois de confirmação do dono; não há PR.
+- **Integração:** automática ao fim de cada entrega, com merge local na `main`, push e CI acompanhado, sem confirmação (autorização permanente do dono); não há PR.
 - **Interface validada com browser-harness** em navegador real. Playwright não entra no projeto.
 - **No máximo 2 subagentes por tarefa**, todos somente leitura.
 
@@ -92,8 +92,8 @@ Toda implementação passa por quatro skills do projeto, fonte em `.agents/skill
 | `/entrega-iniciar` | Começo de toda sessão de implementação | Entrega escolhida no ROADMAP, branch, rota (enxuta ou completa), spec local com DoD e mutações, rules da área lidas |
 | `/verificar` | Antes de declarar pronto, commit ou integração | Bateria completa com saída em arquivo |
 | `/revisar` | Entrega que toca dinheiro, quantidade, dados, autenticação, sync ou contrato entre camadas | `reviewer` e, se cruzar camadas, `contract`, com desafio de mutação |
-| `/entrega-fechar` | Fim da implementação; o hook de Stop cobra | Verificação, docs curadas e índice atualizados, harness evoluído, handoff da próxima sessão |
-| `/integrar-branch` | Dono pede merge ou push | Merge local linear na `main`, push após confirmação e CI acompanhado |
+| `/entrega-fechar` | Fim da implementação; o hook de Stop cobra | Verificação, docs curadas e índice atualizados, harness evoluído, handoff da próxima sessão e `/integrar-branch` em seguida |
+| `/integrar-branch` | Automático no fim do `/entrega-fechar`, ou pedido do dono | Commits por área, merge local linear na `main`, push sem confirmação e CI acompanhado |
 
 | Rota | Quando | Passos |
 |---|---|---|
@@ -214,9 +214,10 @@ Configurados em `.claude/settings.json`. Cada script em `.claude/hooks/` exporta
 | 2026-09-16 | Hooks de sessão, rules por área, skills de ciclo de entrega, índice de docs com `docs-check`, CI em Ubuntu e Windows, merge local sem PR | Pedido do dono de harness evolutivo, inspirado na takeflow e no newticket-go |
 | 2026-09-16 | Código sem comentários no `AGENTS.md` e guard barrando comentário novo em código | Pedido do dono durante a entrega F0 Mesma origem |
 | 2026-09-16 | Armadilhas de origem, cookie, Bun, Vite, Tauri e verificação em navegador na §8 e nas rules de servidor e web; "Armadilhas conhecidas" nos papéis `reviewer` e `contract` | Fechamento e revisão da entrega F0 Mesma origem |
+| 2026-09-16 | `/integrar-branch` roda sozinho no fim do `/entrega-fechar`, com push sem confirmação (DEC-58) | Pedido do dono ao integrar a F0 Mesma origem |
 
 ## 10. Sessão nova
 
 Abra o cliente na raiz do repositório (`claude` ou `codex`) e comece por `/entrega-iniciar`. Prompt sugerido:
 
-> Leia AGENTS.md e docs/ROADMAP.md e rode /entrega-iniciar para a próxima entrega pendente da fase atual. Siga a rota indicada, feche com /entrega-fechar e integre com /integrar-branch só quando eu pedir.
+> Leia AGENTS.md e docs/ROADMAP.md e rode /entrega-iniciar para a próxima entrega pendente da fase atual. Siga a rota indicada e feche com /entrega-fechar; a integração com /integrar-branch roda sozinha em seguida.

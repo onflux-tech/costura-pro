@@ -15,7 +15,7 @@ Toda implementação segue as skills do projeto (fonte em `.agents/skills/`; no 
 1. `entrega-iniciar`: escolhe a entrega do ROADMAP, cria a branch, define a rota e a spec local.
 2. `verificar` e, quando a entrega toca dinheiro, quantidade, dados, autenticação, sync ou contrato entre camadas, `revisar`.
 3. `entrega-fechar`: atualiza docs curadas e índice e evolui o harness pelos critérios do `docs/HARNESS.md` §4. É o que deixa o harness mais especialista a cada entrega.
-4. `integrar-branch`: merge local na `main` e push só depois de confirmação do dono; não há PR.
+4. `integrar-branch`: roda sozinho logo depois do `entrega-fechar` verde, com commits por área, merge `--ff-only` na `main`, push e CI acompanhado, sem pedir confirmação; não há PR.
 
 ## Regras por área
 
@@ -46,7 +46,7 @@ Antes de tocar arquivos de uma área, leia a rule dela (no Claude elas carregam 
 - Pronto significa `pnpm harness:check`, `pnpm docs:check`, `pnpm harness:test`, `pnpm test`, `pnpm check`, `pnpm check-types` e `pnpm build` sem erro nem aviso; `pnpm fix` corrige formatação.
 - Suíte de teste roda com saída redirecionada para arquivo, nunca com pipe.
 - Escolha ou confirmação do dono vai pela ferramenta de pergunta do cliente, com a opção recomendada primeiro.
-- Commit, merge e push só quando o dono pedir; mensagens de commit em inglês no padrão conventional commits.
+- Commit, merge na `main` e push acontecem automaticamente ao fim de cada entrega, pelo `integrar-branch` (autorização permanente do dono); mensagens de commit em inglês no padrão conventional commits.
 
 ## Subagentes
 

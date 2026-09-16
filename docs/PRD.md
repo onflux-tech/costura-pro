@@ -382,6 +382,7 @@ Decisões tomadas com o dono. "Mão única" indica decisão cara de reverter; as
 | DEC-55 | Repositório público `onflux-tech/costura-pro` com licença MIT e README bilíngue EN/PT no padrão do vsftpd-manager (2026-09-16) | Público sem licença; README só em português | Mão única | [LICENSE](../LICENSE) |
 | DEC-56 | Mesma origem com processo único em loopback, porta 3000 até o S5, allowlist de Host e Origin e cookie `costura-pro.session_token` numa instância do Better Auth, sem `Secure` no loopback e com `Secure` acrescentado no Host canônico (2026-09-16) | Duas instâncias do Better Auth por Host; `baseURL` dinâmica com `crossSubDomainCookies`; nome padrão `better-auth`; porta própria já na F0 | Dupla | [SPEC §1](SPEC.md#1-topologia-e-componentes), [SPEC §5](SPEC.md#5-segurança-e-armazenamento-local) |
 | DEC-57 | Código sem comentários: o porquê vai para armadilha do HARNESS, rule da área ou SPEC, e o guard do Claude barra comentário novo (2026-09-16) | Comentar o porquê no código; checagem também no pre-commit | Dupla | [HARNESS §5](HARNESS.md#5-hooks-do-claude-code) |
+| DEC-58 | Integração automática ao fim de cada entrega: commits por área, merge `--ff-only` na `main`, push e CI acompanhado sem confirmação (2026-09-16). Substituiu o push após confirmação da DEC-54 | Push com confirmação a cada entrega; integração só a pedido do dono | Dupla | [HARNESS §4](HARNESS.md#4-ciclo-de-entrega-e-evolução-do-harness) |
 
 ## 10. Riscos e mitigação
 
