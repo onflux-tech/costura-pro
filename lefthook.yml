@@ -1,0 +1,31 @@
+# Lefthook configuration
+# https://github.com/evilmartians/lefthook
+
+pre-commit:
+  parallel: true
+  jobs:
+    # exec usa o ultracite fixado no package.json; dlx baixaria outra versão.
+    - run: pnpm exec ultracite fix
+      glob:
+        - "**/*.js"
+        - "**/*.jsx"
+        - "**/*.ts"
+        - "**/*.tsx"
+        - "**/*.json"
+        - "**/*.jsonc"
+        - "**/*.css"
+      stage_fixed: true
+    - name: biome
+      glob: "*.{js,ts,cjs,mjs,d.cts,d.mts,jsx,tsx,json,jsonc}"
+      run: pnpm biome check --write --no-errors-on-unmatched --files-ignore-unknown=true {staged_files}
+      stage_fixed: true
+    - name: harness
+      glob:
+        - ".agents/**"
+        - ".claude/**"
+        - ".codex/**"
+        - ".mcp.json"
+        - "scripts/harness*.mjs"
+      # --staged também exige que a porta regenerada esteja no commit; node direto evita
+      # a revalidação de dependências do pnpm.
+      run: node scripts/harness.mjs check --staged

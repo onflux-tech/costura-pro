@@ -1,0 +1,3 @@
+# Vendored agent guidance uses Markdown hard line breaks (two trailing spaces).
+.agents/skills/** whitespace=-trailing-space
+.claude/skills/** whitespace=-trailing-space

@@ -1,0 +1,44 @@
+{
+  "name": "costura-pro",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "build": "turbo run build",
+    "check": "ultracite check",
+    "check-types": "turbo run check-types",
+    "db:generate": "turbo run db:generate -F @costura-pro/db --",
+    "db:local": "turbo run db:local -F @costura-pro/db --",
+    "db:migrate": "turbo run db:migrate -F @costura-pro/db --",
+    "db:push": "turbo run db:push -F @costura-pro/db --",
+    "db:studio": "turbo run db:studio -F @costura-pro/db --",
+    "dev": "turbo run dev",
+    "dev:server": "turbo run dev -F server --",
+    "dev:types": "tsc -b packages/api --watch",
+    "dev:web": "turbo run dev -F web --",
+    "env:generate": "varlock codegen --path ./apps/web/ && varlock codegen --path ./apps/server/ && varlock codegen --path ./packages/db/",
+    "fix": "ultracite fix",
+    "harness:check": "node scripts/harness.mjs check",
+    "harness:sync": "node scripts/harness.mjs sync",
+    "harness:test": "node --test scripts/harness.test.mjs",
+    "postinstall": "tsc -b packages/api && varlock codegen --path ./apps/web/ && varlock codegen --path ./apps/server/ && varlock codegen --path ./packages/db/",
+    "test": "turbo run test"
+  },
+  "dependencies": {
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "2.5.12",
+    "@costura-pro/config": "workspace:*",
+    "@types/bun": "catalog:",
+    "lefthook": "latest",
+    "turbo": "^2.10.12",
+    "typescript": "catalog:",
+    "ultracite": "7.11.0",
+    "varlock": "catalog:"
+  },
+  "packageManager": "pnpm@11.20.0"
+}
