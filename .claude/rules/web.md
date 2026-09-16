@@ -15,5 +15,8 @@ paths:
 
 ## Armadilhas conhecidas
 
+- oRPC 1.15 e Better Auth não aceitam base relativa: `new URL("/rpc", window.location.origin)` e `createAuthClient()` sem `baseURL`.
+- O proxy do Vite usa chave regex e `changeOrigin: false`; o `watch` ignora `**/src-tauri/**`, senão o `tauri dev` cai com `EBUSY` no Windows.
+- Verificação com browser-harness roda em contexto isolado (`Target.createBrowserContext`): o autofill do perfil do dono mistura credenciais salvas no formulário.
 - O build avisa chunk acima de 500 kB no `apps/web`; divida por rota antes das telas reais.
 - No iPhone, Safari e ícone instalado guardam dados separados: teste sempre na instância instalada.

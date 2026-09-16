@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import { execFileSync, spawnSync } from "node:child_process";
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import { after, test } from "node:test";
 import { fileURLToPath } from "node:url";
 
@@ -218,6 +218,94 @@ test("bloqueia travessão novo em markdown do projeto, sem punir o que já exist
 		null
 	);
 	assert.equal(write(join(root, "apps/web/src/x.ts"), "const a = 1;"), null);
+});
+
+test("bloqueia comentário novo em código, sem punir o que já existia", () => {
+	const file = join(root, "apps/server/src/app.ts");
+	assertBlocked(
+		edit(file, "const a = 1;", "// explica\nconst a = 1;"),
+		"comentário"
+	);
+	assertBlocked(
+		edit(file, "const a = 1;", "const a = 1; // nota"),
+		"comentário"
+	);
+	assertBlocked(
+		write(
+			join(root, "apps/web/src/novo.tsx"),
+			"/* bloco */\nexport const a = 1;\n"
+		),
+		"comentário"
+	);
+	assertBlocked(
+		write(join(root, "apps/web/src/tela.tsx"), "<div>{/* jsx */}</div>\n"),
+		"comentário"
+	);
+	assertBlocked(
+		write(join(root, "scripts/novo.mjs"), "/**\n * doc\n */\nexport {};\n"),
+		"comentário"
+	);
+	assert.equal(
+		edit(file, "// antigo\nconst a = 1;", "// antigo\nconst a = 2;"),
+		null
+	);
+});
+
+test("deixa passar URL, glob, regex, diretivas e arquivos que não são código", () => {
+	const file = join(root, "apps/server/src/app.ts");
+	for (const code of [
+		'const url = "http://127.0.0.1:3000";',
+		'app.use("/rpc/*", handler);',
+		'const glob = "**/*.{js,ts}";',
+		"const regex = /^\\/api(\\/|$)/;",
+		"// biome-ignore lint/suspicious/noConsole: saída do CLI",
+		"// @ts-expect-error tipo da biblioteca",
+		'/// <reference types="vite/client" />',
+	]) {
+		assert.equal(edit(file, "", code), null, code);
+	}
+	assert.equal(edit(join(root, "docs/SPEC.md"), "a", "a // b"), null);
+	assert.equal(
+		write(join(root, ".agents/skills/terceira/script.mjs"), "// vendorizada\n"),
+		null
+	);
+});
+
+test("bloqueia comentário colado em parêntese ou chave e em .cjs", () => {
+	assertBlocked(
+		edit(join(root, "apps/server/src/app.ts"), "f();", "f()// colado"),
+		"comentário"
+	);
+	assertBlocked(
+		edit(join(root, "apps/server/src/app.ts"), "}", "}/* bloco */"),
+		"comentário"
+	);
+	assertBlocked(
+		write(join(root, "scripts/novo.cjs"), "module.exports = 1; // nota\n"),
+		"comentário"
+	);
+});
+
+test("o teste do próprio guard pode conter casos que parecem comentário", () => {
+	assert.equal(
+		edit(
+			join(root, ".claude/hooks/guard.test.mjs"),
+			"a",
+			'const exemplo = "a // b";'
+		),
+		null
+	);
+});
+
+test("Write sobre arquivo existente só conta o que acrescenta", () => {
+	const file = join(root, "scripts/existente.mjs");
+	mkdirSync(dirname(file), { recursive: true });
+	writeFileSync(file, "// cabeçalho\nexport const a = 1;\n");
+	assert.equal(write(file, "// cabeçalho\nexport const a = 2;\n"), null);
+	assertBlocked(
+		write(file, "// cabeçalho\n// outro\nexport const a = 2;\n"),
+		"comentário"
+	);
 });
 
 test("ignora ferramenta desconhecida e entrada sem comando", () => {

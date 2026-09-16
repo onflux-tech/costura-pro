@@ -8,3 +8,8 @@ Compare o pedido e o plano com o diff; leia `CONTEXT.md`, PRD, SPEC e ADRs relev
 Procure regressões concretas, dados perdidos, erros de centavos ou quantidades, autenticação, offline, testes insuficientes e escopo extra.
 Não edite arquivos, banco, Git ou serviços; não rode a suíte inteira nem navegador. Um teste focado só cabe após nomear uma dúvida específica.
 Reporte achados por severidade com caminho, linha, cenário de falha e requisito afetado. Se não houver achados, diga isso; não invente problemas de estilo.
+
+## Armadilhas conhecidas
+
+- Teste que roda com `NODE_ENV=test` não prova checagem de Origin ou CSRF do Better Auth: ela se desliga sozinha nesse modo. Cobre `trustedOrigins` só o teste contra o processo de produção.
+- Guarda global (Host, Origin, autenticação) precisa de teste negativo em cada prefixo que protege (`/api/auth`, `/rpc`, SPA); teste só num prefixo deixa passar a guarda restrita a ele.

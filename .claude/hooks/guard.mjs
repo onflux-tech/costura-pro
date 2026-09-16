@@ -84,8 +84,21 @@ const QUOTES = /^["']|["']$/g;
 const GENERATED_PORT = /^(?:\.claude\/agents\/|\.claude\/skills\/|\.codex\/)/;
 const MARKDOWN = /\.md$/i;
 const VENDORED_SKILLS = /^(?:\.agents|\.claude)\/skills\//;
+const CODE = /\.[cm]?[jt]sx?$/i;
+const COMMENT = /(?:^|[\s{}();,])(?:\/\/|\/\*)/;
+const COMMENT_FIXTURES = new Set([".claude/hooks/guard.test.mjs"]);
+const COMMENT_DIRECTIVE =
+	/biome-ignore|@ts-expect-error|^\s*\/\/\/\s*<reference\b/;
+const LINE_BREAK = /\r?\n/;
+const COMMENT_MESSAGE =
+	"BLOQUEADO: comentário novo em código. O código fica sem comentários; registre o porquê como armadilha no docs/HARNESS.md §8, na rule da área ou na SPEC.";
 
 const countDashes = (text) => (String(text ?? "").match(DASH) ?? []).length;
+const countComments = (text) =>
+	String(text ?? "")
+		.split(LINE_BREAK)
+		.filter((line) => COMMENT.test(line) && !COMMENT_DIRECTIVE.test(line))
+		.length;
 
 function messageFileText(command, root) {
 	let text = "";
@@ -193,16 +206,26 @@ function evaluateCommand(command, root) {
 	return null;
 }
 
-function addedDashes(toolName, toolInput) {
-	if (toolName === "Write") {
-		return countDashes(toolInput.content);
+function currentContent(root, rel) {
+	const absolute = resolve(root, rel);
+	return existsSync(absolute) && statSync(absolute).isFile()
+		? readFileSync(absolute, "utf8")
+		: "";
+}
+
+function added(count, change) {
+	if (change.toolName === "Write") {
+		return (
+			count(change.toolInput.content) -
+			count(currentContent(change.root, change.rel))
+		);
 	}
-	const edits = toolInput.edits ?? [toolInput];
-	let added = 0;
-	for (const change of edits) {
-		added += countDashes(change.new_string) - countDashes(change.old_string);
+	const edits = change.toolInput.edits ?? [change.toolInput];
+	let total = 0;
+	for (const edit of edits) {
+		total += count(edit.new_string) - count(edit.old_string);
 	}
-	return added;
+	return total;
 }
 
 function evaluateFileChange(input, root) {
@@ -214,12 +237,19 @@ function evaluateFileChange(input, root) {
 	if (GENERATED_PORT.test(rel)) {
 		return `BLOQUEADO: ${rel} é porta gerada do harness. Edite a fonte (.agents/agents, .agents/skills, .mcp.json ou scripts/harness.mjs) e rode pnpm harness:sync.`;
 	}
-	if (
-		MARKDOWN.test(rel) &&
-		!VENDORED_SKILLS.test(rel) &&
-		addedDashes(input.tool_name, toolInput) > 0
-	) {
+	if (VENDORED_SKILLS.test(rel)) {
+		return null;
+	}
+	const change = { rel, root, toolInput, toolName: input.tool_name };
+	if (MARKDOWN.test(rel) && added(countDashes, change) > 0) {
 		return `${DASH_MESSAGE} Arquivo: ${rel}.`;
+	}
+	if (
+		CODE.test(rel) &&
+		!COMMENT_FIXTURES.has(rel) &&
+		added(countComments, change) > 0
+	) {
+		return `${COMMENT_MESSAGE} Arquivo: ${rel}.`;
 	}
 	return null;
 }
