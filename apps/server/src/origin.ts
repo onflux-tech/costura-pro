@@ -26,6 +26,12 @@ export function parseCanonicalOrigin(
 	return url;
 }
 
+export function isLoopbackHost(host: string | null | undefined): boolean {
+	const hostname =
+		hostWithOptionalPort.exec((host ?? "").toLowerCase())?.[1] ?? "";
+	return loopbackHostnames.has(hostname);
+}
+
 export function expectedOrigin(
 	host: string | undefined,
 	canonical: URL | undefined

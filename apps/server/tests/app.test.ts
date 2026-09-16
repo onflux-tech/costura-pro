@@ -2,21 +2,26 @@ import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 
 import {
 	canonicalOrigin,
+	createOwnerDirect,
+	forceInstallationState,
 	loopbackHost,
 	loopbackOrigin,
-	rpcClient,
+	ownerPassword,
+	ownerUsername,
+	rpc,
+	sessionCookie,
 	startTestServer,
 	type TestServer,
 } from "./support";
 
 const secureAttribute = /;\s*secure/i;
 const sessionCookieName = /^costura-pro\.session_token=/;
-const password = "senha-forte-123";
 
 let server: TestServer;
 
 beforeAll(async () => {
 	server = await startTestServer();
+	await createOwnerDirect(server);
 });
 
 afterAll(async () => {
@@ -29,9 +34,9 @@ function sessionSetCookie(response: Response) {
 		.find((cookie) => sessionCookieName.test(cookie));
 }
 
-function signUp(email: string, host = loopbackHost, origin = loopbackOrigin) {
-	return server.send("/api/auth/sign-up/email", {
-		body: { email, name: "Dono", password },
+function signInOn(host: string, origin: string) {
+	return server.send("/api/auth/sign-in/username", {
+		body: { password: ownerPassword, username: ownerUsername },
 		host,
 		method: "POST",
 		origin,
@@ -48,8 +53,8 @@ describe("Host and Origin guard", () => {
 	});
 
 	test("rejects a foreign Origin before Better Auth", async () => {
-		const response = await server.send("/api/auth/sign-in/email", {
-			body: { email: "dono@costura.test", password },
+		const response = await server.send("/api/auth/sign-in/username", {
+			body: { password: ownerPassword, username: ownerUsername },
 			method: "POST",
 			origin: "https://evil.example",
 		});
@@ -58,8 +63,7 @@ describe("Host and Origin guard", () => {
 	});
 
 	test("guards /rpc against a same-site Origin on another port even with a valid session", async () => {
-		const response = await signUp("guarda-rpc@costura.test");
-		const cookie = sessionSetCookie(response)?.split(";")[0] ?? "";
+		const cookie = sessionCookie(await signInOn(loopbackHost, loopbackOrigin));
 		const guarded = await server.send("/rpc/privateData", {
 			body: {},
 			cookie,
@@ -82,8 +86,8 @@ describe("Host and Origin guard", () => {
 });
 
 describe("session cookie per origin", () => {
-	test("sign-up over loopback sets the session cookie without Secure and with SameSite=Lax", async () => {
-		const response = await signUp("loopback@costura.test");
+	test("sign-in over loopback sets the session cookie without Secure and with SameSite=Lax", async () => {
+		const response = await signInOn(loopbackHost, loopbackOrigin);
 		expect(response.status).toBe(200);
 		const cookie = sessionSetCookie(response);
 		expect(cookie).toContain("HttpOnly");
@@ -91,9 +95,8 @@ describe("session cookie per origin", () => {
 		expect(cookie).not.toMatch(secureAttribute);
 	});
 
-	test("sign-up over the canonical host sets the session cookie with Secure", async () => {
-		const response = await signUp(
-			"canonico@costura.test",
+	test("sign-in over the canonical host sets the session cookie with Secure", async () => {
+		const response = await signInOn(
 			canonicalOrigin.host,
 			canonicalOrigin.origin
 		);
@@ -101,15 +104,10 @@ describe("session cookie per origin", () => {
 		expect(sessionSetCookie(response)).toMatch(secureAttribute);
 	});
 
-	test("the session cookie authenticates /rpc on the same origin", async () => {
-		const response = await signUp("rpc@costura.test");
-		const cookie = sessionSetCookie(response)?.split(";")[0] ?? "";
-		const client = rpcClient(server, {
-			cookie,
-			host: loopbackHost,
-			origin: loopbackOrigin,
-		});
-		expect(await client.privateData()).toMatchObject({
+	test("the session cookie authenticates /rpc on the same origin once the installation is ready", async () => {
+		const cookie = sessionCookie(await signInOn(loopbackHost, loopbackOrigin));
+		forceInstallationState(server, "ready");
+		expect(await rpc(server, { cookie }).privateData()).toMatchObject({
 			message: "This is private",
 		});
 	});
@@ -123,9 +121,7 @@ describe("API routes", () => {
 	});
 
 	test("/rpc/healthCheck answers through the oRPC client", async () => {
-		expect(await rpcClient(server, { host: loopbackHost }).healthCheck()).toBe(
-			"OK"
-		);
+		expect(await rpc(server).healthCheck()).toBe("OK");
 	});
 
 	test("/api-reference/spec.json answers from the server", async () => {

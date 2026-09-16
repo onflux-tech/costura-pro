@@ -121,29 +121,41 @@ afterAll(async () => {
 	await rm(directory, { force: true, recursive: true });
 });
 
-function signUp(host: string, origin: string, email: string) {
-	return fetch(`${baseUrl}/api/auth/sign-up/email`, {
-		body: JSON.stringify({ email, name: "Dono", password: "senha-forte-123" }),
+const ownerUsername = "dona.atelie";
+const ownerPassword = "senha-forte-123";
+
+async function createOwner() {
+	const client: AppRouterClient = createORPCClient(
+		new RPCLink({ url: `${baseUrl}/rpc` })
+	);
+	await client.installation.setAtelierName({
+		atelierName: "Ateliê da Dona",
+		baseVersion: 1,
+		opId: crypto.randomUUID(),
+	});
+	await client.installation.createOwner({
+		opId: crypto.randomUUID(),
+		password: ownerPassword,
+		username: ownerUsername,
+	});
+}
+
+function signIn(host: string, origin: string) {
+	return fetch(`${baseUrl}/api/auth/sign-in/username`, {
+		body: JSON.stringify({ password: ownerPassword, username: ownerUsername }),
 		headers: { "content-type": "application/json", host, origin },
 		method: "POST",
 	});
 }
 
 describe("production build in one loopback process", () => {
-	test("Better Auth trusts loopback and canonical origins with Secure only on the canonical host", async () => {
-		const responses = await Promise.all([
-			signUp(`127.0.0.1:${port}`, baseUrl, "loopback@costura.test"),
-			signUp(
-				`localhost:${port}`,
-				`http://localhost:${port}`,
-				"localhost@costura.test"
-			),
-			signUp(
-				canonicalOrigin.host,
-				canonicalOrigin.origin,
-				"canonico@costura.test"
-			),
-		]);
+	test("the owner signs in over loopback and canonical origins with Secure only on the canonical host", async () => {
+		await createOwner();
+		const responses = [
+			await signIn(`127.0.0.1:${port}`, baseUrl),
+			await signIn(`localhost:${port}`, `http://localhost:${port}`),
+			await signIn(canonicalOrigin.host, canonicalOrigin.origin),
+		];
 		expect(responses.map((response) => response.status)).toEqual([
 			200, 200, 200,
 		]);
@@ -161,6 +173,32 @@ describe("production build in one loopback process", () => {
 		expect(
 			sessionCookies.map((cookie) => secureAttribute.test(cookie))
 		).toEqual([false, false, true]);
+	});
+
+	test("local sign-ins share a single rate limit bucket in production", async () => {
+		const statuses = [
+			(await signIn(`127.0.0.1:${port}`, baseUrl)).status,
+			(await signIn(`localhost:${port}`, `http://localhost:${port}`)).status,
+			(await signIn(`127.0.0.1:${port}`, baseUrl)).status,
+		];
+		expect(statuses).toEqual([200, 200, 429]);
+	});
+
+	test("public sign-up answers 404 in the production process", async () => {
+		const response = await fetch(`${baseUrl}/api/auth/sign-up/email`, {
+			body: JSON.stringify({
+				email: "invasor@costura.test",
+				name: "invasor",
+				password: "senha-forte-123",
+			}),
+			headers: {
+				"content-type": "application/json",
+				host: canonicalOrigin.host,
+				origin: canonicalOrigin.origin,
+			},
+			method: "POST",
+		});
+		expect(response.status).toBe(404);
 	});
 
 	test("serves the built SPA for / and internal routes", async () => {

@@ -17,8 +17,10 @@ let server: TestServer;
 
 beforeAll(async () => {
 	server = await startTestServer({
-		[assetPath]: "console.log('asset');",
-		"index.html": indexHtml,
+		webFiles: {
+			[assetPath]: "console.log('asset');",
+			"index.html": indexHtml,
+		},
 	});
 });
 
