@@ -122,7 +122,7 @@ Configurados em `.claude/settings.json`. Cada script em `.claude/hooks/` exporta
 | Evento | Script | Faz |
 |---|---|---|
 | SessionStart | `session-start.mjs` | Foto do git da sessão (a primeira prevalece no resume), limpeza de sessões com mais de 7 dias e 3 a 5 linhas de contexto: branch, arquivos com mudança, harness divergente e lembrete do ciclo de entrega |
-| PreToolUse (Bash, PowerShell, Edit, MultiEdit, Write) | `guard.mjs` | Bloqueia suíte de teste com pipe (inclusive `Select-Object`), kill geral de node, force-push em branch protegida (inclusive `--force-with-lease`, `-fu` e refspec com `+`), `--no-verify`, trailer `Claude-Session` e `Co-Authored-By`, `rm -rf` na raiz, `db:push`, travessão em commit, PR ou markdown do projeto e edição direta de porta gerada. Suíte, `db:push` e push são reconhecidos só no início de cada comando, então buscas como `grep db:push` passam |
+| PreToolUse (Bash, PowerShell, Edit, MultiEdit, Write) | `guard.mjs` | Bloqueia suíte de teste com pipe (inclusive `Select-Object`), kill geral de node, force-push em branch protegida (inclusive `--force-with-lease`, `-fu` e refspec com `+`), `--no-verify`, trailer `Claude-Session` e `Co-Authored-By`, `rm -rf` na raiz, `db:push`, travessão em commit, PR ou markdown do projeto, comentário novo em código (`.ts`, `.tsx`, `.js`, `.jsx`, `.mjs`, `.cjs`, fora das skills vendorizadas e do próprio `.claude/hooks/guard.test.mjs`, cujos casos parecem comentário; `biome-ignore`, `@ts-expect-error` e `/// <reference` passam) e edição direta de porta gerada. Em Edit conta só o que a edição acrescenta, e em Write compara com o arquivo atual. Suíte, `db:push` e push são reconhecidos só no início de cada comando, então buscas como `grep db:push` passam |
 | PostToolUse (Edit, MultiEdit, Write) | `format.mjs` | Só formata com `biome format` e avisa o modelo para reler quando o arquivo mudou; lint fica para o Lefthook e o `pnpm check` |
 | PostToolUse (Bash, PowerShell, Edit, MultiEdit, Write) | `touch.mjs` | Registra arquivos tocados, inclusive os editados pelo shell |
 | Stop | `stop-check.mjs` | Sobre o que a sessão mudou: cobra `/entrega-fechar` quando houve código sem docs curadas, e acusa harness divergente e falha do docs-check. Insiste duas vezes, libera na terceira e rearma, com uma cobrança só, quando as linhas de código dobram |
@@ -183,11 +183,27 @@ Configurados em `.claude/settings.json`. Cada script em `.claude/hooks/` exporta
 | Dados de desenvolvimento somem | `db:push` contra banco com dados | Nunca `db:push` em banco real; o guard bloqueia |
 | Arquivo do banco continua travado no Windows depois de fechar a conexão (`EBUSY`) | `close()` do `bun:sqlite` adia o fechamento enquanto há statements do Drizzle abertos | `closeDb` usa `close(true)`; todo código que troca o arquivo do banco fecha por ele |
 | WAL trava ou corrompe | Banco em compartilhamento de rede | Caminho local; o validador rejeita UNC |
-| Sessão não persiste em localhost | Scaffold força `SameSite=None; Secure` em HTTP | Política de cookie por origem (F0 e F2) |
+| Login não persiste em Safari e no Tauri de macOS e Linux via `http://127.0.0.1` | WebKit e libsoup descartam cookie `Secure` (e `SameSite=None`) vindo de HTTP; o scaffold forçava os dois | Better Auth com `useSecureCookies: false`; o servidor acrescenta `Secure` só no Host canônico (`apps/server/src/origin.ts`) |
+| Better Auth manda `Secure` em todo Host ou em nenhum | O cálculo de `Secure` e do prefixo `__Secure-` acontece uma vez por instância; a `baseURL` dinâmica não muda isso | Middleware por Host, não configuração do Better Auth |
+| Sessão de outro app em `localhost` cai ao entrar no Costura Pro, ou o contrário | Cookie não isola por porta; dois apps com Better Auth usam `better-auth.session_token` | `advanced.cookiePrefix: "costura-pro"` |
+| `Set-Cookie` reescrito num middleware do Hono volta ao original | Atribuir `c.res` faz o Hono recopiar os `Set-Cookie` da resposta anterior | Editar `c.res.headers` no lugar |
+| Servidor atende pelo IP da LAN embora `server.hostname` diga `localhost` | Bun sem `hostname` escuta em todas as interfaces | `hostname: "127.0.0.1"` literal; o teste de produção confere a tabela de sockets |
+| `PORT` do `.env` é ignorada e o servidor sobe na 3000 | O Bun lê `PORT` só do ambiente do início do processo; o valor injetado pelo varlock chega tarde | `port: env.PORT` explícito no export |
+| `pnpm --filter server start` sobe sem SPA | `NODE_ENV` já definido no ambiente vence o `--env-file=production.env` | Não exportar `NODE_ENV` no shell; o teste de produção remove a variável do processo filho |
+| SPA 404 só no Linux | `serveStatic` com `path` absoluto e sem `root` vira caminho relativo no `join` posix | `root` absoluto com `path: "index.html"` |
+| Cliente web lança `Invalid URL` ou `Invalid base URL` | oRPC 1.15 faz `new URL(url)` sem base; Better Auth rejeita `baseURL` relativa | `new URL("/rpc", window.location.origin)` e `createAuthClient()` sem `baseURL` |
+| Com a PWA instalada, navegar para `/api` ou `/rpc` abre a SPA | `NavigationRoute` do Workbox sem denylist | `navigateFallbackDenylist` no `apps/web/vite.config.ts`, igual às exclusões do `apps/server/src/web.ts` |
+| Proxy do Vite casa rota da SPA ou manda Host trocado | Chave sem `^` faz `startsWith`; o atalho string força `changeOrigin: true` | Chave regex e forma objeto com `changeOrigin: false` |
+| Allowlist de Host e `Secure` falham só pelo Tunnel | `httpHostHeader` preenchido no painel da Cloudflare troca o Host que chega | Deixar `httpHostHeader` vazio (assistente da F7) |
+| `tauri dev` cai com `EBUSY` no Windows durante a compilação | O watcher do Vite observa `apps/web/src-tauri/target` | `server.watch.ignored: ["**/src-tauri/**"]` |
+| Browser-harness preenche formulário com credenciais do dono | Autofill do perfil do Chrome junta o texto salvo ao digitado | Verificar em contexto isolado (`Target.createBrowserContext`) |
+| CDP do WebView2 não abre com `WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS` | O Tauri define os argumentos do navegador da janela | Build de verificação com `additionalBrowserArgs` na janela via `tauri build --config` fora do repositório |
+| `netstat` não mostra `LISTENING` no Windows em português | O estado vem traduzido (`ESCUTANDO`) | Filtrar por porta local e remoto terminado em `:0`, sem depender do estado |
+| `pnpm install` muda o lockfile sem mudança de dependência | `lefthook: latest` no `package.json` raiz é re-resolvido | Restaurar o lockfile, aplicar só a mudança e validar com `pnpm install --frozen-lockfile` |
 | Dados do celular "somem" no iPhone | Safari e ícone instalado têm armazenamentos separados | Usar sempre a instância instalada; o assistente avisa |
 | Formatação do hook diferente de `pnpm check` | `pnpm dlx ultracite` baixava outra versão | Lefthook usa `pnpm exec ultracite` |
 | Sessão de agente trava por tempo indefinido | Saída da suíte de teste passada por `tail` ou `head` | Redirecionar para arquivo; o guard bloqueia |
-| Instalador com identificador de exemplo | `com.tauri.dev` do scaffold em `apps/web/src-tauri/tauri.conf.json` | Definir o identificador antes do primeiro instalador (F7) |
+| `tauri build` falha com "The default value `com.tauri.dev` is not allowed" | Identificador de exemplo do scaffold em `apps/web/src-tauri/tauri.conf.json` (Q-08, F7) | Até a F7, verificar com `tauri build --no-bundle --config <arquivo fora do repositório>` e identificador temporário |
 
 ## 9. Registro de evolução
 
@@ -196,6 +212,8 @@ Configurados em `.claude/settings.json`. Cada script em `.claude/hooks/` exporta
 | 2026-09-15 | Papéis `explorer`, `reviewer` e `contract` com checagem de deriva | Sessão Codex no Linux |
 | 2026-09-16 | Portas geradas sem symlink, MCPs context7 e shadcn, 3 skills vendorizadas removidas, modelos por papel no Claude | Reorganização da documentação |
 | 2026-09-16 | Hooks de sessão, rules por área, skills de ciclo de entrega, índice de docs com `docs-check`, CI em Ubuntu e Windows, merge local sem PR | Pedido do dono de harness evolutivo, inspirado na takeflow e no newticket-go |
+| 2026-09-16 | Código sem comentários no `AGENTS.md` e guard barrando comentário novo em código | Pedido do dono durante a entrega F0 Mesma origem |
+| 2026-09-16 | Armadilhas de origem, cookie, Bun, Vite, Tauri e verificação em navegador na §8 e nas rules de servidor e web; "Armadilhas conhecidas" nos papéis `reviewer` e `contract` | Fechamento e revisão da entrega F0 Mesma origem |
 
 ## 10. Sessão nova
 

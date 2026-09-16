@@ -43,6 +43,7 @@ Fonte de verdade: `package.json` de cada pacote, catálogo em `pnpm-workspace.ya
 | Estilo | Tailwind CSS | ^4.3.3 |
 | Componentes | shadcn (sobre Base UI) | ^4.21.0 |
 | Desktop | Tauri e CLI | 2.11.3 e ^2.11.4 |
+| Toolchain do desktop no Windows | Rust `stable-x86_64-pc-windows-msvc` por `rustup override` em `apps/web/src-tauri`, com MSVC do Visual Studio 2026 | 1.98.1 |
 | Espelho offline (previsto) | Dexie | a definir na F6 |
 | Design system (previsto) | Storybook | a definir na F1 |
 
@@ -64,6 +65,8 @@ MCPs e skills do projeto estão em [HARNESS §2](HARNESS.md#2-matriz-ferramenta-
 | CSV na v1 | Fora do escopo; portabilidade pelo pacote de backup | DEC-04 |
 | Wireframes HTML navegáveis | Descartados na migração para Windows; a interface nasce do design system | DEC-52 |
 | Symlinks para espelhar skills | Viram arquivo de texto num clone Windows sem Developer Mode | [HARNESS §1](HARNESS.md#1-decisões-do-harness) |
+| Duas instâncias do Better Auth por Host, ou `baseURL` dinâmica com `crossSubDomainCookies` | Nome de cookie diferente por origem, ou `Domain` injetado e dependência de detalhe interno; um middleware por Host resolve com uma instância | DEC-56 |
+| `shellEmulator` do pnpm, `cross-env` ou `env` do tsdown para `NODE_ENV=production` | Muda o shell de todos os scripts, traz dependência nova, ou só substitui texto no bundle sem chegar ao varlock e ao Better Auth; `bun --env-file` basta | [SPEC §1](SPEC.md#1-topologia-e-componentes) |
 | MCPs better-t-stack, better-auth e cloudflare-docs | Scaffold concluído; documentação coberta pelo context7 | DEC-53 |
 | Skills turborepo, vercel-react-best-practices e review-logging-patterns | Pipeline estável; foco em Next.js; evlog já adotado | DEC-53 |
 
@@ -86,6 +89,11 @@ Consultas feitas nas sessões de planejamento de 2026-09-15, salvo indicação.
 | Better-T-Stack para agentes | [Better-T-Stack: agent workflows](https://www.better-t-stack.dev/docs/cli/agent-workflows) |
 | Descoberta de skills, subagents e MCP no Claude Code (2026-09-16) | [skills](https://code.claude.com/docs/en/skills.md), [subagents](https://code.claude.com/docs/en/sub-agents.md), [MCP](https://code.claude.com/docs/en/mcp-configuration.md) |
 | Subagentes e custo no Codex | [Codex: subagents](https://learn.chatgpt.com/docs/agent-configuration/subagents), [Codex: pricing](https://learn.chatgpt.com/docs/pricing) |
+| Host e headers que o `cloudflared` entrega à origem; `httpHostHeader` (2026-09-16) | [Cloudflare Tunnel: origin parameters](https://developers.cloudflare.com/cloudflare-one/networks/connectors/cloudflare-tunnel/configure-tunnels/cloudflared-parameters/origin-parameters/), [cloudflared: origin_proxy.go](https://github.com/cloudflare/cloudflared/blob/master/ingress/origin_proxy.go), [Cloudflare: HTTP headers](https://developers.cloudflare.com/fundamentals/reference/http-headers/) |
+| Cookie `Secure` e prefixos em `http://localhost` por motor (2026-09-16) | [httpwg: issue 2605](https://github.com/httpwg/http-extensions/issues/2605), [Tauri: issue 2604](https://github.com/tauri-apps/tauri/issues/2604), [libsoup: soup-cookie-jar.c](https://gitlab.gnome.org/GNOME/libsoup/-/blob/master/libsoup/cookies/soup-cookie-jar.c), [MDN: Set-Cookie](https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Set-Cookie) |
+| Tauri com Vite, `frontendDist` como URL e capabilities locais (2026-09-16) | [Tauri v2: Vite](https://v2.tauri.app/start/frontend/vite/), [Tauri v2: capabilities](https://v2.tauri.app/security/capabilities/) |
+| Cache de SPA e service worker no deploy (2026-09-16) | [vite-plugin-pwa: deployment](https://vite-pwa-org.netlify.app/deployment/), [Hono: Bun](https://hono.dev/docs/getting-started/bun) |
+| Better Auth 1.7.3: cookies, origem e rate limit (2026-09-16) | Código instalado do pacote (cookies, middleware de origem e rate limiter) lido na sessão; [Better Auth: cookies](https://better-auth.com/docs/concepts/cookies) |
 
 ## 4. Origem das decisões
 
@@ -102,6 +110,7 @@ O projeto foi planejado e iniciado no Linux com Codex e trazido para Windows em 
 | 2026-09-15 | Tarefa 0A | SQLite nativo com WAL, rejeição de caminho UNC, executor de migrations por Bun |
 | 2026-09-16 | Reorganização (Claude Code) | Docs no molde do crm-ia-prd, ROADMAP, harness Claude-first, MCPs e skills enxutos |
 | 2026-09-16 | Harness evolutivo (Claude Code) | Hooks de sessão, rules por área, skills de ciclo de entrega, índice de docs com `docs-check`, CI, README bilíngue e licença MIT |
+| 2026-09-16 | F0 Mesma origem (Claude Code) | Processo único em loopback, cookie por Host (DEC-56), código sem comentários (DEC-57), Tauri verificado no Windows e Q-11 aberta sobre Tauri, Electron ou serviço com PWA |
 
 Escolhas iniciais revistas durante o grill, marcadas como "Substituiu" no PRD: item independente por variação virou material base com variantes (DEC-19); baixa de estoque na aprovação virou reserva (DEC-20); "última alteração vence" virou conflito protegido (DEC-41); LAN principal virou origem canônica no Tunnel (DEC-42); sessão lembrada e cache cifrado por PIN viraram cofre com senha forte e PIN de tela (DEC-43); retenção de 7 diários ganhou 12 mensais (DEC-45).
 

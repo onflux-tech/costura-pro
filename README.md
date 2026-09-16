@@ -65,13 +65,13 @@ Foundation phase (F0): monorepo, pricing and reservation rules, native SQLite an
 
 ### Quick Start
 
-Requirements: Node.js 24, pnpm 11.20.0, Bun 1.4.2 and, for the desktop app only, Rust with the Tauri v2 prerequisites.
+Requirements: Node.js 24, pnpm 11.20.0, Bun 1.4.2 and, for the desktop app only, Rust with the Tauri v2 prerequisites (on Windows, the MSVC toolchain).
 
 ```bash
 pnpm install
 ```
 
-Create `apps/server/.env` (`BETTER_AUTH_SECRET`, `BETTER_AUTH_URL`, `CORS_ORIGIN`, `DATABASE_FILE` as an absolute local path) and `apps/web/.env` (`VITE_SERVER_URL`) from the versioned `.env.schema` files, then apply the migrations:
+Create `apps/server/.env` (`BETTER_AUTH_SECRET` and `DATABASE_FILE` as an absolute local path; keep `PORT` at 3000, the port the Vite proxy and the Tauri app expect, and leave `CANONICAL_ORIGIN` empty until the Tunnel exists) from the versioned `apps/server/.env.schema`, then apply the migrations:
 
 ```bash
 pnpm db:migrate
@@ -80,8 +80,9 @@ pnpm db:migrate
 ### Development
 
 ```bash
-pnpm dev          # web on localhost:3001 and API on localhost:3000
-cd apps/web && pnpm desktop:dev   # Tauri desktop app
+pnpm dev          # web on localhost:3001, proxying /api and /rpc to the API on 127.0.0.1:3000
+pnpm build && pnpm --filter server start   # SPA and API in one process on 127.0.0.1:3000
+cd apps/web && pnpm desktop:dev   # Tauri desktop app, with pnpm dev:server running
 ```
 
 Verification, the same commands the CI runs on Ubuntu 24.04 and Windows:
@@ -171,13 +172,13 @@ Fase de fundação (F0): monorepo, regras de preço e reserva, SQLite nativo e o
 
 ### Início rápido
 
-Requisitos: Node.js 24, pnpm 11.20.0, Bun 1.4.2 e, só para o app desktop, Rust com os pré-requisitos do Tauri v2.
+Requisitos: Node.js 24, pnpm 11.20.0, Bun 1.4.2 e, só para o app desktop, Rust com os pré-requisitos do Tauri v2 (no Windows, a toolchain MSVC).
 
 ```bash
 pnpm install
 ```
 
-Crie `apps/server/.env` (`BETTER_AUTH_SECRET`, `BETTER_AUTH_URL`, `CORS_ORIGIN` e `DATABASE_FILE` com caminho absoluto local) e `apps/web/.env` (`VITE_SERVER_URL`) a partir dos `.env.schema` versionados e aplique as migrations:
+Crie `apps/server/.env` (`BETTER_AUTH_SECRET` e `DATABASE_FILE` com caminho absoluto local; mantenha `PORT` em 3000, a porta que o proxy do Vite e o app Tauri esperam, e deixe `CANONICAL_ORIGIN` vazia até existir o Tunnel) a partir do `apps/server/.env.schema` versionado e aplique as migrations:
 
 ```bash
 pnpm db:migrate
@@ -188,8 +189,9 @@ Se o pnpm global ainda for 10.x e não conseguir trocar para a 11.20.0, instale 
 ### Desenvolvimento
 
 ```bash
-pnpm dev          # web em localhost:3001 e API em localhost:3000
-cd apps/web && pnpm desktop:dev   # app desktop Tauri
+pnpm dev          # web em localhost:3001, com proxy de /api e /rpc para a API em 127.0.0.1:3000
+pnpm build && pnpm --filter server start   # SPA e API num único processo em 127.0.0.1:3000
+cd apps/web && pnpm desktop:dev   # app desktop Tauri, com pnpm dev:server rodando
 ```
 
 Verificação, os mesmos comandos que o CI roda no Ubuntu 24.04 e no Windows:

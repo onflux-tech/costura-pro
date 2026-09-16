@@ -65,7 +65,7 @@ Cada spike responde uma pergunta que muda o desenho antes de construir em cima d
 | S2. Cofre cifrado | PBKDF2 com AES-GCM sobre Dexie é rápido o bastante num celular de referência? | Parâmetros de derivação por plataforma registrados; tempo de desbloqueio e de gravação medidos com volume de referência definido no spike; nonce e AAD cobertos por teste (resolve parte de Q-05) | F6 |
 | S3. Câmera e códigos | Como ler QR e código de barras em Safari iPhone e Chrome Android? | Lê o QR da etiqueta de custódia e um EAN impresso nas duas plataformas; biblioteca escolhida; código curto digitável como alternativa (resolve Q-04) | F3 |
 | S4. Retenção da PWA | Como se comportam persistência, quota e eviction na PWA instalada no iPhone e no Android? | Comportamento documentado por plataforma; exportação e importação da outbox provadas numa nova instalação (resolve parte de Q-05) | F6 |
-| S5. Serviço no sistema | Como rodar o servidor Bun compilado como serviço no Windows e com `systemd` no Ubuntu? | Sobe no boot sem login, grava em ProgramData ou `/var/lib/costura-pro` com permissão restrita e sobrevive a reinício; mecanismo escolhido (resolve parte de Q-06) | F7 |
+| S5. Serviço no sistema | Como rodar o servidor Bun compilado como serviço no Windows e com `systemd` no Ubuntu? | Sobe no boot sem login, grava em ProgramData ou `/var/lib/costura-pro` com permissão restrita e sobrevive a reinício; mecanismo escolhido (NSSM, WinSW ou outro), porta definitiva do processo único e app desktop decidido (resolve parte de Q-06 e a Q-11) | F7 |
 | S6. Atualização coordenada | Um supervisor consegue trocar binários, migrar, checar saúde e reverter tudo? | Falha simulada em cada etapa volta à versão anterior com banco íntegro e nenhuma operação aceita perdida (resolve parte de Q-06) | F7 |
 
 ## F0: Fundação
@@ -82,14 +82,14 @@ Cada spike responde uma pergunta que muda o desenho antes de construir em cima d
 - Repositório público no GitHub com licença MIT; hooks de sessão, rules por área, skills de ciclo de entrega, índice de docs com `docs-check` e CI em Ubuntu 24.04 e Windows (2026-09-16).
 - CI verde na `main` em Ubuntu 24.04 e Windows, com install a partir de clone limpo (2026-09-16).
 - Ambiente Windows: `apps/server/.env` com `DATABASE_FILE` absoluto no lugar do legado `DATABASE_URL`, migrations aplicadas e servidor respondendo em localhost (2026-09-16).
+- Mesma origem (2026-09-16):
+  - processo único em `127.0.0.1:3000` servindo SPA, assets, `/api/auth` e `/rpc`, com teste automatizado do build real (fallback, cache, `/rpc`, `/api/auth`, denylist do service worker e tabela de sockets do sistema);
+  - cliente relativo, proxy do Vite e allowlist de Host e Origin;
+  - cookie `costura-pro.session_token` sem `Secure` no loopback e com `Secure` no Host canônico;
+  - verificado em navegador real (dev e produção, desktop e 320 px), no `tauri dev` e no executável de release do Tauri no Windows.
 
 **Pendente:**
 - **Bundle web:** o build avisa chunk acima de 500 kB; dividir por rota antes das telas reais.
-- **Mesma origem:**
-  - Hono serve a SPA e a API só em `127.0.0.1`;
-  - o cliente usa `/rpc` e `/api/auth` relativos, com proxy do Vite no desenvolvimento;
-  - allowlist de Host e Origin;
-  - cookie compatível com localhost HTTP e com o Tunnel HTTPS.
 - **Build conferido numa máquina Ubuntu 24.04** além do CI (Q-10).
 
 **Critério de saída:**

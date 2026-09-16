@@ -380,6 +380,8 @@ Decisões tomadas com o dono. "Mão única" indica decisão cara de reverter; as
 | DEC-53 | Harness com Claude como padrão; portas de Codex e `.claude` geradas a partir de `.agents` e `.mcp.json`; MCPs context7 e shadcn; skills vendorizadas sem turborepo, vercel-react-best-practices e review-logging-patterns (2026-09-16) | Symlinks; cópias à mão; cinco MCPs; manter as 12 skills | Dupla | [HARNESS](HARNESS.md) |
 | DEC-54 | Harness evolutivo: hooks de sessão no Claude (guard, format, stop-check), rules por área, skills de ciclo de entrega, índice de docs com `docs-check` no pre-commit e CI em Ubuntu 24.04 e Windows; merge local na `main` e push após confirmação, sem PR (2026-09-16) | Evolução manual do harness; hooks também no Codex agora; pull requests; CI só em Ubuntu | Dupla | [HARNESS §4](HARNESS.md#4-ciclo-de-entrega-e-evolução-do-harness) |
 | DEC-55 | Repositório público `onflux-tech/costura-pro` com licença MIT e README bilíngue EN/PT no padrão do vsftpd-manager (2026-09-16) | Público sem licença; README só em português | Mão única | [LICENSE](../LICENSE) |
+| DEC-56 | Mesma origem com processo único em loopback, porta 3000 até o S5, allowlist de Host e Origin e cookie `costura-pro.session_token` numa instância do Better Auth, sem `Secure` no loopback e com `Secure` acrescentado no Host canônico (2026-09-16) | Duas instâncias do Better Auth por Host; `baseURL` dinâmica com `crossSubDomainCookies`; nome padrão `better-auth`; porta própria já na F0 | Dupla | [SPEC §1](SPEC.md#1-topologia-e-componentes), [SPEC §5](SPEC.md#5-segurança-e-armazenamento-local) |
+| DEC-57 | Código sem comentários: o porquê vai para armadilha do HARNESS, rule da área ou SPEC, e o guard do Claude barra comentário novo (2026-09-16) | Comentar o porquê no código; checagem também no pre-commit | Dupla | [HARNESS §5](HARNESS.md#5-hooks-do-claude-code) |
 
 ## 10. Riscos e mitigação
 
@@ -419,6 +421,7 @@ Decisões tomadas com o dono. "Mão única" indica decisão cara de reverter; as
 | Q-08 | Identificador definitivo do app Tauri e guarda da chave de assinatura de atualização | F7 |
 | Q-09 | Domínio e subdomínio do dono na Cloudflare | Antes de expor o Tunnel (fim da F2) |
 | Q-10 | Aparelhos de validação: iPhone, Android e máquina Ubuntu 24.04 | Celulares antes do S3; Ubuntu antes da saída da F0 |
+| Q-11 | App desktop no PC: manter Tauri, trocar por Electron, ou dispensar o app e usar serviço do Windows (NSSM ou WinSW) com instalador NSIS e a PWA aberta no loopback. Reabre DEC-39, ADR 0007 e RF-ENT-10 | Ciclo próprio de brainstorming e grill antes da F7, junto do spike S5 |
 
 ## 13. Glossário
 
