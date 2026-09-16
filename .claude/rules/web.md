@@ -20,3 +20,4 @@ paths:
 - Verificação com browser-harness roda em contexto isolado (`Target.createBrowserContext`): o autofill do perfil do dono mistura credenciais salvas no formulário.
 - O build avisa chunk acima de 500 kB no `apps/web`; divida por rota antes das telas reais.
 - No iPhone, Safari e ícone instalado guardam dados separados: teste sempre na instância instalada.
+- Mensagens de erro do Better Auth chegam em inglês: a tela traduz pelo status (401 e 429 no login) em vez de exibir `error.message`.

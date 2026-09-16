@@ -90,6 +90,15 @@ const COMMENT_FIXTURES = new Set([".claude/hooks/guard.test.mjs"]);
 const COMMENT_DIRECTIVE =
 	/biome-ignore|@ts-expect-error|^\s*\/\/\/\s*<reference\b/;
 const LINE_BREAK = /\r?\n/;
+const PHASE_SEGMENT = /(?:^|[-_.])(?:f[0-7]|s[1-6])(?:[-_.]|$)/i;
+const MIGRATION = /^packages\/db\/src\/migrations\/[^/]+\.sql$/;
+const PHASE_FILE_MESSAGE =
+	"BLOQUEADO: nome de arquivo de código ou migration cita fase ou spike. O nome descreve o conteúdo (0001_installation_access_sync.sql, nunca 0001_f2_...).";
+const GIT_COMMIT = /\bgit\s+commit\b/i;
+const TRACEABILITY =
+	/\b(?:F[0-7]|S[1-6])\b|\bspikes?\b|\bspecs?\b(?!\.)|\bplanos?\b|\bDEC-\d+|\bRF-[A-Z]{3}\b|\bQ-\d+/i;
+const TRACEABILITY_MESSAGE =
+	"BLOQUEADO: mensagem de commit cita fase, spike, spec, plano ou ID de requisito, decisão ou questão. Descreva a mudança; a rastreabilidade fica nos docs curados.";
 const COMMENT_MESSAGE =
 	"BLOQUEADO: comentário novo em código. O código fica sem comentários; registre o porquê como armadilha no docs/HARNESS.md §8, na rule da área ou na SPEC.";
 
@@ -197,6 +206,15 @@ function evaluateCommand(command, root) {
 			return rule.message;
 		}
 	}
+	const commitAt = command.search(GIT_COMMIT);
+	if (
+		commitAt >= 0 &&
+		TRACEABILITY.test(
+			[command.slice(commitAt), messageFileText(command, root)].join(" ")
+		)
+	) {
+		return TRACEABILITY_MESSAGE;
+	}
 	if (
 		COMMIT_OR_PR.test(command) &&
 		countDashes(command) + countDashes(messageFileText(command, root)) > 0
@@ -239,6 +257,10 @@ function evaluateFileChange(input, root) {
 	}
 	if (VENDORED_SKILLS.test(rel)) {
 		return null;
+	}
+	const fileName = rel.split("/").pop() ?? "";
+	if ((CODE.test(rel) || MIGRATION.test(rel)) && PHASE_SEGMENT.test(fileName)) {
+		return `${PHASE_FILE_MESSAGE} Arquivo: ${rel}.`;
 	}
 	const change = { rel, root, toolInput, toolName: input.tool_name };
 	if (MARKDOWN.test(rel) && added(countDashes, change) > 0) {

@@ -43,6 +43,7 @@ Antes de tocar arquivos de uma área, leia a rule dela (no Claude elas carregam 
 - TDD para lógica e comportamento novos: `bun test` no domínio, SQLite real em diretório temporário na integração.
 - TypeScript e React seguem a skill `ultracite`. Interface é validada em navegador real com browser-harness, em 320 px e no desktop.
 - Código sai sem comentários, inclusive os de porquê: o conhecimento não óbvio vira armadilha no `docs/HARNESS.md` §8, na rule da área ou na SPEC. O guard do Claude barra comentário novo.
+- Arquivos de código, testes, migrations e mensagens de commit não citam fase (F0 a F7), spike, spec, plano, ROADMAP nem ID de requisito, decisão ou questão: nomes e textos descrevem o conteúdo (`0001_installation_access_sync.sql`, nunca `0001_f2_...`). A rastreabilidade mora nos docs curados.
 - Pronto significa `pnpm harness:check`, `pnpm docs:check`, `pnpm harness:test`, `pnpm test`, `pnpm check`, `pnpm check-types` e `pnpm build` sem erro nem aviso; `pnpm fix` corrige formatação.
 - Suíte de teste roda com saída redirecionada para arquivo, nunca com pipe.
 - Escolha ou confirmação do dono vai pela ferramenta de pergunta do cliente, com a opção recomendada primeiro.

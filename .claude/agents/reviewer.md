@@ -16,3 +16,5 @@ Reporte achados por severidade com caminho, linha, cenário de falha e requisito
 
 - Teste que roda com `NODE_ENV=test` não prova checagem de Origin ou CSRF do Better Auth: ela se desliga sozinha nesse modo. Cobre `trustedOrigins` só o teste contra o processo de produção.
 - Guarda global (Host, Origin, autenticação) precisa de teste negativo em cada prefixo que protege (`/api/auth`, `/rpc`, SPA); teste só num prefixo deixa passar a guarda restrita a ele.
+- Idempotência por `opId` só vale com o registro na mesma transação do efeito e com trava para chamadas simultâneas do mesmo `opId`; peça o teste com as duas chamadas disparadas juntas.
+- Contador de tentativas atualizado só depois de uma chamada assíncrona (Better Auth, rede) deixa passar tentativas paralelas; peça o teste com mais tentativas simultâneas que o limite.

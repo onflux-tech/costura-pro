@@ -25,4 +25,4 @@ O fechamento é o que torna o harness mais especialista a cada entrega. Cada pas
    Pronto quando cada aprendizado tiver destino ou tiver sido descartado com motivo.
 6. **Portas e checagens.** `pnpm harness:sync`, `pnpm harness:check`, `pnpm docs:check` e `pnpm harness:test`. Pronto com os quatro verdes.
 7. **Próxima sessão.** Grave em `docs/superpowers/handoff/` um prompt autocontido para a próxima entrega (o que ficou pendente e por onde começar) e mostre no chat.
-8. **Commit e integração.** Crie commits por área em inglês, no padrão conventional commits, com fonte e porta do harness juntas, e rode `/integrar-branch` em seguida, sem esperar pedido do dono. Pronto com o CI verde reportado.
+8. **Commit e integração.** Crie commits por área em inglês, no padrão conventional commits, sem citar fase, spike, spec, plano ou ID de requisito, decisão ou questão, com fonte e porta do harness juntas, e rode `/integrar-branch` em seguida, sem esperar pedido do dono. Pronto com o CI verde reportado.

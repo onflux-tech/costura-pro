@@ -21,9 +21,18 @@ paths:
 - O export do servidor mantém `hostname: "127.0.0.1"` e `port: env.PORT` explícitos: sem eles o Bun escuta em todas as interfaces e ignora a `PORT` do varlock.
 - `serveStatic` usa `root` absoluto com `path` relativo; `path` absoluto sem `root` quebra só no Linux.
 - Rota nova fora de `/api`, `/api-reference` e `/rpc` cai no fallback da SPA: prefixo novo de servidor entra na regex de `apps/server/src/web.ts` e na denylist do service worker.
-- Em produção o rate limit padrão do Better Auth (3 requisições por 10 s em `/sign-in*` e `/sign-up*`) cai num bucket compartilhado sem IP (aviso no log): o `production.test.ts` já usa os 3 cadastros, e um quarto recebe 429. A F2 configura o IP pelo `cf-connecting-ip`.
+- O rate limit de `/sign-in/username` (5 por 60 s) conta sucesso e falha, e toda requisição local cai num único balde sem IP: verificação manual ou teste de produção com mais de 5 logins locais seguidos recebe 429. O aviso "Rate limiting could not determine a client IP" no boot de produção é esperado para o acesso local.
 - Com `NODE_ENV=test` o Better Auth desliga sozinho a checagem de Origin e CSRF: teste de `trustedOrigins` ou de CSRF roda contra o processo de produção (`apps/server/tests/production.test.ts`).
 - `bun test` direto em `apps/server` usa o `dist` que existir; o `pnpm test` pelo turbo constrói servidor e web antes.
-- Cadastro público fechado só na interface não basta: o servidor rejeita `sign-up` direto e concorrente.
+- Cadastro público fechado só na interface não basta: o dono nasce só por `installation.createOwner` local, e rota nova do Better Auth entra na allowlist de `apps/server/src/auth-routes.ts` apenas com teste em `apps/server/tests/access.test.ts`. `disabledPaths` do Better Auth vale só no HTTP; `auth.api.*` no servidor ignora.
+- Em teste e desenvolvimento o Better Auth usa `127.0.0.1` como IP quando falta cabeçalho confiável; em produção cai no balde `no-trusted-ip`. Teste que depende de IP distinto manda `cf-connecting-ip` (acesso remoto).
+- Várias chamadas oRPC disparadas num array e aguardadas uma a uma deixam rejeição sem handler; teste sequencial usa funções e o `inSequence` de `apps/server/tests/support.ts`, que também evita `noAwaitInLoops`.
+- Resultado gravado em `operation` é devolvido em toda repetição do `opId`: anule senha, código e segredo com o objeto `redact` (por exemplo `{ code: null }`) e tire-os do hash do conteúdo. `redact` como função faria o TypeScript fixar o resultado como `unknown`.
+- Comando direto em `runDirectCommand` devolve `record(tx, resultado)` de dentro da transação que aplica o efeito; o tipo recusa handler que não grava. Gravar o `opId` numa transação separada deixa a repetição executar o efeito de novo.
+- Trava em processo por chave (como a fila por `opId` de `packages/api/src/operations.ts`) consulta e registra a promessa sem `await` no meio; um `await` entre os dois deixa duas chamadas simultâneas passarem.
+- O adapter do Drizzle no Better Auth roda com `transaction: false`: `signUpEmail` que falha no meio deixa usuário sem conta `credential`, e o hook de usuário único passa a recusar o próximo cadastro. Limpe órfãos na falha e reconcilie no boot (`packages/api/src/installation/store.ts`).
+- Código curto guardado por hash (40 bits ou menos) usa HMAC com o segredo do Better Auth; SHA-256 puro de código curto se inverte por força bruta a partir de um backup.
+- A causa de um erro de validação do oRPC carrega o valor recebido (senha, código): log de erro de procedure passa por `logProcedureError` em `apps/server/src/app.ts`, que registra só código, status, mensagem e código e caminho dos problemas, nunca o objeto do erro inteiro.
+- O Biome não conhece o global `Bun`: teste usa `node:crypto`, `node:util` e `node:timers/promises` no lugar de `Bun.CryptoHasher`, `Bun.inspect` e `Bun.sleep`.
 - O `cloudflared` conecta pelo loopback: acesso local se decide pelo Host de loopback sem `cf-connecting-ip`, nunca pelo IP do socket.
 - Serviço do Windows não enxerga letra de unidade mapeada da sessão do usuário: navegador de pastas e backup aceitam caminho local ou UNC e sempre testam gravação e releitura.

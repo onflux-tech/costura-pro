@@ -308,6 +308,64 @@ test("Write sobre arquivo existente só conta o que acrescenta", () => {
 	);
 });
 
+test("bloqueia arquivo de código ou migration com fase ou spike no nome", () => {
+	for (const path of [
+		"packages/db/tests/f2-schema.test.ts",
+		"packages/db/src/migrations/0001_f2_installation.sql",
+		"apps/web/src/F1-tokens.tsx",
+		"apps/server/src/s5-service.ts",
+	]) {
+		assertBlocked(write(join(root, path), "export const a = 1;"), "fase", path);
+	}
+});
+
+test("deixa passar nomes sem fase, markdown local e migration descritiva", () => {
+	for (const path of [
+		"packages/db/src/migrations/0001_installation_access_sync.sql",
+		"packages/domain/src/sha256.ts",
+		"apps/web/src/utf8.ts",
+		"packages/api/src/ed25519.ts",
+		"apps/server/tests/v2-api.test.ts",
+		"docs/superpowers/specs/2026-09-16-f2-servidor-acesso-design.md",
+	]) {
+		assert.equal(write(join(root, path), "export const a = 1;"), null, path);
+	}
+});
+
+test("bloqueia commit que cita fase, spike, spec, plano ou IDs, inclusive via arquivo", () => {
+	for (const command of [
+		'git commit -m "feat(server): add F2 access"',
+		'git commit -m "docs: close spike S5"',
+		"git commit -m 'feat: follow the spec'",
+		'git commit -m "fix: RF-ACE-01 lockout"',
+		'git commit -m "docs: record DEC-60"',
+		'git commit -m "docs: resolve Q-11"',
+		'git add . && git commit -m "chore: plano da entrega"',
+	]) {
+		assertBlocked(bash(command), "fase", command);
+	}
+	const message = join(root, "commit-fase.txt");
+	writeFileSync(message, "feat: server for F2");
+	assertBlocked(
+		bash(`git commit -F "${message}"`),
+		"fase",
+		"arquivo de mensagem"
+	);
+});
+
+test("deixa passar commit sem esses termos e comandos que só os citam fora do commit", () => {
+	for (const command of [
+		'git commit -m "fix(server): serve /api-reference/spec.json"',
+		'git commit -m "feat(api): parse the 0xF2 marker"',
+		'git commit -m "feat(sync): add conflict resolution"',
+		"git add packages/db/tests/installation-sync-schema.test.ts",
+		'grep -rn "F2" docs',
+		"git log --grep F2",
+	]) {
+		assert.equal(bash(command), null, command);
+	}
+});
+
 test("ignora ferramenta desconhecida e entrada sem comando", () => {
 	assert.equal(evaluate({ tool_input: {}, tool_name: "Read" }, { root }), null);
 	assert.equal(evaluate({ tool_name: "Bash" }, { root }), null);

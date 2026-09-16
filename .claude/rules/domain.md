@@ -15,3 +15,4 @@ paths:
 
 - Margem é sobre a venda, não markup: custo R$ 60 com meta de 40% sugere R$ 100.
 - Reserva nunca inventa saldo: falta vira pendência de abastecimento.
+- `pnpm fix` ordena as chaves de objeto literal: teste que depende da ordem de chaves monta o objeto com `JSON.parse`.
