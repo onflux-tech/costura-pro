@@ -25,7 +25,7 @@
     "harness:check": "node scripts/harness.mjs check",
     "harness:sync": "node scripts/harness.mjs sync",
     "harness:test": "node --test \"scripts/*.test.mjs\" \".claude/hooks/*.test.mjs\"",
-    "postinstall": "tsc -b packages/api && varlock codegen --path ./apps/web/ && varlock codegen --path ./apps/server/ && varlock codegen --path ./packages/db/",
+    "postinstall": "varlock codegen --path ./apps/web/ && varlock codegen --path ./apps/server/ && varlock codegen --path ./packages/db/ && tsc -b packages/api",
     "test": "turbo run test"
   },
   "dependencies": {
