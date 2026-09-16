@@ -100,6 +100,8 @@ Toda implementação passa por quatro skills do projeto, fonte em `.agents/skill
 | Enxuta | Correção pequena, causa óbvia, sem mudar comportamento | TDD quando houver lógica, `/verificar`, `/entrega-fechar` |
 | Completa | Entrega do ROADMAP, mudança de comportamento, regra de negócio ou contrato | `/entrega-iniciar`, brainstorming, spec, grilling, plano, TDD por checkpoint, `/revisar`, `/entrega-fechar` |
 
+**Orçamento de subagentes** (2 por tarefa, contando pesquisa e revisão): entrega com código reserva o orçamento para o `/revisar`. Entrega só documental que registra contrato revisa inline, sem subagente, com DoD por grep e desafio de mutação no `docs:check`; o `/revisar` com `reviewer` e `contract` fica para a entrega que implementa o contrato.
+
 **Critérios de evolução** (aplicados no passo "Evoluir o harness" do `/entrega-fechar`):
 
 | O que a entrega ensinou | Destino | Quem decide |
@@ -150,10 +152,10 @@ Configurados em `.claude/settings.json`. Cada script em `.claude/hooks/` exporta
 | Regra de negócio, estado ou cálculo | `CONTEXT.md`, [PRD §6 e §9](PRD.md), [SPEC §2 e §3](SPEC.md), ADRs 0002, 0003 e 0010, rule `.claude/rules/domain.md` |
 | Banco, migrations ou `DATABASE_FILE` | [ADR 0006](adr/0006-sqlite-nativo-bun.md), [SPEC §2](SPEC.md#2-persistência-valores-e-fronteiras-de-domínio), rule `.claude/rules/db.md` |
 | Sync, outbox, conflito ou epoch | [SPEC §4 e §5](SPEC.md#4-api-sincronização-e-conflito), ADRs 0001, 0003 e 0004 |
-| Autenticação, cookies ou origem | [SPEC §5](SPEC.md#5-segurança-e-armazenamento-local), [ADR 0001](adr/0001-origem-canonica-e-local-first.md), rule `.claude/rules/server.md` |
+| Autenticação, cookies, origem ou acesso local | [SPEC §5](SPEC.md#5-segurança-e-armazenamento-local), ADRs [0001](adr/0001-origem-canonica-e-local-first.md) e [0011](adr/0011-servico-do-so-e-acesso-local-no-navegador.md), rule `.claude/rules/server.md` |
 | Documentos e PDF | [SPEC §6](SPEC.md#6-documentos-backup-restauração-e-atualização), [ADR 0008](adr/0008-documentos-emitidos-imutaveis.md) |
 | Código documental ou identidade | [ADR 0009](adr/0009-uuid-e-codigo-documental-por-dispositivo.md) |
-| Backup, restauração, instalador ou atualização | [SPEC §6 e §7](SPEC.md#7-empacotamento-observabilidade-e-testes), ADRs 0004, 0005 e 0007 |
+| Backup, restauração, instalador ou atualização | [SPEC §6 e §7](SPEC.md#7-empacotamento-observabilidade-e-testes), ADRs 0004, 0005 e 0011 |
 | Interface | [PRD §6.1](PRD.md#61-primeira-experiência-e-navegação-rf-ent), RNF-03, RNF-04 e RNF-09, [ROADMAP F1](ROADMAP.md#f1-design-system-e-storybook), rule `.claude/rules/web.md` |
 | Docs curadas e índice | [Índice](README.md), rule `.claude/rules/docs.md` |
 | Papéis, skills, MCP, hooks ou checagens | §1 a §6 deste guia, rule `.claude/rules/harness.md` |
@@ -204,7 +206,10 @@ Configurados em `.claude/settings.json`. Cada script em `.claude/hooks/` exporta
 | Dados do celular "somem" no iPhone | Safari e ícone instalado têm armazenamentos separados | Usar sempre a instância instalada; o assistente avisa |
 | Formatação do hook diferente de `pnpm check` | `pnpm dlx ultracite` baixava outra versão | Lefthook usa `pnpm exec ultracite` |
 | Sessão de agente trava por tempo indefinido | Saída da suíte de teste passada por `tail` ou `head` | Redirecionar para arquivo; o guard bloqueia |
-| `tauri build` falha com "The default value `com.tauri.dev` is not allowed" | Identificador de exemplo do scaffold em `apps/web/src-tauri/tauri.conf.json` (Q-08, F7) | Até a F7, verificar com `tauri build --no-bundle --config <arquivo fora do repositório>` e identificador temporário |
+| `tauri build` falha com "The default value `com.tauri.dev` is not allowed" | Identificador de exemplo do scaffold em `apps/web/src-tauri/tauri.conf.json`, que é legado desde a DEC-59 | Até a remoção do Tauri (pendência da F0), verificar com `tauri build --no-bundle --config <arquivo fora do repositório>` e identificador temporário |
+| Interface do PC perde sessão, service worker e cache | Origem é esquema, host e porta: `localhost` e `127.0.0.1`, ou outra `PORT`, são origens diferentes com armazenamento próprio | Abrir sempre `http://127.0.0.1:<PORT>`; a porta definitiva sai do S5 e não muda depois do primeiro instalador (DEC-59) |
+| Rota administrativa atende requisição que veio pelo Tunnel | O `cloudflared` conecta ao servidor pelo loopback, então o IP do socket é `127.0.0.1` também para o celular | Acesso local pelo Host de loopback sem `cf-connecting-ip`, nunca pelo IP do socket ([ADR 0011](adr/0011-servico-do-so-e-acesso-local-no-navegador.md)) |
+| Backup do serviço falha numa pasta que o dono escolheu e enxerga no Explorer | Serviço do Windows não vê letra de unidade mapeada da sessão do usuário e, com conta virtual, não grava em pasta do perfil sem ACL | Navegador de pastas alimentado pelo servidor, rede só por UNC e teste de gravação e releitura no wizard (SPEC §5) |
 
 ## 9. Registro de evolução
 
@@ -216,6 +221,7 @@ Configurados em `.claude/settings.json`. Cada script em `.claude/hooks/` exporta
 | 2026-09-16 | Código sem comentários no `AGENTS.md` e guard barrando comentário novo em código | Pedido do dono durante a entrega F0 Mesma origem |
 | 2026-09-16 | Armadilhas de origem, cookie, Bun, Vite, Tauri e verificação em navegador na §8 e nas rules de servidor e web; "Armadilhas conhecidas" nos papéis `reviewer` e `contract` | Fechamento e revisão da entrega F0 Mesma origem |
 | 2026-09-16 | `/integrar-branch` roda sozinho no fim do `/entrega-fechar`, com push sem confirmação (DEC-58) | Pedido do dono ao integrar a F0 Mesma origem |
+| 2026-09-16 | Armadilhas de origem local, acesso local pelo Tunnel e pasta de backup do serviço na §8 e na rule de servidor; orçamento de subagentes na §4 e no passo "Revisar" do `/entrega-fechar` | Fechamento da entrega Q-11 app desktop |
 
 ## 10. Sessão nova
 

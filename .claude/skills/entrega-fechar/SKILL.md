@@ -9,7 +9,7 @@ O fechamento é o que torna o harness mais especialista a cada entrega. Cada pas
 
 1. **Verificar.** Rode `/verificar`. Pronto com todos os comandos verdes e o resultado de cada um no chat.
 2. **Mapear o diff.** `git diff main...HEAD --stat` mais o que ainda não foi commitado. Escreva uma frase por arquivo. Pronto quando a lista cobrir o diff inteiro.
-3. **Revisar.** Se a entrega toca dinheiro, quantidade, dados, autenticação, sync ou contrato entre camadas, rode `/revisar`. Pronto com todo achado corrigido com teste ou recusado com evidência.
+3. **Revisar.** Se a entrega toca dinheiro, quantidade, dados, autenticação, sync ou contrato entre camadas, rode `/revisar`; entrega só documental revisa inline, conforme o [orçamento de subagentes](../../../docs/HARNESS.md#4-ciclo-de-entrega-e-evolução-do-harness). Pronto com todo achado corrigido com teste ou recusado com evidência.
 4. **Docs curadas.** Na mesma branch, seguindo "Quando uma decisão muda" do `AGENTS.md`:
    - `docs/SPEC.md`: contrato alterado e a linha da §0;
    - `docs/ROADMAP.md`: item em "Concluído" com data, pendências e tabela de rastreio;

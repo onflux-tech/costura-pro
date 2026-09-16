@@ -11,7 +11,7 @@ paths:
 - Valor monetário e quantidade saem no JSON como string decimal.
 - Logs com evlog sem senha, token, medidas, fotos ou dados completos de cliente (RNF-08).
 - Teste de integração com Hono autenticado e SQLite real; banco em memória não vale como evidência.
-- Rotas de administração (backup, restauração, Tunnel, dispositivos) só pelo desktop local.
+- Rotas de administração (backup, restauração, Tunnel, atualização, dispositivos e navegador de pastas) só pelo acesso local: Host de loopback, sem `cf-connecting-ip` e com sessão do dono ([ADR 0011](../../docs/adr/0011-servico-do-so-e-acesso-local-no-navegador.md)).
 - Skills: `better-auth-best-practices`, `better-auth-security-best-practices`, `analyze-logs` e `build-audit-logs`.
 
 ## Armadilhas conhecidas
@@ -25,3 +25,5 @@ paths:
 - Com `NODE_ENV=test` o Better Auth desliga sozinho a checagem de Origin e CSRF: teste de `trustedOrigins` ou de CSRF roda contra o processo de produção (`apps/server/tests/production.test.ts`).
 - `bun test` direto em `apps/server` usa o `dist` que existir; o `pnpm test` pelo turbo constrói servidor e web antes.
 - Cadastro público fechado só na interface não basta: o servidor rejeita `sign-up` direto e concorrente.
+- O `cloudflared` conecta pelo loopback: acesso local se decide pelo Host de loopback sem `cf-connecting-ip`, nunca pelo IP do socket.
+- Serviço do Windows não enxerga letra de unidade mapeada da sessão do usuário: navegador de pastas e backup aceitam caminho local ou UNC e sempre testam gravação e releitura.
