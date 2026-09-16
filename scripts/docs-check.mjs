@@ -160,14 +160,17 @@ function ignoredPaths(root, paths) {
 	if (paths.length === 0) {
 		return new Set();
 	}
+	const queries = paths.flatMap((path) => [path, `${path}/`]).join("\n");
+	let output;
 	try {
-		return new Set(
-			git(["check-ignore", "--stdin"], root, paths.join("\n")).split("\n")
-		);
+		output = git(["check-ignore", "--stdin"], root, queries);
 	} catch (error) {
 		// check-ignore sai com 1 quando nenhum caminho é ignorado.
-		return new Set(String(error.stdout ?? "").split("\n"));
+		output = String(error.stdout ?? "");
 	}
+	return new Set(
+		output.split("\n").map((path) => path.replace(TRAILING_SLASH, ""))
+	);
 }
 
 function missingPathIssues(root, file, text) {

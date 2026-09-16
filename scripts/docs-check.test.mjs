@@ -129,6 +129,18 @@ test("caminho em crases que não existe vira problema; glob, placeholder, ignora
 	]);
 });
 
+test("pasta ignorada só como diretório e ausente no clone não vira problema", () => {
+	const root = fixture();
+	write(root, "apps/web/src-tauri/.gitignore", "/target/\n");
+	write(
+		root,
+		"docs/HARNESS.md",
+		"# Harness\n\nPapel `explorer`. Skill `/entrega-fechar`. O Vite ignora `apps/web/src-tauri/target`, que não existe num clone limpo.\n"
+	);
+
+	assert.deepEqual(checkDocs(root), []);
+});
+
 test("travessão em doc do projeto vira problema; skill vendorizada fica fora", () => {
 	const root = fixture();
 	write(
