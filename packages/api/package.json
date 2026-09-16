@@ -1,0 +1,32 @@
+{
+  "name": "@costura-pro/api",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/src/index.d.ts",
+      "default": "./src/index.ts"
+    },
+    "./*": {
+      "types": "./dist/src/*.d.ts",
+      "default": "./src/*.ts"
+    }
+  },
+  "scripts": {
+    "build": "tsc -b",
+    "check-types": "tsc -b",
+    "dev": "tsc -b --watch"
+  },
+  "dependencies": {
+    "@costura-pro/auth": "workspace:*",
+    "@costura-pro/db": "workspace:*",
+    "@orpc/client": "catalog:",
+    "@orpc/openapi": "catalog:",
+    "@orpc/server": "catalog:",
+    "@orpc/zod": "catalog:",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@costura-pro/config": "workspace:*",
+    "typescript": "catalog:"
+  }
+}

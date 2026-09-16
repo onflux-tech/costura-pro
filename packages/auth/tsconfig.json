@@ -1,0 +1,13 @@
+{
+  "extends": "@costura-pro/config/tsconfig.base.json",
+  "compilerOptions": {
+    "composite": true,
+    "declaration": true,
+    "declarationMap": true,
+    "emitDeclarationOnly": true,
+    "outDir": "dist",
+    "strictNullChecks": true
+  },
+  "include": ["src/**/*.ts"],
+  "references": [{ "path": "../db" }]
+}
