@@ -76,7 +76,7 @@ Para adicionar ou atualizar uma skill vendorizada, use a CLI `skills` (que mant�
 |---|---|---|---|
 | `explorer` | Mapear um fluxo desconhecido e devolver evidência com caminho e linha | `sonnet` | `gpt-5.6-luna`, `medium` |
 | `reviewer` | Revisar diff importante: dinheiro, quantidade, dados, autenticação, offline | `opus` | `gpt-5.6-terra`, `high` |
-| `contract` | Conferir produtor e consumidor entre web, API, domínio, banco, desktop e offline | `opus` | `gpt-5.6-terra`, `high` |
+| `contract` | Conferir produtor e consumidor entre web, API, domínio, banco e offline | `opus` | `gpt-5.6-terra`, `high` |
 
 - Os três são somente leitura: no Claude, `tools: Read, Grep, Glob`; no Codex, `sandbox_mode = "read-only"`. O agente principal implementa e verifica.
 - O `reviewer` no Claude não tem shell: entregue o diff salvo em arquivo e diga o caminho (a skill `revisar` faz isso).
@@ -186,7 +186,7 @@ Configurados em `.claude/settings.json`. Cada script em `.claude/hooks/` exporta
 | Dados de desenvolvimento somem | `db:push` contra banco com dados | Nunca `db:push` em banco real; o guard bloqueia |
 | Arquivo do banco continua travado no Windows depois de fechar a conexão (`EBUSY`) | `close()` do `bun:sqlite` adia o fechamento enquanto há statements do Drizzle abertos | `closeDb` usa `close(true)`; todo código que troca o arquivo do banco fecha por ele |
 | WAL trava ou corrompe | Banco em compartilhamento de rede | Caminho local; o validador rejeita UNC |
-| Login não persiste em Safari e no Tauri de macOS e Linux via `http://127.0.0.1` | WebKit e libsoup descartam cookie `Secure` (e `SameSite=None`) vindo de HTTP; o scaffold forçava os dois | Better Auth com `useSecureCookies: false`; o servidor acrescenta `Secure` só no Host canônico (`apps/server/src/origin.ts`) |
+| Login não persiste em Safari e em navegadores WebKit do Linux via `http://127.0.0.1` | WebKit e libsoup descartam cookie `Secure` (e `SameSite=None`) vindo de HTTP; o scaffold forçava os dois | Better Auth com `useSecureCookies: false`; o servidor acrescenta `Secure` só no Host canônico (`apps/server/src/origin.ts`) |
 | Better Auth manda `Secure` em todo Host ou em nenhum | O cálculo de `Secure` e do prefixo `__Secure-` acontece uma vez por instância; a `baseURL` dinâmica não muda isso | Middleware por Host, não configuração do Better Auth |
 | Sessão de outro app em `localhost` cai ao entrar no Costura Pro, ou o contrário | Cookie não isola por porta; dois apps com Better Auth usam `better-auth.session_token` | `advanced.cookiePrefix: "costura-pro"` |
 | `Set-Cookie` reescrito num middleware do Hono volta ao original | Atribuir `c.res` faz o Hono recopiar os `Set-Cookie` da resposta anterior | Editar `c.res.headers` no lugar |
@@ -198,18 +198,15 @@ Configurados em `.claude/settings.json`. Cada script em `.claude/hooks/` exporta
 | Com a PWA instalada, navegar para `/api` ou `/rpc` abre a SPA | `NavigationRoute` do Workbox sem denylist | `navigateFallbackDenylist` no `apps/web/vite.config.ts`, igual às exclusões do `apps/server/src/web.ts` |
 | Proxy do Vite casa rota da SPA ou manda Host trocado | Chave sem `^` faz `startsWith`; o atalho string força `changeOrigin: true` | Chave regex e forma objeto com `changeOrigin: false` |
 | Allowlist de Host e `Secure` falham só pelo Tunnel | `httpHostHeader` preenchido no painel da Cloudflare troca o Host que chega | Deixar `httpHostHeader` vazio (assistente da F7) |
-| `tauri dev` cai com `EBUSY` no Windows durante a compilação | O watcher do Vite observa `apps/web/src-tauri/target` | `server.watch.ignored: ["**/src-tauri/**"]` |
 | Browser-harness preenche formulário com credenciais do dono | Autofill do perfil do Chrome junta o texto salvo ao digitado | Verificar em contexto isolado (`Target.createBrowserContext`) |
-| CDP do WebView2 não abre com `WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS` | O Tauri define os argumentos do navegador da janela | Build de verificação com `additionalBrowserArgs` na janela via `tauri build --config` fora do repositório |
 | `netstat` não mostra `LISTENING` no Windows em português | O estado vem traduzido (`ESCUTANDO`) | Filtrar por porta local e remoto terminado em `:0`, sem depender do estado |
 | Teste de "mesma saída para chaves em outra ordem" passa sem testar nada | `pnpm fix` (regra `useSortedKeys`) reordena as chaves dos objetos literais dos dois lados | Montar os objetos com `JSON.parse` e conferir o teste depois do `fix` |
 | Login local responde 429 durante verificação manual | Toda requisição local cai no mesmo balde do rate limit (5 por 60 s, sucesso também conta) | Esperar 60 s ou usar outro processo com banco novo; nunca afrouxar a regra |
 | Teste "Unhandled error between tests" com oRPC | Chamadas disparadas num array e aguardadas uma a uma rejeitam antes do `await` | Guardar funções e rodar com `inSequence` (`apps/server/tests/support.ts`) |
-| `pnpm install` muda o lockfile sem mudança de dependência | `lefthook: latest` no `package.json` raiz é re-resolvido | Restaurar o lockfile, aplicar só a mudança e validar com `pnpm install --frozen-lockfile` |
+| `pnpm install` muda o lockfile sem mudança de dependência | `lefthook: latest` no `package.json` raiz é re-resolvido, também com `--lockfile-only` | Restaurar o lockfile, aplicar só a mudança (para remover dependência, apagar à mão a entrada do importer e os blocos do pacote em `packages` e `snapshots`) e validar com `pnpm install --frozen-lockfile` |
 | Dados do celular "somem" no iPhone | Safari e ícone instalado têm armazenamentos separados | Usar sempre a instância instalada; o assistente avisa |
 | Formatação do hook diferente de `pnpm check` | `pnpm dlx ultracite` baixava outra versão | Lefthook usa `pnpm exec ultracite` |
 | Sessão de agente trava por tempo indefinido | Saída da suíte de teste passada por `tail` ou `head` | Redirecionar para arquivo; o guard bloqueia |
-| `tauri build` falha com "The default value `com.tauri.dev` is not allowed" | Identificador de exemplo do scaffold em `apps/web/src-tauri/tauri.conf.json`, que é legado desde a DEC-59 | Até a remoção do Tauri (pendência da F0), verificar com `tauri build --no-bundle --config <arquivo fora do repositório>` e identificador temporário |
 | Interface do PC perde sessão, service worker e cache | Origem é esquema, host e porta: `localhost` e `127.0.0.1`, ou outra `PORT`, são origens diferentes com armazenamento próprio | Abrir sempre `http://127.0.0.1:<PORT>`; a porta definitiva sai do S5 e não muda depois do primeiro instalador (DEC-59) |
 | Rota administrativa atende requisição que veio pelo Tunnel | O `cloudflared` conecta ao servidor pelo loopback, então o IP do socket é `127.0.0.1` também para o celular | Acesso local pelo Host de loopback sem `cf-connecting-ip`, nunca pelo IP do socket ([ADR 0011](adr/0011-servico-do-so-e-acesso-local-no-navegador.md)) |
 | Repetição de comando direto executa o efeito de novo | O `opId` era gravado numa transação separada do efeito, e uma falha entre as duas deixava o efeito sem registro | `runDirectCommand` só aceita handler que devolve `record(tx, resultado)` de dentro da transação do efeito |
@@ -231,6 +228,7 @@ Configurados em `.claude/settings.json`. Cada script em `.claude/hooks/` exporta
 | 2026-09-16 | `/integrar-branch` roda sozinho no fim do `/entrega-fechar`, com push sem confirmação (DEC-58) | Pedido do dono ao integrar a F0 Mesma origem |
 | 2026-09-16 | Armadilhas de origem local, acesso local pelo Tunnel e pasta de backup do serviço na §8 e na rule de servidor; orçamento de subagentes na §4 e no passo "Revisar" do `/entrega-fechar` | Fechamento da entrega Q-11 app desktop |
 | 2026-09-16 | Regra de nomes sem fase nem spec em código, testes, migrations e commits (`AGENTS.md`, passo de commit do `/entrega-fechar` e bloqueio no guard para nome de arquivo e mensagem de commit, com testes); armadilhas de rate limit local, ordenação de chaves do `fix`, promessas em testes oRPC, Drizzle sobre `bun:sqlite`, migrations custom e mensagens do Better Auth nas rules de servidor, banco, web e domínio e na §8; armadilhas do ledger na mesma transação, fila por `opId`, usuário órfão do Better Auth, reserva de login, log de erro de procedure, HMAC de código curto e global `Bun` no Biome, vindas da revisão, na rule de servidor, na §8 e nos papéis `reviewer` e `contract` | Pedido do dono e fechamento da entrega de servidor de acesso e sync |
+| 2026-09-16 | Armadilhas de Tauri e WebView2 removidas da §8 e da rule de web; papel `contract` sem desktop e com o proxy do Vite como exemplo de contrato; `src-tauri` fora do hook de format; armadilha do lockfile detalhada para remoção de dependência | Fechamento e revisão da entrega de remoção do app Tauri |
 
 ## 10. Sessão nova
 

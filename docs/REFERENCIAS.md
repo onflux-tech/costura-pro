@@ -42,8 +42,6 @@ Fonte de verdade: `package.json` de cada pacote, catálogo em `pnpm-workspace.ya
 | PWA | vite-plugin-pwa | ^1.3.0 |
 | Estilo | Tailwind CSS | ^4.3.3 |
 | Componentes | shadcn (sobre Base UI) | ^4.21.0 |
-| Desktop (legado, sai pela DEC-59) | Tauri e CLI | 2.11.3 e ^2.11.4 |
-| Toolchain do desktop legado no Windows | Rust `stable-x86_64-pc-windows-msvc` por `rustup override` em `apps/web/src-tauri`, com MSVC do Visual Studio 2026 | 1.98.1 |
 | Instalador Windows (previsto) | NSIS | 3.12 ou superior |
 | Wrapper de serviço no Windows (previsto) | shawl ou WinSW 2.12 NET461 | a definir no S5 |
 | Pacote Ubuntu (previsto) | nFPM | a definir na F7 |

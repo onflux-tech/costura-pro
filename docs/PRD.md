@@ -379,7 +379,7 @@ Decisões tomadas com o dono. "Mão única" indica decisão cara de reverter; as
 
 | ID | Decisão | Alternativas descartadas | Tipo | Referência |
 |---|---|---|---|---|
-| DEC-49 | Monorepo gerado pelo Better-T-Stack 3.43.1: TanStack Router, Hono, Bun, SQLite com Drizzle, oRPC, Better Auth, pnpm e addons PWA, Tauri, Turborepo, Biome, Lefthook, Ultracite e evlog | Oxlint, Nx e Husky (sobrepõem Biome, Turborepo e Lefthook) | Mão única | [SPEC §1](SPEC.md#1-topologia-e-componentes) |
+| DEC-49 | Monorepo gerado pelo Better-T-Stack 3.43.1: TanStack Router, Hono, Bun, SQLite com Drizzle, oRPC, Better Auth, pnpm e addons PWA, Tauri, Turborepo, Biome, Lefthook, Ultracite e evlog; o addon Tauri saiu em 2026-09-16 pela DEC-59 | Oxlint, Nx e Husky (sobrepõem Biome, Turborepo e Lefthook) | Mão única | [SPEC §1](SPEC.md#1-topologia-e-componentes) |
 | DEC-50 | Jornadas de interface validadas em navegador real com browser-harness; sem Playwright | Suíte Playwright no CI | Dupla | [HARNESS](HARNESS.md) |
 | DEC-51 | PRD, SPEC, ROADMAP, CONTEXT, ADRs, HARNESS e REFERENCIAS versionados; specs e planos de sessão locais (2026-09-16) | Specs e planos versionados; ADRs locais | Dupla | [HARNESS](HARNESS.md) |
 | DEC-52 | Wireframes HTML descartados; a interface nasce de um design system com Claude Design e Storybook (2026-09-16) | Reimportar os wireframes do Linux | Dupla | [ROADMAP F1](ROADMAP.md#f1-design-system-e-storybook) |
