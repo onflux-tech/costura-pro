@@ -79,6 +79,7 @@ Cada spike responde uma pergunta que muda o desenho antes de construir em cima d
 - Harness de agentes com portas geradas e documentação reorganizada (2026-09-16).
 - `closeDb` libera o arquivo do banco no Windows; testes de banco verdes no Windows (2026-09-16).
 - pnpm 11.20.0 global e telemetria do varlock desligada: `pnpm install`, testes, `check-types` e `build` verdes no Windows (2026-09-16).
+- Repositório público no GitHub com licença MIT; hooks de sessão, rules por área, skills de ciclo de entrega, índice de docs com `docs-check` e CI em Ubuntu 24.04 e Windows (2026-09-16).
 
 **Pendente:**
 - **Ambiente Windows.** `apps/server/.env` com `DATABASE_FILE` absoluto no lugar do legado `DATABASE_URL` trazido do Linux.
@@ -88,13 +89,13 @@ Cada spike responde uma pergunta que muda o desenho antes de construir em cima d
   - o cliente usa `/rpc` e `/api/auth` relativos, com proxy do Vite no desenvolvimento;
   - allowlist de Host e Origin;
   - cookie compatível com localhost HTTP e com o Tunnel HTTPS.
-- **Repositório remoto e CI** com lint, tipos, testes e build em Windows e Linux (Q-07).
-- **Build conferido no Ubuntu 24.04.**
+- **CI verde** no primeiro push da `main` em Ubuntu 24.04 e Windows.
+- **Build conferido numa máquina Ubuntu 24.04** além do CI (Q-10).
 
 **Critério de saída:**
 - `pnpm test`, `pnpm check-types`, `pnpm check`, `pnpm build` e `pnpm harness:check` verdes no Windows e no Ubuntu.
 - Build de produção servido por um único processo em loopback, com teste automatizado de SPA fallback e das rotas `/api` e `/rpc`.
-- CI verde no primeiro PR, se o repositório remoto já existir.
+- CI verde no push da `main` em Ubuntu 24.04 e Windows.
 
 ## F1: Design system e Storybook
 

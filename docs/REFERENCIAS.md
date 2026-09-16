@@ -101,6 +101,7 @@ O projeto foi planejado e iniciado no Linux com Codex e trazido para Windows em 
 | 2026-09-15 | Harness Codex | Papéis explorer, reviewer e contract; limite de 2 subagentes |
 | 2026-09-15 | Tarefa 0A | SQLite nativo com WAL, rejeição de caminho UNC, executor de migrations por Bun |
 | 2026-09-16 | Reorganização (Claude Code) | Docs no molde do crm-ia-prd, ROADMAP, harness Claude-first, MCPs e skills enxutos |
+| 2026-09-16 | Harness evolutivo (Claude Code) | Hooks de sessão, rules por área, skills de ciclo de entrega, índice de docs com `docs-check`, CI, README bilíngue e licença MIT |
 
 Escolhas iniciais revistas durante o grill, marcadas como "Substituiu" no PRD: item independente por variação virou material base com variantes (DEC-19); baixa de estoque na aprovação virou reserva (DEC-20); "última alteração vence" virou conflito protegido (DEC-41); LAN principal virou origem canônica no Tunnel (DEC-42); sessão lembrada e cache cifrado por PIN viraram cofre com senha forte e PIN de tela (DEC-43); retenção de 7 diários ganhou 12 mensais (DEC-45).
 
@@ -109,4 +110,6 @@ Escolhas iniciais revistas durante o grill, marcadas como "Substituiu" no PRD: i
 | Repositório local | O que foi aproveitado |
 |---|---|
 | `D:\Joseph\Desktop\DEV\crm-ia-prd` | Estrutura de PRD com registro de decisões, ROADMAP com spikes e critério de saída, HARNESS com veredito por artefato, AGENTS.md com regras de escrita e "quando uma decisão muda" |
-| Takeflow (no Linux, `/home/joseph/Desktop/DEV/takeflow`) | Papéis de agente somente leitura (explorer, reviewer, contract) e checagem de deriva entre ferramentas |
+| `D:\Joseph\Desktop\DEV\takeflow` | Hooks como módulos testáveis (`guard`, `format`, `touch`, `stop-check` em fases, baseline da sessão), rules com `paths:`, papéis somente leitura e checagem de portas geradas |
+| `D:\Joseph\Desktop\DEV\newticket-go` | Canal de conhecimento novo destilado para os papéis, checagem de referências dos agents, template de spec com DoD e mutações morre e sobrevive, rota enxuta e completa |
+| `onflux-tech/vsftpd-manager` (GitHub) | Padrão do README público: badges, frase-resumo, seções EN/PT com índice e licença MIT |

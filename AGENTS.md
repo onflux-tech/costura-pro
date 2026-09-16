@@ -1,18 +1,34 @@
 # Costura Pro
 
-App local-first para um único ateliê e um único dono: atendimento, orçamento, OS, OP, venda direta, estoque, finanças e documentos não fiscais. Não é SaaS e não emite documento fiscal. A fase atual e o próximo trabalho estão em `docs/ROADMAP.md`.
+App local-first para um único ateliê e um único dono: atendimento, orçamento, OS, OP, venda direta, estoque, finanças e documentos não fiscais. Não é SaaS e não emite documento fiscal.
 
-## Documentos
+## Onde está cada coisa
 
-| Arquivo | Leia quando |
+- `docs/README.md` é o índice curado de toda a documentação, com "leia quando".
+- Mínimo para qualquer mudança: `docs/ROADMAP.md` (o que fazer e critério de saída), `docs/SPEC.md` §0 (o que já existe) e `CONTEXT.md` (nomes do domínio).
+- `docs/HARNESS.md`: papéis, skills, hooks, verificação, "antes de mexer em X, leia Y" e falhas silenciosas conhecidas.
+
+## Ciclo de entrega
+
+Toda implementação segue as skills do projeto (fonte em `.agents/skills/`; no Claude, `/nome`):
+
+1. `entrega-iniciar`: escolhe a entrega do ROADMAP, cria a branch, define a rota e a spec local.
+2. `verificar` e, quando a entrega toca dinheiro, quantidade, dados, autenticação, sync ou contrato entre camadas, `revisar`.
+3. `entrega-fechar`: atualiza docs curadas e índice e evolui o harness pelos critérios do `docs/HARNESS.md` §4. É o que deixa o harness mais especialista a cada entrega.
+4. `integrar-branch`: merge local na `main` e push só depois de confirmação do dono; não há PR.
+
+## Regras por área
+
+Antes de tocar arquivos de uma área, leia a rule dela (no Claude elas carregam sozinhas pelo `paths:`):
+
+| Rule | Área |
 |---|---|
-| `CONTEXT.md` | Ao nomear qualquer conceito do domínio |
-| `docs/PRD.md` | Ao mudar comportamento: requisitos na §6, decisões na §9, questões em aberto na §12 |
-| `docs/SPEC.md` | Ao implementar um contrato; o que já existe versus o previsto está na §0 |
-| `docs/ROADMAP.md` | Ao escolher trabalho: fase, spikes, critério de saída e definição de pronto |
-| `docs/adr/` | Ao mexer em fronteira difícil de reverter (origem da PWA, OS e OP, movimentos, backup e epoch, atualização, SQLite, serviços, documentos emitidos, códigos, dinheiro) |
-| `docs/HARNESS.md` | Ao mexer em papéis, skills, MCP ou gerador; também traz "antes de mexer em X, leia Y" e as falhas silenciosas conhecidas |
-| `docs/REFERENCIAS.md` | Ao precisar de versão de biblioteca, alternativa descartada ou fonte externa |
+| `.claude/rules/domain.md` | `packages/domain` |
+| `.claude/rules/db.md` | `packages/db` |
+| `.claude/rules/server.md` | `apps/server`, `packages/api`, `packages/auth` |
+| `.claude/rules/web.md` | `apps/web`, `packages/ui` |
+| `.claude/rules/docs.md` | `docs`, markdown da raiz, rules e papéis |
+| `.claude/rules/harness.md` | `.agents`, `.claude`, `.codex`, `scripts`, `.github`, MCP e Lefthook |
 
 ## Invariantes
 
@@ -25,11 +41,11 @@ App local-first para um único ateliê e um único dono: atendimento, orçamento
 ## Como trabalhar
 
 - TDD para lógica e comportamento novos: `bun test` no domínio, SQLite real em diretório temporário na integração.
-- Mudança de comportamento segue a rota completa do `docs/HARNESS.md` §4. Specs e planos de sessão ficam em `docs/superpowers/`, local e fora do git.
 - TypeScript e React seguem a skill `ultracite`. Interface é validada em navegador real com browser-harness, em 320 px e no desktop.
-- Pronto significa testes relevantes, `pnpm check-types`, `pnpm check` e `pnpm build` sem erro nem aviso; `pnpm fix` corrige formatação.
+- Pronto significa `pnpm harness:check`, `pnpm docs:check`, `pnpm harness:test`, `pnpm test`, `pnpm check`, `pnpm check-types` e `pnpm build` sem erro nem aviso; `pnpm fix` corrige formatação.
+- Suíte de teste roda com saída redirecionada para arquivo, nunca com pipe.
 - Escolha ou confirmação do dono vai pela ferramenta de pergunta do cliente, com a opção recomendada primeiro.
-- Commit, push e PR só quando o dono pedir; mensagens de commit em inglês no padrão conventional commits.
+- Commit, merge e push só quando o dono pedir; mensagens de commit em inglês no padrão conventional commits.
 
 ## Subagentes
 
@@ -41,9 +57,9 @@ Até 2 por tarefa, somente leitura, para trabalho independente e delimitado: `ex
 
 ## Escrita dos documentos
 
-- Português do Brasil e datas absolutas (2026-09-16).
-- Pontuação com vírgula, dois-pontos, parênteses ou ponto; travessão (U+2014) e meia-risca (U+2013) ficam fora dos docs, commits e PRs.
-- Docs versionados apontam só para arquivos versionados.
+- Português do Brasil e datas absolutas (2026-09-16); o `README.md` da raiz é bilíngue (EN/PT) por ser a página pública.
+- Pontuação com vírgula, dois-pontos, parênteses ou ponto; travessão (U+2014) e meia-risca (U+2013) ficam fora de docs, commits e PRs.
+- Docs versionados apontam só para arquivos versionados; doc novo entra no índice `docs/README.md`.
 - Afirmação sobre fonte externa leva link e data de consulta.
 
 ## Quando uma decisão muda
@@ -55,6 +71,7 @@ Atualize na mesma mudança:
 3. `docs/SPEC.md`: o contrato e a linha da §0;
 4. `CONTEXT.md`: termo novo ou com sentido alterado;
 5. `docs/adr/`: ADR novo, ou `status: superseded` no antigo, quando a decisão é de mão única;
-6. `docs/REFERENCIAS.md`: biblioteca, versão ou fonte.
+6. `docs/REFERENCIAS.md`: biblioteca, versão ou fonte;
+7. `docs/README.md`: doc novo ou renomeado.
 
-Depois confira que todo requisito novo aparece no rastreio do ROADMAP.
+`pnpm docs:check` confere índice, links, caminhos citados, travessões, rules listadas, rastreio de requisitos e papéis e skills documentados.

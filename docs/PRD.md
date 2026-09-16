@@ -378,6 +378,8 @@ Decisões tomadas com o dono. "Mão única" indica decisão cara de reverter; as
 | DEC-51 | PRD, SPEC, ROADMAP, CONTEXT, ADRs, HARNESS e REFERENCIAS versionados; specs e planos de sessão locais (2026-09-16) | Specs e planos versionados; ADRs locais | Dupla | [HARNESS](HARNESS.md) |
 | DEC-52 | Wireframes HTML descartados; a interface nasce de um design system com Claude Design e Storybook (2026-09-16) | Reimportar os wireframes do Linux | Dupla | [ROADMAP F1](ROADMAP.md#f1-design-system-e-storybook) |
 | DEC-53 | Harness com Claude como padrão; portas de Codex e `.claude` geradas a partir de `.agents` e `.mcp.json`; MCPs context7 e shadcn; skills vendorizadas sem turborepo, vercel-react-best-practices e review-logging-patterns (2026-09-16) | Symlinks; cópias à mão; cinco MCPs; manter as 12 skills | Dupla | [HARNESS](HARNESS.md) |
+| DEC-54 | Harness evolutivo: hooks de sessão no Claude (guard, format, stop-check), rules por área, skills de ciclo de entrega, índice de docs com `docs-check` no pre-commit e CI em Ubuntu 24.04 e Windows; merge local na `main` e push após confirmação, sem PR (2026-09-16) | Evolução manual do harness; hooks também no Codex agora; pull requests; CI só em Ubuntu | Dupla | [HARNESS §4](HARNESS.md#4-ciclo-de-entrega-e-evolução-do-harness) |
+| DEC-55 | Repositório público `onflux-tech/costura-pro` com licença MIT e README bilíngue EN/PT no padrão do vsftpd-manager (2026-09-16) | Público sem licença; README só em português | Mão única | [LICENSE](../LICENSE) |
 
 ## 10. Riscos e mitigação
 
@@ -413,7 +415,7 @@ Decisões tomadas com o dono. "Mão única" indica decisão cara de reverter; as
 | Q-04 | Leitura de QR e código de barras pela câmera no iPhone | Spike S3 |
 | Q-05 | Parâmetros do cofre: derivação de chave por plataforma, limites de quota, dimensão e qualidade de foto (iniciais: 2048 px e 0,82) | Spikes S2 e S4 |
 | Q-06 | Mecanismo de serviço no Windows para o servidor Bun compilado e supervisor da atualização | Spikes S5 e S6 |
-| Q-07 | Repositório remoto: hospedagem, visibilidade do código versus releases públicos e CI em Windows e Linux | F0 |
+| Q-07 | Repositório remoto e CI | Resolvida em 2026-09-16: GitHub público `onflux-tech/costura-pro` com CI em Ubuntu 24.04 e Windows (DEC-54, DEC-55) |
 | Q-08 | Identificador definitivo do app Tauri e guarda da chave de assinatura de atualização | F7 |
 | Q-09 | Domínio e subdomínio do dono na Cloudflare | Antes de expor o Tunnel (fim da F2) |
 | Q-10 | Aparelhos de validação: iPhone, Android e máquina Ubuntu 24.04 | Celulares antes do S3; Ubuntu antes da saída da F0 |
