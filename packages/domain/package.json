@@ -1,0 +1,24 @@
+{
+  "name": "@costura-pro/domain",
+  "type": "module",
+  "exports": {
+    "./pricing": {
+      "types": "./dist/src/pricing.d.ts",
+      "default": "./src/pricing.ts"
+    },
+    "./reservation": {
+      "types": "./dist/src/reservation.d.ts",
+      "default": "./src/reservation.ts"
+    }
+  },
+  "scripts": {
+    "build": "tsc -b",
+    "check-types": "tsc -b",
+    "test": "bun test src"
+  },
+  "devDependencies": {
+    "@costura-pro/config": "workspace:*",
+    "@types/bun": "catalog:",
+    "typescript": "catalog:"
+  }
+}
