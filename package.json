@@ -19,11 +19,12 @@
     "dev:server": "turbo run dev -F server --",
     "dev:types": "tsc -b packages/api --watch",
     "dev:web": "turbo run dev -F web --",
+    "docs:check": "node scripts/docs-check.mjs",
     "env:generate": "varlock codegen --path ./apps/web/ && varlock codegen --path ./apps/server/ && varlock codegen --path ./packages/db/",
     "fix": "ultracite fix",
     "harness:check": "node scripts/harness.mjs check",
     "harness:sync": "node scripts/harness.mjs sync",
-    "harness:test": "node --test scripts/harness.test.mjs",
+    "harness:test": "node --test \"scripts/*.test.mjs\" \".claude/hooks/*.test.mjs\"",
     "postinstall": "tsc -b packages/api && varlock codegen --path ./apps/web/ && varlock codegen --path ./apps/server/ && varlock codegen --path ./packages/db/",
     "test": "turbo run test"
   },

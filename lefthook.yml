@@ -29,3 +29,6 @@ pre-commit:
       # --staged também exige que a porta regenerada esteja no commit; node direto evita
       # a revalidação de dependências do pnpm.
       run: node scripts/harness.mjs check --staged
+    # Sem glob: renomear código citado em crases num doc também quebra a documentação.
+    - name: docs
+      run: node scripts/docs-check.mjs
