@@ -2,6 +2,22 @@
   "name": "@costura-pro/domain",
   "type": "module",
   "exports": {
+    "./access-code": {
+      "types": "./dist/src/access-code.d.ts",
+      "default": "./src/access-code.ts"
+    },
+    "./canonical-json": {
+      "types": "./dist/src/canonical-json.d.ts",
+      "default": "./src/canonical-json.ts"
+    },
+    "./credentials": {
+      "types": "./dist/src/credentials.d.ts",
+      "default": "./src/credentials.ts"
+    },
+    "./installation-state": {
+      "types": "./dist/src/installation-state.d.ts",
+      "default": "./src/installation-state.ts"
+    },
     "./pricing": {
       "types": "./dist/src/pricing.d.ts",
       "default": "./src/pricing.ts"
@@ -9,6 +25,10 @@
     "./reservation": {
       "types": "./dist/src/reservation.d.ts",
       "default": "./src/reservation.ts"
+    },
+    "./sign-in-lockout": {
+      "types": "./dist/src/sign-in-lockout.d.ts",
+      "default": "./src/sign-in-lockout.ts"
     }
   },
   "scripts": {
