@@ -15,7 +15,7 @@ import {
 // reescrever o arquivo, o modelo é avisado: o próximo Edit falharia com old_string desatualizado.
 const FORMATTABLE = /\.(?:ts|tsx|js|jsx|mjs|cjs|json|jsonc|css)$/i;
 const SKIP =
-	/(?:^|\/)(?:node_modules|dist|build|src-tauri)\/|^\.(?:claude|agents)\/skills\/|^\.codex\/|routeTree\.gen\.ts$|\/src\/env\.ts$/;
+	/(?:^|\/)(?:node_modules|dist|build)\/|^\.(?:claude|agents)\/skills\/|^\.codex\/|routeTree\.gen\.ts$|\/src\/env\.ts$/;
 const CRLF = /\r\n/g;
 const ANSI = new RegExp(`${String.fromCharCode(27)}\\[[0-9;]*m`, "g");
 const MAX_LINES = 25;

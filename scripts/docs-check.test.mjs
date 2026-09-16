@@ -131,11 +131,11 @@ test("caminho em crases que não existe vira problema; glob, placeholder, ignora
 
 test("pasta ignorada só como diretório e ausente no clone não vira problema", () => {
 	const root = fixture();
-	write(root, "apps/web/src-tauri/.gitignore", "/target/\n");
+	write(root, "packages/db/.gitignore", "/backups/\n");
 	write(
 		root,
 		"docs/HARNESS.md",
-		"# Harness\n\nPapel `explorer`. Skill `/entrega-fechar`. O Vite ignora `apps/web/src-tauri/target`, que não existe num clone limpo.\n"
+		"# Harness\n\nPapel `explorer`. Skill `/entrega-fechar`. O teste grava em `packages/db/backups`, que não existe num clone limpo.\n"
 	);
 
 	assert.deepEqual(checkDocs(root), []);
