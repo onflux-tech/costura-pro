@@ -9,5 +9,12 @@
     "strictNullChecks": true
   },
   "include": ["src/**/*.ts"],
-  "references": [{ "path": "../db" }]
+  "references": [
+    {
+      "path": "../db"
+    },
+    {
+      "path": "../domain"
+    }
+  ]
 }

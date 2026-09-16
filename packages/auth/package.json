@@ -17,6 +17,7 @@
   },
   "dependencies": {
     "@costura-pro/db": "workspace:*",
+    "@costura-pro/domain": "workspace:*",
     "better-auth": "catalog:",
     "zod": "catalog:"
   },
