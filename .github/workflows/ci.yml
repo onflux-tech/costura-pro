@@ -1,0 +1,69 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    name: verify (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, windows-latest]
+    runs-on: ${{ matrix.os }}
+    env:
+      NODE_ENV: test
+      # Valores só para validar schema e build no CI; nenhum é segredo real.
+      BETTER_AUTH_SECRET: ci-placeholder-not-a-secret-000000
+      BETTER_AUTH_URL: http://localhost:3000
+      CORS_ORIGIN: http://localhost:3001
+      VITE_SERVER_URL: http://localhost:3000
+      VARLOCK_TELEMETRY_DISABLED: "true"
+    steps:
+      - uses: actions/checkout@v7
+
+      # O contexto runner não existe no env do job; o caminho do banco vem por GITHUB_ENV.
+      - name: Database path
+        shell: bash
+        run: echo "DATABASE_FILE=$RUNNER_TEMP/costura-pro-ci.db" >> "$GITHUB_ENV"
+
+      - uses: pnpm/action-setup@v6
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.2
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Harness
+        run: pnpm harness:check
+
+      - name: Docs
+        run: pnpm docs:check
+
+      - name: Harness, hooks and docs tests
+        run: pnpm harness:test
+
+      - name: Lint and format
+        run: pnpm check
+
+      - name: Types
+        run: pnpm check-types
+
+      - name: Tests
+        run: pnpm test
+
+      - name: Build
+        run: pnpm build

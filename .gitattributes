@@ -1,3 +1,6 @@
+# LF em todo checkout: o biome formata em LF e o CI Windows reprovaria CRLF.
+* text=auto eol=lf
+
 # Vendored agent guidance uses Markdown hard line breaks (two trailing spaces).
 .agents/skills/** whitespace=-trailing-space
 .claude/skills/** whitespace=-trailing-space
