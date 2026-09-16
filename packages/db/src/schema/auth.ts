@@ -22,6 +22,14 @@ export const user = sqliteTable("user", {
 		.default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
 		.$onUpdate(() => /* @__PURE__ */ new Date())
 		.notNull(),
+	username: text("username").unique(),
+});
+
+export const rateLimit = sqliteTable("rate_limit", {
+	count: integer("count").notNull(),
+	id: text("id").primaryKey(),
+	key: text("key").notNull().unique(),
+	lastRequest: integer("last_request").notNull(),
 });
 
 export const session = sqliteTable(
