@@ -313,6 +313,9 @@ _Evitar_: administrador, usuário
 **Wizard inicial**:
 Configuração retomável do primeiro acesso cujos passos obrigatórios são identidade do ateliê, conta, códigos de recuperação e pasta de backup testada.
 
+**Instalação**:
+Registro único do servidor com a identidade do ateliê, o passo do wizard, o epoch de sincronização e a pasta de backup testada.
+
 **Checklist de continuidade**:
 Tarefas de configuração opcionais que aparecem depois do wizard, como logo, catálogo, saldos de abertura e Tunnel.
 
@@ -331,6 +334,25 @@ Celular ou navegador que o dono autorizou no acesso local, diretamente ou por c�
 
 **Revogação**:
 Retirada da aprovação de um dispositivo, que só limpa o aparelho quando ele volta a se conectar.
+
+**Código de ativação**:
+Código de uso único e validade curta, emitido no acesso local, com o qual um aparelho já se registra aprovado.
+
+**Segredo do dispositivo**:
+Credencial aleatória entregue uma única vez no registro do aparelho e exigida em todo sync junto com a sessão do dono.
+
+**Bloqueio remoto**:
+Suspensão temporária e progressiva do login pelo Tunnel depois de falhas seguidas. Nunca afeta o acesso local nem sessões já abertas.
+
+**Operação**:
+Comando que muda estado, identificado por `opId`, cujo resultado fica gravado para que a repetição devolva a mesma resposta.
+_Evitar_: requisição, evento
+
+**Log de mudanças**:
+Sequência de estados de agregados em ordem de cursor crescente, que o pull entrega aos dispositivos.
+
+**Evento de auditoria**:
+Registro permanente e append-only de ação sensível, sem senha, código, segredo nem usuário digitado.
 
 **Cofre offline**:
 Dados e arquivos operacionais cifrados no dispositivo móvel.
@@ -360,7 +382,7 @@ Edição feita sobre uma versão-base desatualizada, que nunca é resolvida por 
 Área onde o dono revisa conflitos protegidos e exceções operacionais sem parar o restante da sincronização.
 
 **Quarentena**:
-Retenção, para decisão manual, de operações de epoch antigo ou incompatíveis após restauração ou atualização.
+Retenção, para decisão manual, de operações de epoch antigo, incompatíveis após restauração ou atualização, malformadas ou que reutilizam um `opId` com outro conteúdo.
 
 **Código de recuperação**:
 Credencial de uso único, entregue no wizard, para recuperar a conta e autorizar operações críticas.

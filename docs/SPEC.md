@@ -16,13 +16,13 @@ Não é formato fiscal. Quando um contrato muda, atualize esta SPEC, a linha cor
 | Preço sugerido com margem sobre a venda | Implementado como função pura testada | `packages/domain/src/pricing.ts` | F0 |
 | Reserva com pendência sem inventar saldo | Implementado como função pura testada | `packages/domain/src/reservation.ts` | F0 |
 | SQLite nativo em WAL, validação de caminho local, migrations por Bun | Implementado | `packages/db/src/index.ts`, `packages/db/src/migrate.ts`, `packages/db/tests/native-sqlite.test.ts` | F0 |
-| Schema de autenticação | Parcial: tabelas genéricas do Better Auth | `packages/db/src/schema/auth.ts`, migration `0000` | F2 |
+| Schema de autenticação, instalação, auditoria e sync | Implementado: tabelas do Better Auth com `username` e `rate_limit`, instalação singleton, guarda de login, códigos de recuperação, auditoria e log de mudanças append-only, dispositivos, códigos de ativação, operações e conflitos | `packages/db/src/schema/`, migrations `0000` a `0002`, `packages/db/tests/installation-sync-schema.test.ts` | F2 |
 | Mesma origem: Hono serve SPA e API só em loopback | Implementado: processo único em `127.0.0.1:3000`, allowlist de Host e Origin, cookie `Secure` por Host canônico, cliente relativo, proxy do Vite e Tauri legado no loopback | `apps/server/src/app.ts`, `apps/server/src/origin.ts`, `apps/server/src/web.ts`, `apps/server/src/index.ts`, `apps/web/src/utils/orpc.ts`, `apps/web/vite.config.ts`, `apps/web/src-tauri/tauri.conf.json`, `apps/server/tests/` | F0 |
 | Logs estruturados | Parcial: evlog no servidor, drain em arquivo fora de produção | `apps/server/src/index.ts` | F0 a F7 |
-| Dono único, username, rate limit persistido, códigos de recuperação | Previsto: login e cadastro genéricos por e-mail do scaffold | `apps/web/src/routes/login.tsx`, `packages/auth/src/index.ts` | F2 |
-| Wizard inicial e sandbox | Previsto | | F2 |
-| Acesso local, navegador de pastas e atalhos do instalador | Previsto | | F2 (acesso local e pasta de backup), F7 (instalador e atalhos) |
-| Dispositivos, epoch, `push`, `pull`, `resolve` | Previsto | | F2 (contrato mínimo), F6 (espelho completo) |
+| Dono único, username, rate limit persistido, bloqueio remoto, códigos de recuperação, auditoria | Implementado no servidor; login web mínimo por username | `packages/auth/src/index.ts`, `apps/server/src/auth-routes.ts`, `apps/server/src/access.ts`, `packages/api/src/sign-in-guard.ts`, `packages/api/src/installation/`, `packages/api/src/recovery/`, `packages/api/src/audit.ts`, `apps/web/src/components/sign-in-form.tsx`, `apps/server/tests/access.test.ts`, `sign-in.test.ts`, `installation.test.ts` | F2 |
+| Wizard inicial e sandbox | Parcial: estados, comandos, navegador de pastas e teste de gravação no servidor; telas e sandbox previstas | `packages/api/src/installation/` | F2 (telas depois do design system), F5 (sandbox) |
+| Acesso local, navegador de pastas e atalhos do instalador | Parcial: acesso local e navegador de pastas implementados; atalhos previstos | `apps/server/src/access.ts`, `packages/api/src/index.ts`, `packages/api/src/installation/backup-folder.ts` | F2 (acesso local e pasta de backup), F7 (instalador e atalhos) |
+| Dispositivos, epoch, `push`, `pull`, `resolve` | Parcial: contrato mínimo implementado (dispositivos com segredo, código de ativação, operação por `opId`, log por cursor, conflito, quarentena, `rebase`); espelho completo previsto | `packages/api/src/devices/`, `packages/api/src/sync/`, `packages/api/src/operations.ts`, `apps/server/tests/devices.test.ts`, `sync.test.ts` | F2 (contrato mínimo), F6 (espelho completo) |
 | Agregados de atendimento, catálogo e estoque | Previsto | | F3 |
 | Orçamento, OS, documentos PDF, agenda e custódia | Previsto | | F4 |
 | OP, venda direta, finanças e relatórios | Previsto | | F5 |
@@ -52,13 +52,13 @@ A UI usa caminhos relativos (`/rpc`, `/api`) em todas as origens. Em produção,
 **Mesma origem (F0):**
 
 - **Processo único.** `pnpm --filter server start` roda `bun --env-file=production.env dist/index.mjs`; com `NODE_ENV=production` o Hono serve a SPA de `apps/web/dist`, e fora de produção só a API. Escuta `hostname: "127.0.0.1"` na `PORT` do schema. A `PORT` fica em 3000, a mesma do alvo do proxy do Vite e do `frontendDist` do Tauri legado (conferidos por teste), até o S5 decidir a porta definitiva, que depois nunca muda porque faz parte da origem local. `NODE_ENV` já presente no ambiente vence o `--env-file`. O script `compile` (binário do Bun) ainda não segue este contrato: sem `NODE_ENV=production` e com `import.meta.dirname` virtual, fica para a F7.
-- **Rotas.** Ordem: evlog, guarda de Host e Origin, `Secure` por Host, `/api/auth/*` (Better Auth), `/rpc/*` e `/api-reference/*` (oRPC, com sessão), estáticos e fallback. `/assets/*` sai com `Cache-Control: public, max-age=31536000, immutable` e asset ausente responde 404; o resto da SPA sai com `no-cache`. GET fora de `/api`, `/api-reference` e `/rpc` sem arquivo correspondente responde `index.html`; `/api` e `/rpc` desconhecidos respondem 404 sem HTML. Sem `index.html`, o servidor não sobe: `Instalação incompleta: build da web não encontrado em <dir>. Rode pnpm build.`
+- **Rotas.** Ordem: evlog, guarda de Host e Origin, `Secure` por Host, guarda de login em `/api/auth/sign-in/username` (§5), `/api/auth/*` (allowlist do Better Auth, §5), `/rpc/*` e `/api-reference/*` (oRPC, com as mesmas regras de acesso), estáticos e fallback. `/assets/*` sai com `Cache-Control: public, max-age=31536000, immutable` e asset ausente responde 404; o resto da SPA sai com `no-cache`. GET fora de `/api`, `/api-reference` e `/rpc` sem arquivo correspondente responde `index.html`; `/api` e `/rpc` desconhecidos respondem 404 sem HTML. Sem `index.html`, o servidor não sobe: `Instalação incompleta: build da web não encontrado em <dir>. Rode pnpm build.`
 - **Host e Origin.** Host permitido: `127.0.0.1` e `localhost` em qualquer porta, e o host de `CANONICAL_ORIGIN` (variável opcional do servidor, só `https` sem caminho, o único lugar da origem canônica). Origin, quando presente, precisa ser igual à origem esperada para o Host (`http://<host>` no loopback, `CANONICAL_ORIGIN` no host canônico). Fora disso, 403 `Host não permitido` ou `Origem não permitida`. O CORS saiu.
 - **Cliente.** oRPC em `new URL("/rpc", window.location.origin)` e `createAuthClient()` sem `baseURL`. Em desenvolvimento, o Vite (`localhost:3001`) faz proxy de `^/(api|rpc|api-reference)(/|$)` para `http://127.0.0.1:3000` com `changeOrigin: false`, então Host e Origin chegam coerentes. O service worker nega o fallback de navegação para `/api`, `/api-reference` e `/rpc`.
 - **Tauri (legado).** Até a remoção pendente na F0, `build.frontendDist` é `http://127.0.0.1:3000` e `devUrl` segue no Vite; a janela só carrega o processo único, com `core:default` e sem plugins, e não gera instalador com o identificador de exemplo `com.tauri.dev`.
 - HTTPS público é responsabilidade do Tunnel; a porta local não promete TLS, e o token do `cloudflared` nunca vai para o cliente nem para variável pública.
 
-**Acesso local** (previsto na F2 e na F7; DEC-59, [ADR 0011](adr/0011-servico-do-so-e-acesso-local-no-navegador.md)). O PC usa a interface no navegador pela origem local `http://127.0.0.1:<PORT>`, sem app desktop. No Windows o instalador cria atalho para `msedge.exe --app=http://127.0.0.1:<PORT>/`, com o navegador padrão quando não houver Edge; no Ubuntu um `.desktop` abre Google Chrome ou Chromium com `--app` e usa `xdg-open` quando não houver nenhum. A origem local é a identidade da interface no PC (cookie, service worker e cache), então a porta definitiva sai do S5 e nunca muda. Uma requisição é do acesso local quando o Host é de loopback e não traz `cf-connecting-ip`; ações administrativas exigem isso e a sessão do dono, e o contrato exato nasce na F2.
+**Acesso local** (regra implementada na F2, atalhos na F7; DEC-59, [ADR 0011](adr/0011-servico-do-so-e-acesso-local-no-navegador.md)). O PC usa a interface no navegador pela origem local `http://127.0.0.1:<PORT>`, sem app desktop. No Windows o instalador cria atalho para `msedge.exe --app=http://127.0.0.1:<PORT>/`, com o navegador padrão quando não houver Edge; no Ubuntu um `.desktop` abre Google Chrome ou Chromium com `--app` e usa `xdg-open` quando não houver nenhum. A origem local é a identidade da interface no PC (cookie, service worker e cache), então a porta definitiva sai do S5 e nunca muda. Uma requisição é do acesso local quando o Host é de loopback (`127.0.0.1` ou `localhost`) e não traz `cf-connecting-ip`, nunca pelo IP do socket, porque o `cloudflared` também conecta pelo loopback. Ações administrativas exigem isso e a sessão do dono, com três exceções sem sessão, todas só no acesso local: `installation.setAtelierName` enquanto a instalação está em `empty` ou `atelier`, `installation.createOwner` no passo `atelier` e `recovery.resetPassword`, em que o código de recuperação é a credencial (§5).
 
 SQLite em WAL é a fonte autoritativa única, aberta por Drizzle sobre `bun:sqlite`, e um processo servidor controla gravações e transações ([ADR 0006](adr/0006-sqlite-nativo-bun.md)). Banco e mídia ficam fora do diretório de instalação: `%PROGRAMDATA%\CosturaPro\data` no Windows e `/var/lib/costura-pro` no Linux. Configuração e segredos usam permissões do sistema operacional. O instalador configura o servidor como serviço ativo no boot, pelo wrapper escolhido no S5, o atalho do acesso local e o `cloudflared` como serviço opcional após receber o token ([ADR 0011](adr/0011-servico-do-so-e-acesso-local-no-navegador.md)). Sem internet, o PC segue no loopback; a PWA já carregada opera pelo service worker e IndexedDB e não sincroniza até o Tunnel voltar.
 
@@ -98,46 +98,70 @@ Saldos negativos e pagamentos excedentes são exceções operacionais visíveis,
 
 ## 4. API, sincronização e conflito
 
-**Estado:** previsto (contrato mínimo na F2, espelho completo na F6).
+**Estado:** contrato mínimo implementado (§0); espelho completo previsto na F6.
 
-oRPC expõe recursos autenticados de consulta e comando para cada agregado e os endpoints de sync. Interfaces mínimas:
+oRPC expõe recursos autenticados de consulta e comando para cada agregado e as procedures de sync em `/rpc` ([ADR 0013](adr/0013-contrato-minimo-de-sincronizacao.md)). Contrato atual:
 
 ```ts
 type Money = string; // centavos inteiros
 type Quantity = string; // milionésimos da unidade base
 type Operation = {
-  opId: string;
+  opId: string; // UUID
   deviceId: string;
-  epoch: string;
-  aggregateType: string;
+  epoch: string; // UUIDv4 da instalação
+  aggregateType: string; // "installation" | "device"
   aggregateId: string;
   baseVersion: number | null;
-  occurredAt: string;
-  command: string;
+  occurredAt: string; // ISO 8601 com fuso
+  command: string; // "installation.setAtelierName" | "device.rename"
   payload: unknown;
-  mediaHashes?: string[];
+  mediaHashes?: string[]; // previsto
 };
+type QuarantineReason =
+  | "epoch"
+  | "opIdReused"
+  | "deviceMismatch"
+  | "unknownCommand"
+  | "invalidPayload"
+  | "aggregateNotFound"
+  | "invalidEnvelope";
 type PushResult = {
   accepted: { opId: string; newVersion: number }[];
-  conflicts: { opId: string; currentVersion: number; current: unknown }[];
-  quarantined: { opId: string; reason: string }[];
+  conflicts: { opId: string; conflictId: string; currentVersion: number; current: unknown }[];
+  quarantined: { opId: string | null; reason: QuarantineReason }[];
   exceptions: { opId: string; kind: string; referenceId: string }[];
   cursor: string;
   epoch: string;
 };
 type PullResult = {
-  changes: unknown[];
+  changes: { cursor: string; aggregateType: string; aggregateId: string; version: number; data: unknown }[];
   cursor: string;
   epoch: string;
   serverVersion: string;
+  rebase: boolean;
+  hasMore: boolean;
 };
 ```
 
-`/api/sync/push` aplica cada operação em transação curta, verificando autenticação, aprovação do dispositivo, epoch, `opId` único e versão-base. `opId` já aplicado devolve o mesmo resultado; retry de mídia usa hash de conteúdo. Mudanças independentes não param por causa de um conflito. Comandos de fato (venda, pagamento, consumo) aceitam concorrência e criam exceção de saldo quando necessário; edições de campos sobre versão-base diferente viram conflito com valores lado a lado, nunca última gravação vence às cegas.
+**`sync.push({ operations })`**, de 1 a 100 itens por chamada; lista vazia ou maior responde 400 `BAD_REQUEST` sem processar nada. Exige sessão do dono, instalação `ready` e dispositivo aprovado pelos cabeçalhos `x-costura-device-id` e `x-costura-device-secret`. Cada item é validado sozinho: item fora do formato de `Operation` vira quarentena `invalidEnvelope` sem barrar os outros, gravada em `operation` quando traz `opId` UUID válido e só auditada, com `opId: null` na resposta, quando não traz. Cada operação roda numa transação curta, na ordem recebida, e decide nesta ordem: `opId` já gravado (mesmo SHA-256 do JSON canônico devolve o resultado gravado; conteúdo diferente vira `opIdReused` só na auditoria, sem tocar o original), `deviceId` diferente do autenticado, epoch diferente, comando ou tipo desconhecido, payload inválido, agregado inexistente e, por fim, versão-base diferente, que abre conflito com valores locais e atuais lado a lado; `baseVersion: null` nunca coincide com a versão atual e o conflito guarda o `null`. Aceita aplica, incrementa `version` e grava o snapshot no log de mudanças. Quarentena e conflito também gravam resultado e evento de auditoria; nada é descartado. Mudanças independentes não param por causa de um conflito. Comandos de fato (venda, pagamento, consumo) aceitarão concorrência e criarão exceção de saldo; edições de campos sobre versão-base diferente viram conflito, nunca última gravação vence às cegas. Retry de mídia usará hash de conteúdo.
 
-`/api/sync/pull` entrega mudanças por cursor até espelhar clientes, catálogo, estoque, OS, OP, vendas, finanças e documentos necessários. `/api/sync/resolve` registra escolha, mescla ou desfazer com motivo auditado.
+**`sync.pull({ cursor, epoch, limit })`**: cursor em string decimal (`"0"` no início), até 500 mudanças por página com `hasMore`. `epoch` é `string | null`; `null` (primeiro sync do aparelho) ou epoch diferente do servidor devolve `rebase: true` e leitura desde o início. `serverVersion` é o `version` do `apps/server/package.json`. Hoje o log traz a instalação `{ id, atelierName, state, version }` e dispositivos `{ id, name, status, version, createdAt, approvedAt, revokedAt }`, sem segredos; os agregados entram a partir da F3 até espelhar clientes, catálogo, estoque, OS, OP, vendas, finanças e documentos.
 
-**Contrato mínimo da F2.** Tabelas de dispositivo (aprovado ou revogado), operação única por `opId` com o resultado gravado junto, log de mudanças com cursor monotônico, conflito e quarentena. Cada operação roda em transação curta. Nesta fase, `pull` entrega só a instalação (sem segredos) e os dispositivos; os agregados entram a partir da F3. Os testes exercitam o Hono autenticado sobre SQLite real, nunca banco simulado em memória.
+**`sync.resolve({ opId, conflictId, choice, values?, reason })`**: `keepLocal` aplica os valores locais sobre a versão atual, `keepServer` fecha sem mudar e `merge` valida e aplica `values`; motivo de 1 a 200 caracteres, idempotente por `opId`, uma única vez por conflito (`CONFLICT` depois) e auditado. Devolve `{ choice, conflictId, version }`. Aceita dispositivo aprovado ou acesso local com sessão, como `sync.pending()`, que devolve `{ conflicts, quarantined }`: conflitos abertos (com `baseVersion` possivelmente `null`) e quarentenas `{ opId, command, occurredAt, reason }` em ordem de chegada, incluindo as `opIdReused` lidas da auditoria. Sessão remota sem dispositivo recebe `UNAUTHORIZED` nas duas.
+
+**Operações diretas.** Os comandos do wizard, da recuperação e dos dispositivos também gravam o resultado na tabela `operation` por `opId`, na mesma transação do efeito, com hash do conteúdo sem senha, código ou segredo; o tipo do handler só compila quando o resultado passa pela gravação. Chamadas simultâneas com o mesmo `opId` no processo entram numa fila, e a segunda recebe o resultado gravado. A repetição devolve o resultado gravado com os segredos anulados, e `opId` reutilizado com outro conteúdo responde `CONFLICT`. Respostas:
+
+| Procedure | Resposta | Na repetição |
+|---|---|---|
+| `installation.setAtelierName` | `{ version }` | igual |
+| `installation.createOwner` | `{ userId }` | igual, mesmo com outra senha |
+| `installation.generateRecoveryCodes` | `{ codes }` | `{ codes: [] }` |
+| `installation.confirmRecoveryCodes`, `recovery.resetPassword` | `{ ok: true }` | igual |
+| `installation.testBackupFolder` | `{ ok: true, testedAt }` | igual |
+| `installation.finish` | `{ state: "ready" }` | igual |
+| `devices.createActivationCode` | `{ code, expiresAt }` | `code: null` |
+| `devices.register` | `{ deviceId, deviceSecret, status }` | `deviceSecret: null` |
+| `devices.approve`, `devices.revoke` | `{ status, version }` | igual | Os testes exercitam o Hono autenticado sobre SQLite real, nunca banco simulado em memória.
 
 Dispositivo isolado por qualquer tempo faz rebase do snapshot completo sem apagar a outbox. Atualização do cliente migra Dexie e outbox antes do sync; operações incompatíveis vão para quarentena. Restauração incrementa o epoch e toda operação antiga é retida para reaplicação manual, nunca mesclada automaticamente ([ADR 0004](adr/0004-backup-epoch-e-cofre-por-dispositivo.md)).
 
@@ -147,19 +171,22 @@ Dispositivo isolado por qualquer tempo faz rebase do snapshot completo sem apaga
 
 ## 5. Segurança e armazenamento local
 
-**Estado:** previsto (F2 e F6).
+**Estado:** conta, bootstrap, dispositivos e auditoria implementados no servidor (§0); cofre e PWA offline previstos (F6).
 
-**Conta.** Better Auth mantém uma única conta de dono com o plugin `username` para login por usuário e senha. O e-mail técnico exigido pela base de e-mail e senha é local (`owner@costura-pro.local`) e não é canal de recuperação. Cadastro público fica desativado após o onboarding, garantido no servidor e não só na interface. Sessão server-side usa o cookie `costura-pro.session_token` (`advanced.cookiePrefix`, para não colidir com outro app em `localhost`), `HttpOnly` e `SameSite=Lax`, com `baseURL` `http://127.0.0.1:<PORT>` e `trustedOrigins` `http://127.0.0.1:*`, `http://localhost:*` e `CANONICAL_ORIGIN`. O Better Auth calcula `Secure` uma vez por instância, então roda com `useSecureCookies: false` e o servidor acrescenta `Secure` a todo `Set-Cookie` quando o Host é o da origem canônica; no loopback HTTP o cookie sai sem `Secure`, que WebKit e libsoup descartariam. Rate limit persistido no SQLite por usuário e IP (regra inicial: 5 tentativas por 60 segundos em `/sign-in/username`), atraso progressivo e bloqueio temporário; tentativas são logadas sem senha. [Better Auth: plugin Username](https://better-auth.com/docs/plugins/username), [Better Auth: rate limit](https://better-auth.com/docs/concepts/rate-limit), [Better Auth: hooks](https://better-auth.com/docs/concepts/hooks).
+**Conta.** Better Auth mantém uma única conta de dono com o plugin `username` (3 a 30 caracteres, normalizados em minúsculas) e senha de 10 a 128 caracteres. O e-mail técnico exigido pela base de e-mail e senha é local (`owner@costura-pro.local`) e não é canal de recuperação. Cadastro público fica desativado após o onboarding, garantido no servidor e não só na interface. Sessão server-side usa o cookie `costura-pro.session_token` (`advanced.cookiePrefix`, para não colidir com outro app em `localhost`), `HttpOnly` e `SameSite=Lax`, com `baseURL` `http://127.0.0.1:<PORT>` e `trustedOrigins` `http://127.0.0.1:*`, `http://localhost:*` e `CANONICAL_ORIGIN`. O Better Auth calcula `Secure` uma vez por instância, então roda com `useSecureCookies: false` e o servidor acrescenta `Secure` a todo `Set-Cookie` quando o Host é o da origem canônica; no loopback HTTP o cookie sai sem `Secure`, que WebKit e libsoup descartariam. O Hono repassa ao Better Auth só a allowlist `/sign-in/username`, `/sign-out`, `/get-session`, `/change-password`, `/list-sessions`, `/revoke-session`, `/revoke-other-sessions` e `/ok`; qualquer outra rota sob `/api/auth` responde 404 sem chegar ao Better Auth. O rate limit do Better Auth fica na tabela `rate_limit` (`storage: "database"`), com 5 tentativas por 60 s em `/sign-in/username` por IP lido só de `cf-connecting-ip` (`advanced.ipAddress.ipAddressHeaders`); requisições locais não trazem o cabeçalho e dividem um único balde, e o Better Auth agrupa IPv6 por prefixo /64 (`advanced.ipAddress.ipv6Subnet`, padrão 64). Além dele, o bloqueio remoto global: a cada 5 falhas remotas seguidas (401), o login remoto responde 429 `Muitas tentativas. Tente de novo mais tarde.` com `Retry-After` por 1 min, dobrando até 30 min; o sucesso remoto zera a contagem e o acesso local nunca consulta nem altera o bloqueio. A tentativa remota é reservada antes de chegar ao Better Auth, numa transação que já a conta como falha e grava o bloqueio no múltiplo de 5; a resposta acerta a conta (200 zera, 401 mantém, qualquer outra devolve a reserva), então tentativas paralelas não passam do limite. Todo resultado de login vira evento de auditoria sem senha nem username tentado, uma sequência de recusas por bloqueio gera um único evento `locked`, e os erros não revelam se o usuário existe ([ADR 0012](adr/0012-dono-unico-criado-no-acesso-local.md)). [Better Auth: plugin Username](https://better-auth.com/docs/plugins/username), [Better Auth: rate limit](https://better-auth.com/docs/concepts/rate-limit), [Better Auth: hooks](https://better-auth.com/docs/concepts/hooks).
 
 **Bootstrap da conta (F2):**
 
-- A instalação é um registro singleton, e o cadastro do dono é serializado por transação sobre esse slot. Dois cadastros concorrentes nunca criam dois usuários, e depois do bootstrap um `POST` direto em `/api/auth/sign-up/email` é rejeitado por hook `before` do Better Auth. Falha no cadastro libera o slot com evento de auditoria.
-- Servidor com `username()` e cliente com `usernameClient({ displayUsername: false })`; `/is-username-available` fica desativado fora do wizard para não permitir enumeração.
-- Rate limit com `storage: "database"` e regra própria para `/sign-in/username`. O IP vem só do `cloudflared` local como proxy confiável, nunca de cabeçalho arbitrário enviado pelo cliente. Erros de login não revelam se o usuário existe.
-- A política de cookie por origem está implementada e testada nas duas (HTTP local e Host canônico) desde a F0; a F2 mantém o nome e os atributos ao fechar o cadastro.
-- O wizard é uma máquina de estados retomável (`empty → atelier → account → recovery → backup → ready`). O dashboard redireciona ao passo pendente, e `ready` exige pasta de backup testada: o dono escolhe a pasta no acesso local, num navegador de pastas alimentado pelo servidor que lista o que a conta do serviço enxerga (letra de unidade mapeada não existe para o serviço; pasta de rede só por caminho UNC), e o servidor grava e relê um arquivo de teste com nome aleatório e apaga só esse arquivo. Cliente remoto nunca lista pastas nem escolhe caminho no servidor.
+- A instalação é um registro singleton criado no boot, com epoch UUIDv4. O dono nasce só por `installation.createOwner` no acesso local, com compare-and-set do passo `atelier` para `account` e `auth.api.signUpEmail` no servidor (`autoSignIn: false`); o concorrente perde com `PRECONDITION_FAILED`, e a falha devolve o passo para `atelier` com evento `owner.bootstrap_failed`. `databaseHooks.user.create.before` recusa qualquer segundo usuário. Nenhuma rota HTTP de cadastro responde.
+- O username chega normalizado (espaços nas pontas fora e minúsculas) antes de virar `username` e `name` do usuário.
+- O adapter do Better Auth grava usuário e conta sem transação: a falha do `createOwner` apaga usuários sem conta `credential` antes de devolver o passo, e o boot reconcilia uma instalação em `account` sem dono, adotando a única conta com credencial ou, sem nenhuma, apagando órfãos e voltando para `atelier`; os dois caminhos geram evento com `recovered: true`.
+- Cliente web com `usernameClient({ displayUsername: false })` e `signIn.username`; `/is-username-available` fica fechado pela allowlist.
+- A política de cookie por origem está implementada e testada nas duas (HTTP local e Host canônico) desde a F0 e continua com o login por username.
+- O wizard é uma máquina de estados retomável (`empty → atelier → account → recovery → backup → ready`) com as procedures `installation.status` (qualquer acesso), `setAtelierName` (acesso local; sem sessão só em `empty` e `atelier`), `createOwner`, `generateRecoveryCodes` e `confirmRecoveryCodes`, `listFolders` e `testBackupFolder` (a partir de `recovery`) e `finish` (de `backup` para `ready`). Passo fora de ordem responde `PRECONDITION_FAILED` com o estado, e toda procedure de negócio exige `ready`. O dashboard redirecionará ao passo pendente quando as telas do wizard existirem, e `ready` exige pasta de backup testada: o dono escolhe a pasta no acesso local, num navegador de pastas alimentado pelo servidor que lista o que a conta do serviço enxerga (letra de unidade mapeada não existe para o serviço; pasta de rede só por caminho UNC), e o servidor grava e relê um arquivo de teste com nome aleatório e apaga só esse arquivo. Cliente remoto nunca lista pastas nem escolhe caminho no servidor.
 
-**Dispositivos e recuperação.** O acesso local, com sessão do dono, aprova ou revoga dispositivos, diretamente ou emitindo um código de ativação de uso único; um celular novo só obtém espelho sensível após aprovação. Códigos de recuperação são gerados aleatoriamente, apresentados uma vez e guardados só como hash; o consumo invalida o código. O resgate físico extremo exige administrador do sistema operacional no PC, redefine só a conta, emite novos códigos de recuperação e cria evento de auditoria. O token do Tunnel é segredo de instalação com permissões do sistema operacional, fora do banco exportado, do backup e dos logs.
+**Dispositivos e recuperação.** O acesso local, com sessão do dono, aprova ou revoga dispositivos (`devices.approve`, `devices.revoke`, `devices.list`) ou emite código de ativação de uso único (`devices.createActivationCode`: 8 caracteres Crockford, 10 min, só um ativo). Com 40 bits, o código é guardado como HMAC-SHA-256 com o segredo do Better Auth, não como SHA-256 puro, para não ser invertido de um backup; trocar o segredo só invalida o código ativo. `devices.register` exige sessão e instalação `ready`, entrega uma única vez o segredo do dispositivo (32 bytes em base64url, guardado como SHA-256) e nasce `pending`, ou `approved` com código válido; um celular novo só obtém espelho sensível após aprovação, e dispositivo pendente ou revogado recebe `FORBIDDEN`. Códigos de recuperação: 10 de 16 caracteres Crockford (`XXXX-XXXX-XXXX-XXXX`, 80 bits), apresentados uma vez e guardados só como SHA-256 do código normalizado; gerar de novo invalida o jogo anterior, e `recovery.resetPassword`, só no acesso local, confere que há dono registrado, consome o código, troca a senha e apaga as sessões na mesma transação; sem dono o código continua válido. O resgate físico extremo exige administrador do sistema operacional no PC, redefine só a conta, emite novos códigos de recuperação e cria evento de auditoria. O token do Tunnel é segredo de instalação com permissões do sistema operacional, fora do banco exportado, do backup e dos logs.
+
+**Auditoria.** A tabela `audit_event` é append-only (triggers recusam UPDATE e DELETE, como no `change_log`) e guarda tipo, momento, acesso, IP só quando remoto, dispositivo, resultado e detalhes sem senha, código, segredo ou username tentado. O mesmo evento sai no evento amplo do evlog da requisição, em `audit.<tipo>` com acesso e resultado. Erro de procedure vai ao console só com código, status, mensagem e o código e caminho de cada problema de validação, nunca com o valor recebido.
 
 **Cofre.** No primeiro espelho, cada dispositivo cria sal e senha forte de cofre. WebCrypto deriva a chave por PBKDF2-HMAC-SHA-256 com parâmetro calibrado e versionado por plataforma e cifra registros e arquivos com AES-256-GCM, nonce novo por objeto e AAD com dispositivo, epoch, tipo e id. A senha não é enviada ao servidor nem recuperada por códigos da conta. O PIN bloqueia apenas a interface durante inatividade em primeiro plano; quando o app vai para segundo plano ou fecha, a chave é descartada da memória e a senha do cofre é exigida na volta. A outbox exportada inclui manifesto, identidade do dispositivo, epoch, `opId`s, hashes, sal e parâmetros e bytes cifrados; pode ser importada numa nova instalação com a senha, após validação de integridade, mantendo idempotência. Senha esquecida exige apagar o cofre local e reconstruir o espelho; outbox não exportada e perdida não é recuperável.
 

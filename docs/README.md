@@ -32,6 +32,8 @@ Documentação curada e versionada do Costura Pro. Todo doc novo em `docs/` entr
 | [0009](adr/0009-uuid-e-codigo-documental-por-dispositivo.md) | UUID e código documental por dispositivo |
 | [0010](adr/0010-dinheiro-e-quantidade-inteiros.md) | Dinheiro e quantidade inteiros |
 | [0011](adr/0011-servico-do-so-e-acesso-local-no-navegador.md) | Servidor como serviço do sistema e acesso local pelo navegador |
+| [0012](adr/0012-dono-unico-criado-no-acesso-local.md) | Dono único criado no acesso local, com login defendido no servidor |
+| [0013](adr/0013-contrato-minimo-de-sincronizacao.md) | Contrato mínimo de sincronização por operação, cursor e epoch |
 
 ## Agentes e harness
 

@@ -91,6 +91,7 @@ Cada spike responde uma pergunta que muda o desenho antes de construir em cima d
 **Pendente:**
 - **Bundle web:** o build avisa chunk acima de 500 kB; dividir por rota antes das telas reais.
 - **Build conferido numa máquina Ubuntu 24.04** além do CI (Q-10).
+- **CI por caminho:** push só de docs e markdown roda `harness:check`, `docs:check` e `harness:test`; lint, tipos, testes e build só quando o intervalo do push toca algo fora de `docs/**`, `*.md` e `.claude/rules/**`, e push forçado roda tudo.
 - **Remover o app Tauri do scaffold** (Q-11, DEC-59): `apps/web/src-tauri`, scripts `desktop:*`, `@tauri-apps/cli`, teste do `frontendDist`, ignore do watcher do Vite, armadilhas do HARNESS e da rule de web, papel `contract` e instruções de desenvolvimento do README.
 
 **Critério de saída:**
@@ -132,6 +133,19 @@ Cada spike responde uma pergunta que muda o desenho antes de construir em cima d
 - **Wizard retomável:** identidade, conta, códigos e pasta de backup escolhida no navegador de pastas do servidor, só no acesso local, e testada; checklist de continuidade.
 - **Shell de navegação** com o design system.
 - **Contrato mínimo de sync:** dispositivos aprovados e revogados, operações únicas por `opId`, log de mudanças por cursor, conflito e quarentena; `push`, `pull` e `resolve` limitados à instalação e aos dispositivos.
+
+**Concluído:**
+- Servidor da F2 (2026-09-16), com testes em SQLite real e Hono autenticado:
+  - instalação singleton com wizard de servidor (estados, navegador de pastas e teste de gravação da pasta de backup);
+  - dono único criado só no acesso local, allowlist de rotas do Better Auth, rate limit persistido e bloqueio remoto progressivo ([ADR 0012](adr/0012-dono-unico-criado-no-acesso-local.md));
+  - códigos de recuperação em hash, reset de senha só local e auditoria append-only;
+  - dispositivos com segredo, aprovação direta e código de ativação, e contrato mínimo de sync com `push`, `pull`, `resolve` e `pending`, quarentena por item e resultado de cada comando gravado na transação do efeito ([ADR 0013](adr/0013-contrato-minimo-de-sincronizacao.md));
+  - login web mínimo por username verificado em navegador real a 1440 e 320 px.
+
+**Pendente:**
+- Telas do wizard e shell de navegação com o design system, depois da F1.
+- Dashboard redirecionando ao passo pendente do wizard (o servidor já responde `PRECONDITION_FAILED` com o estado).
+- Wizard verificado em navegador real no desktop e em 320 px; só então o Tunnel pode ser exposto (Q-09).
 
 **Critério de saída:**
 - Testes com SQLite real provam:
