@@ -81,9 +81,9 @@ Cada spike responde uma pergunta que muda o desenho antes de construir em cima d
 - pnpm 11.20.0 global e telemetria do varlock desligada: `pnpm install`, testes, `check-types` e `build` verdes no Windows (2026-09-16).
 - Repositório público no GitHub com licença MIT; hooks de sessão, rules por área, skills de ciclo de entrega, índice de docs com `docs-check` e CI em Ubuntu 24.04 e Windows (2026-09-16).
 - CI verde na `main` em Ubuntu 24.04 e Windows, com install a partir de clone limpo (2026-09-16).
+- Ambiente Windows: `apps/server/.env` com `DATABASE_FILE` absoluto no lugar do legado `DATABASE_URL`, migrations aplicadas e servidor respondendo em localhost (2026-09-16).
 
 **Pendente:**
-- **Ambiente Windows.** `apps/server/.env` com `DATABASE_FILE` absoluto no lugar do legado `DATABASE_URL` trazido do Linux.
 - **Bundle web:** o build avisa chunk acima de 500 kB; dividir por rota antes das telas reais.
 - **Mesma origem:**
   - Hono serve a SPA e a API só em `127.0.0.1`;

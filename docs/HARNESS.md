@@ -179,6 +179,7 @@ Configurados em `.claude/settings.json`. Cada script em `.claude/hooks/` exporta
 | `bun: command not found` em comando não interativo | O PATH do shell interativo não foi carregado | Usar o caminho absoluto do Bun ou carregar o perfil do shell |
 | Servidor não sobe depois de trazer o projeto de outra máquina | `.env` local ainda com `DATABASE_URL`, sem `DATABASE_FILE` | Definir caminho absoluto local em `apps/server/.env` |
 | Migration não roda | `drizzle-kit migrate` não suporta `bun:sqlite` | `pnpm db:migrate` (executor Bun); `drizzle-kit` só gera SQL |
+| `pnpm db:migrate` da raiz falha com "Cannot run interactive task ... without Terminal UI" quando roda por agente | A task do turbo é interativa e o shell do agente não tem TTY | Rodar direto no pacote: `pnpm --filter @costura-pro/db run db:migrate` |
 | Dados de desenvolvimento somem | `db:push` contra banco com dados | Nunca `db:push` em banco real; o guard bloqueia |
 | Arquivo do banco continua travado no Windows depois de fechar a conexão (`EBUSY`) | `close()` do `bun:sqlite` adia o fechamento enquanto há statements do Drizzle abertos | `closeDb` usa `close(true)`; todo código que troca o arquivo do banco fecha por ele |
 | WAL trava ou corrompe | Banco em compartilhamento de rede | Caminho local; o validador rejeita UNC |
