@@ -1,3 +1,7 @@
+import {
+	passwordLength,
+	usernameLength,
+} from "@costura-pro/domain/credentials";
 import { Button } from "@costura-pro/ui/components/button";
 import { Input } from "@costura-pro/ui/components/input";
 import { Label } from "@costura-pro/ui/components/label";
@@ -10,11 +14,13 @@ import { authClient } from "@/lib/auth-client";
 
 import Loader from "./loader";
 
-export default function SignInForm({
-	onSwitchToSignUp,
-}: {
-	onSwitchToSignUp: () => void;
-}) {
+const signInErrorMessages: Partial<Record<number, string>> = {
+	401: "Usuário ou senha inválidos",
+	422: "Usuário ou senha inválidos",
+	429: "Muitas tentativas. Tente de novo mais tarde.",
+};
+
+export default function SignInForm() {
 	const navigate = useNavigate({
 		from: "/",
 	});
@@ -22,32 +28,45 @@ export default function SignInForm({
 
 	const form = useForm({
 		defaultValues: {
-			email: "",
 			password: "",
+			username: "",
 		},
 		onSubmit: async ({ value }) => {
-			await authClient.signIn.email(
+			await authClient.signIn.username(
 				{
-					email: value.email,
 					password: value.password,
+					username: value.username,
 				},
 				{
 					onError: (error) => {
-						toast.error(error.error.message || error.error.statusText);
+						toast.error(
+							signInErrorMessages[error.error.status] ??
+								(error.error.message || error.error.statusText)
+						);
 					},
 					onSuccess: () => {
 						navigate({
 							to: "/dashboard",
 						});
-						toast.success("Sign in successful");
+						toast.success("Login feito");
 					},
 				}
 			);
 		},
 		validators: {
 			onSubmit: z.object({
-				email: z.email("Invalid email address"),
-				password: z.string().min(8, "Password must be at least 8 characters"),
+				password: z
+					.string()
+					.min(
+						passwordLength.min,
+						`A senha tem pelo menos ${passwordLength.min} caracteres`
+					),
+				username: z
+					.string()
+					.min(
+						usernameLength.min,
+						`O usuário tem pelo menos ${usernameLength.min} caracteres`
+					),
 			}),
 		},
 	});
@@ -58,7 +77,7 @@ export default function SignInForm({
 
 	return (
 		<div className="mx-auto mt-10 w-full max-w-md p-6">
-			<h1 className="mb-6 text-center font-bold text-3xl">Welcome Back</h1>
+			<h1 className="mb-6 text-center font-bold text-3xl">Entrar</h1>
 
 			<form
 				className="space-y-4"
@@ -69,16 +88,18 @@ export default function SignInForm({
 				}}
 			>
 				<div>
-					<form.Field name="email">
+					<form.Field name="username">
 						{(field) => (
 							<div className="space-y-2">
-								<Label htmlFor={field.name}>Email</Label>
+								<Label htmlFor={field.name}>Usuário</Label>
 								<Input
+									autoCapitalize="none"
+									autoComplete="username"
 									id={field.name}
 									name={field.name}
 									onBlur={field.handleBlur}
 									onChange={(e) => field.handleChange(e.target.value)}
-									type="email"
+									type="text"
 									value={field.state.value}
 								/>
 								{field.state.meta.errors.map((error) => (
@@ -95,8 +116,9 @@ export default function SignInForm({
 					<form.Field name="password">
 						{(field) => (
 							<div className="space-y-2">
-								<Label htmlFor={field.name}>Password</Label>
+								<Label htmlFor={field.name}>Senha</Label>
 								<Input
+									autoComplete="current-password"
 									id={field.name}
 									name={field.name}
 									onBlur={field.handleBlur}
@@ -126,21 +148,11 @@ export default function SignInForm({
 							disabled={!canSubmit || isSubmitting}
 							type="submit"
 						>
-							{isSubmitting ? "Submitting..." : "Sign In"}
+							{isSubmitting ? "Entrando..." : "Entrar"}
 						</Button>
 					)}
 				</form.Subscribe>
 			</form>
-
-			<div className="mt-4 text-center">
-				<Button
-					className="text-indigo-600 hover:text-indigo-800"
-					onClick={onSwitchToSignUp}
-					variant="link"
-				>
-					Need an account? Sign Up
-				</Button>
-			</div>
 		</div>
 	);
 }

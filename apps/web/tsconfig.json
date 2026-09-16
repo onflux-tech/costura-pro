@@ -1,5 +1,12 @@
 {
-  "references": [{ "path": "../../packages/api" }],
+  "references": [
+    {
+      "path": "../../packages/api"
+    },
+    {
+      "path": "../../packages/domain"
+    }
+  ],
   "compilerOptions": {
     "strict": true,
     "esModuleInterop": true,

@@ -148,6 +148,9 @@ importers:
       '@costura-pro/api':
         specifier: workspace:*
         version: link:../../packages/api
+      '@costura-pro/domain':
+        specifier: workspace:*
+        version: link:../../packages/domain
       '@costura-pro/ui':
         specifier: workspace:*
         version: link:../../packages/ui
@@ -254,6 +257,9 @@ importers:
       '@costura-pro/db':
         specifier: workspace:*
         version: link:../db
+      '@costura-pro/domain':
+        specifier: workspace:*
+        version: link:../domain
       '@orpc/client':
         specifier: 'catalog:'
         version: 1.15.0
@@ -266,6 +272,9 @@ importers:
       '@orpc/zod':
         specifier: 'catalog:'
         version: 1.15.0(@orpc/contract@1.15.0)(@orpc/server@1.15.0(ws@8.21.3))(ws@8.21.3)(zod@4.6.5)
+      drizzle-orm:
+        specifier: ^0.45.2
+        version: 0.45.2(@libsql/client@0.18.0)(bun-types@1.4.2)(kysely@0.29.5)
       zod:
         specifier: 'catalog:'
         version: 4.6.5
@@ -282,6 +291,9 @@ importers:
       '@costura-pro/db':
         specifier: workspace:*
         version: link:../db
+      '@costura-pro/domain':
+        specifier: workspace:*
+        version: link:../domain
       better-auth:
         specifier: 'catalog:'
         version: 1.7.3(drizzle-kit@0.31.10)(drizzle-orm@0.45.2(@libsql/client@0.18.0)(bun-types@1.4.2)(kysely@0.29.5))(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
