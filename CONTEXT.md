@@ -322,11 +322,12 @@ Ambiente descartável e isolado que ensina o fluxo completo sem tocar dados reai
 **Origem canônica**:
 Subdomínio HTTPS único pelo qual a PWA móvel é instalada e sincroniza.
 
-**Cliente desktop local**:
-App Tauri no PC servidor, que opera o sistema diretamente mesmo sem internet.
+**Acesso local**:
+Interface aberta no navegador do próprio PC servidor pela origem de loopback, com sessão do dono. Opera sem internet e é a única via das ações administrativas.
+_Evitar_: app desktop, cliente desktop, Tauri
 
 **Dispositivo aprovado**:
-Celular ou navegador que o dono autorizou no desktop, diretamente ou por código de ativação, a receber o espelho completo dos dados.
+Celular ou navegador que o dono autorizou no acesso local, diretamente ou por código de ativação, a receber o espelho completo dos dados.
 
 **Revogação**:
 Retirada da aprovação de um dispositivo, que só limpa o aparelho quando ele volta a se conectar.

@@ -65,8 +65,8 @@ Cada spike responde uma pergunta que muda o desenho antes de construir em cima d
 | S2. Cofre cifrado | PBKDF2 com AES-GCM sobre Dexie é rápido o bastante num celular de referência? | Parâmetros de derivação por plataforma registrados; tempo de desbloqueio e de gravação medidos com volume de referência definido no spike; nonce e AAD cobertos por teste (resolve parte de Q-05) | F6 |
 | S3. Câmera e códigos | Como ler QR e código de barras em Safari iPhone e Chrome Android? | Lê o QR da etiqueta de custódia e um EAN impresso nas duas plataformas; biblioteca escolhida; código curto digitável como alternativa (resolve Q-04) | F3 |
 | S4. Retenção da PWA | Como se comportam persistência, quota e eviction na PWA instalada no iPhone e no Android? | Comportamento documentado por plataforma; exportação e importação da outbox provadas numa nova instalação (resolve parte de Q-05) | F6 |
-| S5. Serviço no sistema | Como rodar o servidor Bun compilado como serviço no Windows e com `systemd` no Ubuntu? | Sobe no boot sem login, grava em ProgramData ou `/var/lib/costura-pro` com permissão restrita e sobrevive a reinício; mecanismo escolhido (NSSM, WinSW ou outro), porta definitiva do processo único e app desktop decidido (resolve parte de Q-06 e a Q-11) | F7 |
-| S6. Atualização coordenada | Um supervisor consegue trocar binários, migrar, checar saúde e reverter tudo? | Falha simulada em cada etapa volta à versão anterior com banco íntegro e nenhuma operação aceita perdida (resolve parte de Q-06) | F7 |
+| S5. Serviço no sistema | Como rodar o servidor Bun compilado como serviço no Windows e com `systemd` no Ubuntu? | Sobe no boot sem login, grava em ProgramData com herança cortada (só SYSTEM, Administradores e a conta do serviço) ou em `/var/lib/costura-pro` e sobrevive a reinício; wrapper escolhido entre shawl e WinSW 2.12 NET461 rodando como serviço real na sessão 0, com desligamento limpo por Ctrl+C medido contra o tempo de parada do wrapper; conta do serviço (conta virtual primeiro, LocalSystem só com motivo) gravando backup em pendrive NTFS e exFAT, pasta do OneDrive e caminho UNC; unit `systemd` gravando backup em mídia montada para o dono; porta definitiva da origem local; atalho do Edge em modo app no Windows e `.desktop` com Chrome ou Chromium no Ubuntu abrindo o acesso local (resolve parte de Q-06; a Q-11 foi resolvida pela DEC-59) | F7 |
+| S6. Atualização coordenada | Um supervisor consegue trocar binários, migrar, checar saúde e reverter tudo? | Falha simulada em cada etapa volta à versão anterior com banco íntegro e nenhuma operação aceita perdida; o supervisor roda fora do processo do servidor e recusa artefato sem assinatura minisign válida (resolve parte de Q-06) | F7 |
 
 ## F0: Fundação
 
@@ -91,6 +91,7 @@ Cada spike responde uma pergunta que muda o desenho antes de construir em cima d
 **Pendente:**
 - **Bundle web:** o build avisa chunk acima de 500 kB; dividir por rota antes das telas reais.
 - **Build conferido numa máquina Ubuntu 24.04** além do CI (Q-10).
+- **Remover o app Tauri do scaffold** (Q-11, DEC-59): `apps/web/src-tauri`, scripts `desktop:*`, `@tauri-apps/cli`, teste do `frontendDist`, ignore do watcher do Vite, armadilhas do HARNESS e da rule de web, papel `contract` e instruções de desenvolvimento do README.
 
 **Critério de saída:**
 - `pnpm test`, `pnpm check-types`, `pnpm check`, `pnpm build` e `pnpm harness:check` verdes no Windows e no Ubuntu.
@@ -128,7 +129,7 @@ Cada spike responde uma pergunta que muda o desenho antes de construir em cima d
   - cadastro público rejeitado no servidor, inclusive por API direta e em tentativas concorrentes;
   - 5 tentativas por 60 s em `/sign-in/username`, persistidas;
   - cookie compatível com cada origem.
-- **Wizard retomável:** identidade, conta, códigos e pasta de backup escolhida e testada pelo desktop; checklist de continuidade.
+- **Wizard retomável:** identidade, conta, códigos e pasta de backup escolhida no navegador de pastas do servidor, só no acesso local, e testada; checklist de continuidade.
 - **Shell de navegação** com o design system.
 - **Contrato mínimo de sync:** dispositivos aprovados e revogados, operações únicas por `opId`, log de mudanças por cursor, conflito e quarentena; `push`, `pull` e `resolve` limitados à instalação e aos dispositivos.
 
@@ -233,11 +234,11 @@ Cada spike responde uma pergunta que muda o desenho antes de construir em cima d
 
 **Entregas:**
 - **Backup e restauração:** backup diário com retenção, restauração com pré-backup e novo epoch.
-- **Serviços e instaladores:** servidor e `cloudflared` como serviços (conforme S5); instalador Windows e pacote Ubuntu.
+- **Serviços e instaladores:** servidor e `cloudflared` como serviços (conforme S5); instalador NSIS por máquina no Windows e `.deb` no Ubuntu, com atalho que abre o acesso local no navegador.
 - **Tunnel:** assistente com token do tunnel remotamente gerenciado.
-- **Atualização coordenada** (conforme S6), com releases assinados no GitHub.
+- **Atualização coordenada** (conforme S6), com releases assinados em minisign no GitHub e o supervisor como único canal.
 - **Diagnóstico e resgate físico.**
-- **Identidade do app:** identificador definitivo do Tauri e guarda da chave de assinatura (Q-08).
+- **Identidade da instalação:** nome do serviço e do atalho, guarda da chave minisign e avaliação da SignPath Foundation para assinar os executáveis (Q-08).
 
 **Critério de saída:**
 - CA-09 e CA-11 completos.

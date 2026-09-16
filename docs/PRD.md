@@ -34,11 +34,11 @@ O Costura Pro ajuda o dono de **um único ateliê de costura** a atender cliente
 Forma do produto:
 
 - **Um PC Windows é a autoridade dos dados** e opera sem internet. Ubuntu 24.04 LTS é plataforma validada.
-- **Uma única interface web** roda no app desktop Tauri do PC e no celular, instalada como PWA.
+- **Uma única interface web** roda no navegador do PC, pela origem local em loopback, e no celular, instalada como PWA.
 - **O celular funciona offline** depois da primeira sincronização: grava num cofre cifrado e sincroniza por fila idempotente quando o Cloudflare Tunnel está alcançável ([ADR 0001](adr/0001-origem-canonica-e-local-first.md), [ADR 0004](adr/0004-backup-epoch-e-cofre-por-dispositivo.md)).
 - **Estoque e finanças são movimentos imutáveis**; saldos são projeções ([ADR 0003](adr/0003-movimentos-imutaveis-e-custo-provisorio.md)).
 - **Documentos emitidos são congelados**, inclusive quando emitidos offline ([ADR 0008](adr/0008-documentos-emitidos-imutaveis.md)).
-- **Instalação simples:** servidor e Tunnel como serviços do sistema, backup diário e atualização coordenada com reversão ([ADR 0005](adr/0005-atualizacao-coordenada.md), [ADR 0007](adr/0007-servico-do-so-e-tauri-administrativo.md)).
+- **Instalação simples:** servidor e Tunnel como serviços do sistema, backup diário e atualização coordenada com reversão ([ADR 0005](adr/0005-atualizacao-coordenada.md), [ADR 0011](adr/0011-servico-do-so-e-acesso-local-no-navegador.md)).
 
 ## 2. Contexto
 
@@ -53,7 +53,7 @@ O grill de 2026-09-15 ampliou o domínio além do pedido inicial: além de traba
 1. O dono conclui a jornada cliente → orçamento → aprovação → OS → consumo → entrega → recebimento **sem planilha**.
 2. O dono produz acabado por OP, vende uma variante pronta e vê estoque, custo e margem coerentes.
 3. Uma venda, foto ou PDF criado no celular offline reaparece **uma única vez** no servidor depois do sync, ou cai numa exceção visível, sem desaparecer.
-4. O backup diário é restaurável e contém dados e arquivos; uma atualização malsucedida não deixa desktop, servidor e banco em versões incompatíveis.
+4. O backup diário é restaurável e contém dados e arquivos; uma atualização malsucedida não deixa servidor, serviços e banco em versões incompatíveis.
 5. Todas as telas são usáveis por toque em Android e iPhone e por mouse e teclado em Windows e Ubuntu.
 6. A interface é bonita, clara e rápida de usar no dia a dia do ateliê.
 
@@ -86,13 +86,13 @@ O grill de 2026-09-15 ampliou o domínio além do pedido inicial: além de traba
 
 | Cenário | Onde | Conexão |
 |---|---|---|
-| Atender cliente, receber peça, montar orçamento e emitir PDF | PC (Tauri) ou celular | Com ou sem internet |
+| Atender cliente, receber peça, montar orçamento e emitir PDF | PC (navegador) ou celular | Com ou sem internet |
 | Fazer prova ou visita, anotar medidas e fotografar a peça | Celular | Frequentemente sem internet |
 | Registrar consumo, avançar etapa e entregar subitem | PC ou celular | Qualquer |
 | Vender produto pronto e receber pagamento | PC ou celular | Qualquer; vendas concorrentes offline são possíveis |
 | Receber compra de material e ajustar estoque | PC ou celular | Qualquer |
 | Conferir caixa e relatórios | PC ou celular | Qualquer |
-| Backup, restauração, dispositivos, Tunnel e atualização | PC | Local; administração exige o PC |
+| Backup, restauração, dispositivos, Tunnel e atualização | PC | Local; administração só no acesso local do PC |
 
 ## 5. Princípios de produto
 
@@ -110,7 +110,7 @@ Requisitos têm ID estável para rastreio no [ROADMAP](ROADMAP.md). Contratos de
 
 ### 6.1 Primeira experiência e navegação (RF-ENT)
 
-- **RF-ENT-01** O instalador inicia o servidor e o app desktop.
+- **RF-ENT-01** O instalador registra e inicia o servidor como serviço e cria o atalho que abre a interface no navegador do PC.
 - **RF-ENT-02** O primeiro acesso abre o **wizard inicial**, retomável, com progresso e prévia real do resultado. Antes de liberar o dashboard são obrigatórios: nome do ateliê, conta com senha, emissão e guarda dos códigos de recuperação e escolha e teste da pasta de backup.
 - **RF-ENT-03** O **checklist de continuidade** oferece depois: logo, telefone, endereço, cores, contas financeiras, saldos de abertura, materiais, serviços, produtos e Tunnel.
 - **RF-ENT-04** A **sandbox de demonstração** é descartável, isolada da base real, repetível e inclui cliente, peça recebida, orçamento, OS, OP e venda.
@@ -119,7 +119,7 @@ Requisitos têm ID estável para rastreio no [ROADMAP](ROADMAP.md). Contratos de
 - **RF-ENT-07** Ações rápidas a partir de Hoje e da busca global: novo atendimento, orçamento, OS existente, consumo, venda, recebimento e ajuste de estoque.
 - **RF-ENT-08** A busca global encontra clientes, telefones, orçamentos, OS, serviços, produtos e materiais, inclusive offline sobre os dados locais.
 - **RF-ENT-09** Hoje prioriza prazos vencidos e próximos, capacidade sobrecarregada, OS bloqueada, faltas de material, entrega pendente, cobranças vencidas e falha de backup ou sync. Cartões financeiros são secundários.
-- **RF-ENT-10** Alertas aparecem no app e, no PC, como notificações do Tauri. Não há promessa de push móvel com o app fechado.
+- **RF-ENT-10** Alertas aparecem no app e, no PC, também como notificações do sistema enquanto a interface está aberta. Não há promessa de notificação no PC com a interface fechada nem de push móvel com o app fechado.
 
 ### 6.2 Atendimento, medidas, custódia e agenda (RF-ATD)
 
@@ -231,7 +231,7 @@ Requisitos têm ID estável para rastreio no [ROADMAP](ROADMAP.md). Contratos de
 - **RF-ACE-01** O **dono** entra com usuário e senha, sempre, no PC e no celular. Há limite de tentativas, atraso progressivo e bloqueio temporário.
 - **RF-ACE-02** Não existe cadastro público: a conta única nasce no wizard local e nenhuma outra pode ser criada.
 - **RF-ACE-03** **Códigos de recuperação** são de uso único. Perder todos permite **resgate físico**: verificação presencial por quem administra o sistema operacional do PC, que redefine só a conta e emite novos códigos, com auditoria e sem abrir cofres de dispositivos.
-- **RF-ACE-04** Um aparelho novo só recebe o espelho completo depois de aprovado no desktop, diretamente no Tauri ou por código de ativação emitido nele. **Revogação** só limpa o aparelho quando ele se conectar.
+- **RF-ACE-04** Um aparelho novo só recebe o espelho completo depois de aprovado no **acesso local**, diretamente ou por código de ativação emitido nele. **Revogação** só limpa o aparelho quando ele se conectar.
 - **RF-ACE-05** A sessão offline não expira pelo app. O **cofre offline** exige **senha do cofre** própria e forte; o **PIN local** bloqueia a tela após inatividade.
 - **RF-ACE-06** A PWA usa apenas a **origem canônica** HTTPS do Tunnel; o celular não sincroniza pela rede local ([ADR 0001](adr/0001-origem-canonica-e-local-first.md)).
 - **RF-ACE-07** Após ativação e sincronização inicial, todos os fluxos operacionais leem e gravam offline, inclusive câmera, códigos, PDF, fotos e pagamento.
@@ -248,11 +248,11 @@ Requisitos têm ID estável para rastreio no [ROADMAP](ROADMAP.md). Contratos de
 - **RF-OPE-01** Backup diário às 02:00 na pasta escolhida pela interface (pasta local, disco externo ou pasta sincronizada), com execução compensatória quando o PC estava desligado.
 - **RF-OPE-02** O **pacote de backup** contém banco consistente, imagens, PDFs e configurações não secretas. Exclui token do Tunnel e cofres móveis. Não é cifrado, e a interface avisa que a pasta guarda dados sensíveis.
 - **RF-OPE-03** Retenção de 7 cópias diárias e 12 mensais. Falta de espaço gera alerta persistente e nunca apaga cópia existente.
-- **RF-OPE-04** Restauração é feita só no desktop: valida hash, manifesto e versão, pede código de recuperação, cria **pré-backup** e inicia novo epoch de sincronização.
+- **RF-OPE-04** Restauração é feita só no acesso local: valida hash, manifesto e versão, pede código de recuperação, cria **pré-backup** e inicia novo epoch de sincronização.
 - **RF-OPE-05** Windows usa instalador amigável por máquina, com servidor ativo sem login. Ubuntu 24.04 LTS usa pacote com serviço `systemd`.
 - **RF-OPE-06** O assistente do Tunnel orienta a configuração no painel da Cloudflare, recebe apenas o token do tunnel remotamente gerenciado, testa e mostra o status. Não pede token da conta; o token fica mascarado e fora de backup e logs.
 - **RF-OPE-07** Atualização assinada do GitHub Releases é baixada e aplicada em janela ociosa após pré-backup, pausando escritas e revertendo binários e banco juntos se a checagem de saúde falhar ([ADR 0005](adr/0005-atualizacao-coordenada.md)).
-- **RF-OPE-08** Uma tela de diagnóstico mostra última cópia válida, histórico de backups, espaço, versão, sync, dispositivos, Tunnel e erros recuperáveis. Disco cheio, pasta ausente, banco inconsistente, Tunnel offline e serviço parado geram aviso persistente no app e no Tauri.
+- **RF-OPE-08** Uma tela de diagnóstico mostra última cópia válida, histórico de backups, espaço, versão, sync, dispositivos, Tunnel e erros recuperáveis. Disco cheio, pasta ausente, banco inconsistente, Tunnel offline e serviço parado geram aviso persistente no app.
 
 ## 7. Requisitos não funcionais
 
@@ -311,7 +311,7 @@ Decisões tomadas com o dono. "Mão única" indica decisão cara de reverter; as
 | DEC-09 | Cliente pessoa ou organização, com perfis de usuário da peça; sem portal de cliente | Só pessoa; cada usuário da peça como cliente; link público; portal com login | Mão única | RF-ATD-01, 02 |
 | DEC-10 | Modelos de medidas personalizáveis e snapshot aprovado na OS | Campos livres; modelos fixos; OS sempre com a medida mais nova | Mão única | RF-ATD-03, 04 |
 | DEC-11 | Peça recebida com descrição obrigatória, fotos opcionais, comprovante e etiqueta com QR autenticado | Só observação na OS; fotos obrigatórias; código de barras dedicado | Dupla | RF-ATD-07, 08 |
-| DEC-12 | Agenda com visitas, provas, prazos e capacidade diária em minutos; conflito permitido com alerta; alertas no app e no Tauri; mensagem preparada | Só prazos; blocos por horário; bloquear conflito; Web Push; envio integrado | Dupla | RF-ATD-09 a 12 |
+| DEC-12 | Agenda com visitas, provas, prazos e capacidade diária em minutos; conflito permitido com alerta; alertas no app e, no PC, notificação do sistema com a interface aberta (ajustado pela DEC-59); mensagem preparada | Só prazos; blocos por horário; bloquear conflito; Web Push; envio integrado | Dupla | RF-ATD-09 a 12 |
 | DEC-13 | Cliente é arquivado ou anonimizado; histórico de negócio mantido indefinidamente | Exclusão em cascata; retenção de 1 ou 5 anos | Mão única | RF-ATD-06, RNF-06 |
 
 ### 9.3 Catálogo, estoque e produção
@@ -358,16 +358,17 @@ Decisões tomadas com o dono. "Mão única" indica decisão cara de reverter; as
 
 | ID | Decisão | Alternativas descartadas | Tipo | Referência |
 |---|---|---|---|---|
-| DEC-39 | Serviço local, PWA e Tauri; servidor e `cloudflared` como serviços do sistema; instalação por máquina | Só serviço web; desktop-first; Docker Desktop; Tauri na bandeja; instalação por usuário | Mão única | [ADR 0007](adr/0007-servico-do-so-e-tauri-administrativo.md) |
+| DEC-39 | Serviço local, PWA e Tauri; servidor e `cloudflared` como serviços do sistema; instalação por máquina. Substituída pela DEC-59 (2026-09-16) | Só serviço web; desktop-first; Docker Desktop; Tauri na bandeja; instalação por usuário | Mão única | [ADR 0007](adr/0007-servico-do-so-e-tauri-administrativo.md) |
 | DEC-40 | SQLite nativo do Bun em WAL como fonte autoritativa | libSQL do scaffold; `node:sqlite` | Mão única | [ADR 0006](adr/0006-sqlite-nativo-bun.md) |
 | DEC-41 | PWA com operação offline completa, fila idempotente, conflito protegido para edição desatualizada e exceção para fatos concorrentes, sem limite de tempo offline. Substituiu "última alteração vence" | Somente leitura offline; última alteração vence; servidor vence; limite de 30 ou 90 dias | Mão única | [ADR 0003](adr/0003-movimentos-imutaveis-e-custo-provisorio.md), [ADR 0004](adr/0004-backup-epoch-e-cofre-por-dispositivo.md) |
 | DEC-42 | Origem canônica no subdomínio do Tunnel; sem sync pela LAN. Substituiu a escolha inicial de LAN principal, inviável sem HTTPS e sem acesso ao roteador | LAN principal; DNS local com o mesmo subdomínio; duas origens | Mão única | [ADR 0001](adr/0001-origem-canonica-e-local-first.md) |
-| DEC-43 | Login do app com defesas contra força bruta, sem Cloudflare Access; cofre com senha forte e PIN de tela; aparelho aprovado no desktop ou por código de ativação; sessão offline sem expiração; códigos de recuperação e resgate físico com novos códigos. Substituiu a sessão lembrada sem bloqueio e o cache cifrado só por PIN | Cloudflare Access; restrição por país; PIN como chave; senha de login no cofre; validade de 7 ou 30 dias; recuperação por e-mail | Mão única | RF-ACE-01 a 05 |
+| DEC-43 | Login do app com defesas contra força bruta, sem Cloudflare Access; cofre com senha forte e PIN de tela; aparelho aprovado no acesso local ou por código de ativação; sessão offline sem expiração; códigos de recuperação e resgate físico com novos códigos. Substituiu a sessão lembrada sem bloqueio e o cache cifrado só por PIN | Cloudflare Access; restrição por país; PIN como chave; senha de login no cofre; validade de 7 ou 30 dias; recuperação por e-mail | Mão única | RF-ACE-01 a 05 |
 | DEC-44 | Retenção móvel em melhor esforço com exportação cifrada portátil; instância instalada é a principal no iPhone | App nativo; sync periódico obrigatório; exportação só no mesmo perfil | Dupla | RF-ACE-12, 13 |
 | DEC-45 | Backup diário às 02:00, pacote completo sem criptografia, 7 diários e 12 mensais, nunca apagar por falta de espaço; restauração com pré-backup, código de recuperação e novo epoch. Substituiu a retenção inicial de só 7 diários | 30 diários e 12 mensais; só 7 diários; cifrar com senha; apagar os mais antigos; restaurar em paralelo | Mão única | [ADR 0004](adr/0004-backup-epoch-e-cofre-por-dispositivo.md), RF-OPE-01 a 04 |
 | DEC-46 | Tunnel remotamente gerenciado configurado por assistente com token de execução | Token de API da conta; configuração externa; só documentação | Dupla | RF-OPE-06 |
 | DEC-47 | Atualização assinada no GitHub Releases público, baixada e aplicada em janela ociosa com rollback coordenado; sem certificado comercial inicial | Releases privados; servidor próprio; rollback só de binários; atualização manual | Mão única | [ADR 0005](adr/0005-atualizacao-coordenada.md) |
 | DEC-48 | Ubuntu 24.04 LTS com pacote e `systemd`; Android e iPhone como alvos formais | Execução técnica em Linux; Ubuntu 26.04; só Android | Dupla | RNF-02 |
+| DEC-59 | Sem app desktop: servidor e `cloudflared` como serviços do sistema, e o PC usa a interface no navegador pela origem local `http://127.0.0.1:<porta>` (porta fixada no S5 e nunca alterada), com atalho do Edge em modo app no Windows e de Chrome ou Chromium no Ubuntu; ações administrativas só no acesso local; pasta de backup escolhida num navegador de pastas do servidor; notificação no PC só com a interface aberta; supervisor como único canal de atualização, com assinatura minisign; NSSM descartado, wrapper e conta do serviço decididos no S5. Substituiu a DEC-39 (2026-09-16) | Manter Tauri; Electron; NSSM; PWA instalada por política do Edge; seletor de pasta nativo; processo na bandeja; `localhost` como origem local | Mão única | [ADR 0011](adr/0011-servico-do-so-e-acesso-local-no-navegador.md) |
 
 ### 9.7 Engenharia e processo
 
@@ -398,6 +399,7 @@ Decisões tomadas com o dono. "Mão única" indica decisão cara de reverter; as
 | Pacote de backup sem criptografia é exposto | Vazamento de dados de clientes | Aviso explícito na escolha da pasta; decisão consciente do dono (DEC-45) |
 | Perda de senha e de todos os códigos | Dono trancado fora | Resgate físico auditado no PC (RF-ACE-03) |
 | Tunnel exposto antes do cadastro fechado | Terceiro cria conta | Não expor o Tunnel até a F2 fechar o cadastro público |
+| Porta local ocupada ou trocada depois da instalação | Servidor não sobe, ou a interface do PC perde sessão e cache | Porta definitiva fixada no S5, conferida pelo instalador e nunca alterada (DEC-59) |
 | Escopo grande para um único desenvolvedor assistido por IA | v1 nunca termina | Fases com critério de saída, TDD e harness de agentes |
 
 ## 11. Métricas de sucesso
@@ -417,12 +419,12 @@ Decisões tomadas com o dono. "Mão única" indica decisão cara de reverter; as
 | Q-03 | Biblioteca de PDF que funcione igual no navegador móvel e no desktop | Spike S1 |
 | Q-04 | Leitura de QR e código de barras pela câmera no iPhone | Spike S3 |
 | Q-05 | Parâmetros do cofre: derivação de chave por plataforma, limites de quota, dimensão e qualidade de foto (iniciais: 2048 px e 0,82) | Spikes S2 e S4 |
-| Q-06 | Mecanismo de serviço no Windows para o servidor Bun compilado e supervisor da atualização | Spikes S5 e S6 |
+| Q-06 | Wrapper de serviço no Windows para o servidor Bun compilado (shawl ou WinSW 2.12 NET461; NSSM descartado pela DEC-59), conta do serviço e supervisor da atualização | Spikes S5 e S6 |
 | Q-07 | Repositório remoto e CI | Resolvida em 2026-09-16: GitHub público `onflux-tech/costura-pro` com CI em Ubuntu 24.04 e Windows (DEC-54, DEC-55) |
-| Q-08 | Identificador definitivo do app Tauri e guarda da chave de assinatura de atualização | F7 |
+| Q-08 | Nome definitivo do serviço e do atalho, guarda da chave minisign de atualização e adesão à SignPath Foundation para assinar os executáveis | F7 |
 | Q-09 | Domínio e subdomínio do dono na Cloudflare | Antes de expor o Tunnel (fim da F2) |
 | Q-10 | Aparelhos de validação: iPhone, Android e máquina Ubuntu 24.04 | Celulares antes do S3; Ubuntu antes da saída da F0 |
-| Q-11 | App desktop no PC: manter Tauri, trocar por Electron, ou dispensar o app e usar serviço do Windows (NSSM ou WinSW) com instalador NSIS e a PWA aberta no loopback. Reabre DEC-39, ADR 0007 e RF-ENT-10 | Ciclo próprio de brainstorming e grill antes da F7, junto do spike S5 |
+| Q-11 | App desktop no PC: manter Tauri, trocar por Electron, ou dispensar o app e usar serviço do Windows (NSSM ou WinSW) com instalador NSIS e a PWA aberta no loopback | Resolvida em 2026-09-16: sem app desktop; o PC usa o navegador pela origem local, servidor e `cloudflared` seguem como serviços, e wrapper e conta do serviço saem do S5 (DEC-59, [ADR 0011](adr/0011-servico-do-so-e-acesso-local-no-navegador.md)) |
 
 ## 13. Glossário
 

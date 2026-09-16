@@ -16,6 +16,6 @@ O PC do ateliê é a autoridade dos dados e opera sem internet, mas a PWA móvel
 ## Consequências
 
 - Sem internet, o celular continua operando pelo cofre e pela outbox, mas só sincroniza quando o Tunnel volta.
-- O desktop Tauri fala direto com o servidor em loopback e segue operando offline.
+- O PC fala direto com o servidor em loopback e segue operando offline; desde 2026-09-16 pelo navegador, sem app desktop ([ADR 0011](0011-servico-do-so-e-acesso-local-no-navegador.md)).
 - O servidor escuta apenas `127.0.0.1`; nenhuma porta HTTP é exposta na LAN.
 - Cloudflare Tunnel é opcional para uso só no PC, mas obrigatório para a PWA móvel.

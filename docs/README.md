@@ -27,10 +27,11 @@ Documentação curada e versionada do Costura Pro. Todo doc novo em `docs/` entr
 | [0004](adr/0004-backup-epoch-e-cofre-por-dispositivo.md) | Restauração com epoch e cofre por dispositivo |
 | [0005](adr/0005-atualizacao-coordenada.md) | Atualizar binários e banco em conjunto |
 | [0006](adr/0006-sqlite-nativo-bun.md) | SQLite nativo do Bun como fonte autoritativa |
-| [0007](adr/0007-servico-do-so-e-tauri-administrativo.md) | Servidor como serviço do sistema e Tauri administrativo |
+| [0007](adr/0007-servico-do-so-e-tauri-administrativo.md) | Servidor como serviço do sistema e Tauri administrativo (substituído pelo 0011) |
 | [0008](adr/0008-documentos-emitidos-imutaveis.md) | Documentos emitidos imutáveis, inclusive offline |
 | [0009](adr/0009-uuid-e-codigo-documental-por-dispositivo.md) | UUID e código documental por dispositivo |
 | [0010](adr/0010-dinheiro-e-quantidade-inteiros.md) | Dinheiro e quantidade inteiros |
+| [0011](adr/0011-servico-do-so-e-acesso-local-no-navegador.md) | Servidor como serviço do sistema e acesso local pelo navegador |
 
 ## Agentes e harness
 

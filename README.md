@@ -44,7 +44,7 @@
 
 ### Overview
 
-Costura Pro helps the owner of **one sewing atelier** serve customers, plan work, control materials and finished goods, price with margin, track cash and emit non-fiscal documents. A Windows PC (Ubuntu 24.04 is also supported) is the source of truth and works without internet; the same interface runs as a Tauri desktop app and as an installable PWA on Android and iPhone, which keeps working offline and syncs through a Cloudflare Tunnel. It is not SaaS and does not issue tax documents.
+Costura Pro helps the owner of **one sewing atelier** serve customers, plan work, control materials and finished goods, price with margin, track cash and emit non-fiscal documents. A Windows PC (Ubuntu 24.04 is also supported) is the source of truth and works without internet; the same interface runs in the PC browser over loopback and as an installable PWA on Android and iPhone, which keeps working offline and syncs through a Cloudflare Tunnel. It is not SaaS and does not issue tax documents.
 
 ### Key Features
 
@@ -151,7 +151,7 @@ Released under the [MIT License](LICENSE).
 
 ### Visão geral
 
-O Costura Pro ajuda o dono de **um único ateliê de costura** a atender clientes, planejar trabalhos, controlar materiais e peças acabadas, precificar com margem, acompanhar o caixa e emitir documentos não fiscais. Um PC Windows (Ubuntu 24.04 também é suportado) é a fonte dos dados e funciona sem internet; a mesma interface roda como app desktop Tauri e como PWA instalável no Android e no iPhone, que continua funcionando offline e sincroniza pelo Cloudflare Tunnel. Não é SaaS e não emite documento fiscal.
+O Costura Pro ajuda o dono de **um único ateliê de costura** a atender clientes, planejar trabalhos, controlar materiais e peças acabadas, precificar com margem, acompanhar o caixa e emitir documentos não fiscais. Um PC Windows (Ubuntu 24.04 também é suportado) é a fonte dos dados e funciona sem internet; a mesma interface roda no navegador do PC, pelo loopback, e como PWA instalável no Android e no iPhone, que continua funcionando offline e sincroniza pelo Cloudflare Tunnel. Não é SaaS e não emite documento fiscal.
 
 ### Principais recursos
 

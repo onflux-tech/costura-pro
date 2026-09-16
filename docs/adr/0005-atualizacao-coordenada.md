@@ -19,3 +19,4 @@ O updater assinado do Tauri verifica o próprio artefato, mas não coordena serv
 - Operações aceitas antes da janela nunca são descartadas.
 - `cloudflared` é atualizado separadamente, sem tocar no token.
 - O instalador inicial pode mostrar SmartScreen enquanto não houver certificado comercial.
+- Desde 2026-09-16 não há app desktop nem updater do Tauri ([ADR 0011](0011-servico-do-so-e-acesso-local-no-navegador.md)): o supervisor é o único canal de atualização e verifica a assinatura minisign dos artefatos antes de trocar qualquer um.

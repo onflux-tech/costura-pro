@@ -42,8 +42,11 @@ Fonte de verdade: `package.json` de cada pacote, catálogo em `pnpm-workspace.ya
 | PWA | vite-plugin-pwa | ^1.3.0 |
 | Estilo | Tailwind CSS | ^4.3.3 |
 | Componentes | shadcn (sobre Base UI) | ^4.21.0 |
-| Desktop | Tauri e CLI | 2.11.3 e ^2.11.4 |
-| Toolchain do desktop no Windows | Rust `stable-x86_64-pc-windows-msvc` por `rustup override` em `apps/web/src-tauri`, com MSVC do Visual Studio 2026 | 1.98.1 |
+| Desktop (legado, sai pela DEC-59) | Tauri e CLI | 2.11.3 e ^2.11.4 |
+| Toolchain do desktop legado no Windows | Rust `stable-x86_64-pc-windows-msvc` por `rustup override` em `apps/web/src-tauri`, com MSVC do Visual Studio 2026 | 1.98.1 |
+| Instalador Windows (previsto) | NSIS | 3.12 ou superior |
+| Wrapper de serviço no Windows (previsto) | shawl ou WinSW 2.12 NET461 | a definir no S5 |
+| Pacote Ubuntu (previsto) | nFPM | a definir na F7 |
 | Espelho offline (previsto) | Dexie | a definir na F6 |
 | Design system (previsto) | Storybook | a definir na F1 |
 
@@ -57,7 +60,14 @@ MCPs e skills do projeto estão em [HARNESS §2](HARNESS.md#2-matriz-ferramenta-
 | `node:sqlite` dentro do Bun | Marcado como não implementado no Bun | [ADR 0006](adr/0006-sqlite-nativo-bun.md) |
 | `drizzle-kit migrate` | Não executa migrations com `bun:sqlite`; procura `@libsql/client` ou `better-sqlite3` | [ADR 0006](adr/0006-sqlite-nativo-bun.md) |
 | Playwright | O dono valida interface com browser-harness em navegador real | DEC-50 |
-| Docker Desktop | Instalar e manter Docker num PC de ateliê | [ADR 0007](adr/0007-servico-do-so-e-tauri-administrativo.md) |
+| Docker Desktop | Instalar e manter Docker num PC de ateliê | [ADR 0011](adr/0011-servico-do-so-e-acesso-local-no-navegador.md) |
+| App Tauri no PC | Janela sobre o loopback sem ganho sobre o navegador; Rust e MSVC no build, WebKitGTK no Ubuntu, migração para a v3, IPC aberto ao loopback e segundo canal de atualização | DEC-59, [ADR 0011](adr/0011-servico-do-so-e-acesso-local-no-navegador.md) |
+| Electron como app desktop | Cerca de 150 MiB de runtime, duas majors por ano e `electron-updater` sem autenticidade sem Authenticode | DEC-59, [ADR 0011](adr/0011-servico-do-so-e-acesso-local-no-navegador.md) |
+| NSSM como wrapper de serviço | Sem release desde 2017, sem assinatura, marcado por antivírus e 1,5 s por método de parada | DEC-59, [ADR 0011](adr/0011-servico-do-so-e-acesso-local-no-navegador.md) |
+| Serviço nativo do Bun por `bun:ffi` | FFI experimental, sem entrypoint de serviço do Windows | DEC-59 |
+| PWA instalada por `WebAppInstallForceList` do Edge | O Edge passa a mostrar "gerenciado pela organização" e a instalação a partir de 127.0.0.1 fora de domínio não foi provada | DEC-59 |
+| `showDirectoryPicker` para a pasta de backup | Devolve handle do navegador, não caminho; o serviço grava com o navegador fechado | DEC-59 |
+| Azure Artifact Signing | Indisponível para organização ou pessoa física no Brasil em 2026-09 | DEC-59 |
 | Acesso pela LAN por HTTP ou DNS local | Service worker exige contexto seguro; dono sem acesso ao roteador | [ADR 0001](adr/0001-origem-canonica-e-local-first.md) |
 | Cloudflare Access na frente do app | Complica instalação e sessão da PWA; o login do app com defesas basta | DEC-43 |
 | Token de API da conta Cloudflare | Permissão ampla demais; basta o token do tunnel | DEC-46 |
@@ -93,6 +103,12 @@ Consultas feitas nas sessões de planejamento de 2026-09-15, salvo indicação.
 | Cookie `Secure` e prefixos em `http://localhost` por motor (2026-09-16) | [httpwg: issue 2605](https://github.com/httpwg/http-extensions/issues/2605), [Tauri: issue 2604](https://github.com/tauri-apps/tauri/issues/2604), [libsoup: soup-cookie-jar.c](https://gitlab.gnome.org/GNOME/libsoup/-/blob/master/libsoup/cookies/soup-cookie-jar.c), [MDN: Set-Cookie](https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Set-Cookie) |
 | Tauri com Vite, `frontendDist` como URL e capabilities locais (2026-09-16) | [Tauri v2: Vite](https://v2.tauri.app/start/frontend/vite/), [Tauri v2: capabilities](https://v2.tauri.app/security/capabilities/) |
 | Cache de SPA e service worker no deploy (2026-09-16) | [vite-plugin-pwa: deployment](https://vite-pwa-org.netlify.app/deployment/), [Hono: Bun](https://hono.dev/docs/getting-started/bun) |
+| Tauri 2 e 3: versões, updater, capabilities remotas e gráficos no Linux (2026-09-16) | [crates.io: tauri](https://crates.io/crates/tauri), [Tauri v3.0.0-alpha.0](https://github.com/tauri-apps/tauri/releases/tag/tauri-v3.0.0-alpha.0), [Tauri v2: updater](https://v2.tauri.app/plugin/updater/), [Tauri v2: capabilities](https://v2.tauri.app/security/capabilities/), [Tauri v2: Linux graphics](https://v2.tauri.app/develop/debug/linux-graphics/), [Tauri: discussion 8524](https://github.com/tauri-apps/tauri/discussions/8524) |
+| Electron: suporte, tamanho e atualização sem Authenticode; Open Design (2026-09-16) | [Electron: timelines](https://www.electronjs.org/docs/latest/tutorial/electron-timelines), [Electron: schedule](https://releases.electronjs.org/schedule), [Electron v44.4.0](https://github.com/electron/electron/releases/tag/v44.4.0), [electron-updater 6.8.9: NsisUpdater.ts](https://raw.githubusercontent.com/electron-userland/electron-builder/electron-updater@6.8.9/packages/electron-updater/src/NsisUpdater.ts), [Open Design](https://github.com/nexu-io/open-design) |
+| Wrappers de serviço do Windows e serviço nativo (2026-09-16) | [NSSM: download](https://nssm.cc/download), [NSSM: usage](https://nssm.cc/usage), [Dr.Web: Tool.Nssm](https://vms.drweb.com/virus/?i=23405211), [WinSW: releases](https://github.com/winsw/winsw/releases), [WinSW v2: XML](https://github.com/winsw/winsw/blob/v2/doc/xmlConfigFile.md), [shawl](https://github.com/mtkennerly/shawl), [Servy](https://github.com/aelassas/servy), [StartServiceCtrlDispatcherW](https://learn.microsoft.com/en-us/windows/win32/api/winsvc/nf-winsvc-startservicectrldispatcherw), [Bun: FFI](https://bun.com/docs/runtime/ffi), [oven-sh/bun#25824](https://github.com/oven-sh/bun/issues/25824) |
+| Contas de serviço, unidades mapeadas e sessão 0 (2026-09-16) | [LocalSystem](https://learn.microsoft.com/en-us/windows/win32/services/localsystem-account), [Services and redirected drives](https://learn.microsoft.com/en-us/windows/win32/services/services-and-redirected-drives), [Interactive services](https://learn.microsoft.com/en-us/windows/win32/services/interactive-services) |
+| PWA e notificações no loopback; Edge e Firefox (2026-09-16) | [MDN: Making PWAs installable](https://developer.mozilla.org/en-US/docs/Web/Progressive_web_apps/Guides/Making_PWAs_installable), [W3C: Secure Contexts](https://w3c.github.io/webappsec-secure-contexts/), [Edge: supported operating systems](https://learn.microsoft.com/en-us/deployedge/microsoft-edge-supported-operating-systems), [Edge: WebAppInstallForceList](https://learn.microsoft.com/en-us/deployedge/microsoft-edge-browser-policies/webappinstallforcelist), [MDN: Notifications API](https://developer.mozilla.org/en-US/docs/Web/API/Notifications_API), [MDN: showDirectoryPicker](https://developer.mozilla.org/en-US/docs/Web/API/Window/showDirectoryPicker), [Ubuntu noble: firefox](https://packages.ubuntu.com/noble/firefox) |
+| Instalador, pacote Linux e assinatura de atualização (2026-09-16) | [NSIS: download](https://nsis.sourceforge.io/Download), [nFPM](https://nfpm.goreleaser.com/), [systemd.exec](https://man7.org/linux/man-pages/man5/systemd.exec.5.html), [minisign](https://jedisct1.github.io/minisign/), [SmartScreen: reputação](https://learn.microsoft.com/en-us/windows/apps/package-and-deploy/smartscreen-reputation), [Artifact Signing: quickstart](https://learn.microsoft.com/en-us/azure/artifact-signing/quickstart), [SignPath Foundation: termos](https://signpath.org/terms) |
 | Better Auth 1.7.3: cookies, origem e rate limit (2026-09-16) | Código instalado do pacote (cookies, middleware de origem e rate limiter) lido na sessão; [Better Auth: cookies](https://better-auth.com/docs/concepts/cookies) |
 
 ## 4. Origem das decisões
@@ -111,6 +127,7 @@ O projeto foi planejado e iniciado no Linux com Codex e trazido para Windows em 
 | 2026-09-16 | Reorganização (Claude Code) | Docs no molde do crm-ia-prd, ROADMAP, harness Claude-first, MCPs e skills enxutos |
 | 2026-09-16 | Harness evolutivo (Claude Code) | Hooks de sessão, rules por área, skills de ciclo de entrega, índice de docs com `docs-check`, CI, README bilíngue e licença MIT |
 | 2026-09-16 | F0 Mesma origem (Claude Code) | Processo único em loopback, cookie por Host (DEC-56), código sem comentários (DEC-57), Tauri verificado no Windows e Q-11 aberta sobre Tauri, Electron ou serviço com PWA |
+| 2026-09-16 | Q-11 app desktop (Claude Code) | Sem app desktop: serviço do sistema e acesso local no navegador (DEC-59, ADR 0011); NSSM descartado; wrapper, conta e porta ficam para o S5; pesquisa datada com dois agentes somente leitura |
 
 Escolhas iniciais revistas durante o grill, marcadas como "Substituiu" no PRD: item independente por variação virou material base com variantes (DEC-19); baixa de estoque na aprovação virou reserva (DEC-20); "última alteração vence" virou conflito protegido (DEC-41); LAN principal virou origem canônica no Tunnel (DEC-42); sessão lembrada e cache cifrado por PIN viraram cofre com senha forte e PIN de tela (DEC-43); retenção de 7 diários ganhou 12 mensais (DEC-45).
 

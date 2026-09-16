@@ -1,9 +1,11 @@
 ---
-status: accepted
+status: superseded
 date: 2026-09-15
 ---
 
 # Servidor como serviço do sistema e Tauri só como administração
+
+Substituído em 2026-09-16 pelo [ADR 0011](0011-servico-do-so-e-acesso-local-no-navegador.md): o PC usa a interface no navegador, sem app desktop.
 
 O servidor Hono/Bun e o `cloudflared` rodam como serviços do sistema operacional, iniciados no boot, e o app Tauri é apenas o painel de operação e administração local. A Cloudflare recomenda o conector como serviço, e o acesso móvel precisa continuar funcionando com a janela do Tauri fechada ou sem ninguém logado no Windows.
 
