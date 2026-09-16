@@ -6,14 +6,11 @@
   "scripts": {
     "build": "tsc -b ../../packages/api && vite build",
     "check-types": "tsc -b ../../packages/api && vite build && tsc --noEmit",
-    "desktop:build": "tauri build",
-    "desktop:dev": "tauri dev",
     "dev": "vite dev",
     "env:generate": "varlock codegen",
     "generate-pwa-assets": "pwa-assets-generator",
     "serve": "vite preview",
-    "start": "vite",
-    "tauri": "tauri"
+    "start": "vite"
   },
   "dependencies": {
     "@costura-pro/api": "workspace:*",
@@ -42,7 +39,6 @@
     "@tanstack/react-query-devtools": "^5.102.8",
     "@tanstack/react-router-devtools": "^1.167.1",
     "@tanstack/router-plugin": "^1.168.35",
-    "@tauri-apps/cli": "^2.11.4",
     "@types/node": "^26.4.1",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",

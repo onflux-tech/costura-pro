@@ -19,7 +19,6 @@
       "!apps/server/src/env.ts",
       "!apps/web/src/env.ts",
       "!packages/db/src/env.ts",
-      "!**/src-tauri",
       "!**/.nuxt",
       "!bts.jsonc",
       "!**/.expo",

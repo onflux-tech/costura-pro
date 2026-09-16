@@ -43,8 +43,5 @@ export default defineConfig({
 			[serverPaths]: { changeOrigin: false, target: "http://127.0.0.1:3000" },
 		},
 		strictPort: true,
-		watch: {
-			ignored: ["**/src-tauri/**"],
-		},
 	},
 });
