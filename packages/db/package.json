@@ -1,0 +1,35 @@
+{
+  "name": "@costura-pro/db",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/src/index.d.ts",
+      "default": "./src/index.ts"
+    },
+    "./*": {
+      "types": "./dist/src/*.d.ts",
+      "default": "./src/*.ts"
+    }
+  },
+  "scripts": {
+    "build": "tsc -b",
+    "check-types": "tsc -b",
+    "db:generate": "drizzle-kit generate",
+    "db:local": "bun run src/local.ts",
+    "db:migrate": "bun run src/migrate.ts",
+    "db:migrate:deploy": "bun run src/migrate.ts",
+    "db:push": "drizzle-kit push",
+    "db:studio": "drizzle-kit studio",
+    "test": "bun test"
+  },
+  "dependencies": {
+    "drizzle-orm": "^0.45.2",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@costura-pro/config": "workspace:*",
+    "drizzle-kit": "^0.31.10",
+    "typescript": "catalog:",
+    "varlock": "catalog:"
+  }
+}
