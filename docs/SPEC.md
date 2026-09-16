@@ -48,6 +48,13 @@ O monorepo parte do Better-T-Stack 3.43.1 (comando reproduzível em `bts.jsonc`)
 
 A UI usa caminhos relativos (`/rpc`, `/api`) em todas as origens. Em produção, o Hono serve SPA, assets e API num único processo ligado apenas a `127.0.0.1`; o Tauri aponta para esse loopback e o `cloudflared` encaminha o subdomínio público ao mesmo endereço. Nenhuma porta HTTP é exposta na LAN ([ADR 0001](adr/0001-origem-canonica-e-local-first.md)).
 
+**Mesma origem (F0):**
+
+- Em produção, `GET /` serve `index.html`, assets com cache e fallback da SPA para rotas internas, sem interceptar `/api`, `/rpc` e `/api/sync`. Sem o build da web, o servidor falha com erro explícito de instalação em vez de servir página vazia.
+- O processo escuta só `127.0.0.1` e rejeita `Host` e `Origin` fora da allowlist (loopback, Tauri e origem canônica do Tunnel, configurada num único lugar).
+- Em desenvolvimento, o proxy do Vite preserva os caminhos relativos; o modo Tauri local é testado.
+- HTTPS público é responsabilidade do Tunnel; a porta local não promete TLS, e o token do `cloudflared` nunca vai para o cliente nem para variável pública.
+
 SQLite em WAL é a fonte autoritativa única, aberta por Drizzle sobre `bun:sqlite`, e um processo servidor controla gravações e transações ([ADR 0006](adr/0006-sqlite-nativo-bun.md)). Banco e mídia ficam fora do diretório de instalação: `%PROGRAMDATA%\CosturaPro\data` no Windows e `/var/lib/costura-pro` no Linux. Configuração e segredos usam permissões do sistema operacional. O instalador configura o servidor como serviço ativo no boot, o Tauri para operação e administração e o `cloudflared` como serviço opcional após receber o token ([ADR 0007](adr/0007-servico-do-so-e-tauri-administrativo.md)). Sem internet, o desktop chama o loopback; a PWA já carregada opera pelo service worker e IndexedDB e não sincroniza até o Tunnel voltar.
 
 Não usar addon de billing, SaaS ou fiscal. Harness de agentes, MCPs e skills estão em [HARNESS](HARNESS.md).
@@ -125,6 +132,8 @@ type PullResult = {
 
 `/api/sync/pull` entrega mudanças por cursor até espelhar clientes, catálogo, estoque, OS, OP, vendas, finanças e documentos necessários. `/api/sync/resolve` registra escolha, mescla ou desfazer com motivo auditado.
 
+**Contrato mínimo da F2.** Tabelas de dispositivo (aprovado ou revogado), operação única por `opId` com o resultado gravado junto, log de mudanças com cursor monotônico, conflito e quarentena. Cada operação roda em transação curta. Nesta fase, `pull` entrega só a instalação (sem segredos) e os dispositivos; os agregados entram a partir da F3. Os testes exercitam o Hono autenticado sobre SQLite real, nunca banco simulado em memória.
+
 Dispositivo isolado por qualquer tempo faz rebase do snapshot completo sem apagar a outbox. Atualização do cliente migra Dexie e outbox antes do sync; operações incompatíveis vão para quarentena. Restauração incrementa o epoch e toda operação antiga é retida para reaplicação manual, nunca mesclada automaticamente ([ADR 0004](adr/0004-backup-epoch-e-cofre-por-dispositivo.md)).
 
 **Mídia.** Upload autenticado por hash SHA-256, MIME permitido e limite configurado; referência de banco e gravação de arquivo são finalizadas com verificação de hash. O original é convertido e limitado na captura (JPEG ou WebP conforme suporte, dimensão máxima inicial de 2048 px, qualidade inicial 0,82) e ganha miniatura. Todas as miniaturas do espelho ficam offline; imagem grande já vista pode ser cacheada.
@@ -135,7 +144,15 @@ Dispositivo isolado por qualquer tempo faz rebase do snapshot completo sem apaga
 
 **Estado:** previsto (F2 e F6).
 
-**Conta.** Better Auth mantém uma única conta de dono com o plugin `username` para login por usuário e senha. O e-mail técnico exigido pela base de e-mail e senha é local (`owner@costura-pro.local`) e não é canal de recuperação. Cadastro público fica desativado após o onboarding, garantido no servidor e não só na interface. Sessão server-side usa cookie `HttpOnly`, `Secure` no Tunnel, `SameSite` adequado à mesma origem, proteção CSRF e lista explícita de origens; em desenvolvimento local por HTTP o cookie não pode exigir `Secure`. Rate limit persistido no SQLite por usuário e IP (regra inicial: 5 tentativas por 60 segundos em `/sign-in/username`), atraso progressivo e bloqueio temporário; tentativas são logadas sem senha. [Better Auth: plugin Username](https://better-auth.com/docs/plugins/username), [Better Auth: rate limit](https://better-auth.com/docs/concepts/rate-limit).
+**Conta.** Better Auth mantém uma única conta de dono com o plugin `username` para login por usuário e senha. O e-mail técnico exigido pela base de e-mail e senha é local (`owner@costura-pro.local`) e não é canal de recuperação. Cadastro público fica desativado após o onboarding, garantido no servidor e não só na interface. Sessão server-side usa cookie `HttpOnly`, `Secure` no Tunnel, `SameSite` adequado à mesma origem, proteção CSRF e lista explícita de origens; em desenvolvimento local por HTTP o cookie não pode exigir `Secure`. Rate limit persistido no SQLite por usuário e IP (regra inicial: 5 tentativas por 60 segundos em `/sign-in/username`), atraso progressivo e bloqueio temporário; tentativas são logadas sem senha. [Better Auth: plugin Username](https://better-auth.com/docs/plugins/username), [Better Auth: rate limit](https://better-auth.com/docs/concepts/rate-limit), [Better Auth: hooks](https://better-auth.com/docs/concepts/hooks).
+
+**Bootstrap da conta (F2):**
+
+- A instalação é um registro singleton, e o cadastro do dono é serializado por transação sobre esse slot. Dois cadastros concorrentes nunca criam dois usuários, e depois do bootstrap um `POST` direto em `/api/auth/sign-up/email` é rejeitado por hook `before` do Better Auth. Falha no cadastro libera o slot com evento de auditoria.
+- Servidor com `username()` e cliente com `usernameClient({ displayUsername: false })`; `/is-username-available` fica desativado fora do wizard para não permitir enumeração.
+- Rate limit com `storage: "database"` e regra própria para `/sign-in/username`. O IP vem só do `cloudflared` local como proxy confiável, nunca de cabeçalho arbitrário enviado pelo cliente. Erros de login não revelam se o usuário existe.
+- O scaffold força `SameSite=None; Secure` até em localhost HTTP; a política de cookie é definida por origem e testada nas duas (HTTP local e HTTPS do Tunnel).
+- O wizard é uma máquina de estados retomável (`empty → atelier → account → recovery → backup → ready`). O dashboard redireciona ao passo pendente, e `ready` exige pasta de backup testada: o desktop escolhe a pasta pelo seletor nativo do Tauri, o servidor grava e relê um arquivo de teste com nome aleatório e apaga só esse arquivo. Cliente remoto nunca escolhe caminho no servidor.
 
 **Dispositivos e recuperação.** Um desktop autenticado como administrador local aprova ou revoga dispositivos, diretamente ou emitindo um código de ativação de uso único; um celular novo só obtém espelho sensível após aprovação. Códigos de recuperação são gerados aleatoriamente, apresentados uma vez e guardados só como hash; o consumo invalida o código. O resgate físico extremo exige administrador do sistema operacional no PC, redefine só a conta, emite novos códigos de recuperação e cria evento de auditoria. O token do Tunnel é segredo de instalação com permissões do sistema operacional, fora do banco exportado, do backup e dos logs.
 
