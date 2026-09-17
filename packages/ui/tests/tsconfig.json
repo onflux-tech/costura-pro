@@ -1,0 +1,9 @@
+{
+  "extends": "@costura-pro/config/tsconfig.base.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "strictNullChecks": true,
+    "types": ["bun"]
+  },
+  "include": ["./**/*.ts", "../src/lib/navigation.ts"]
+}

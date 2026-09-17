@@ -35,7 +35,7 @@
     "@biomejs/biome": "2.5.12",
     "@costura-pro/config": "workspace:*",
     "@types/bun": "catalog:",
-    "lefthook": "latest",
+    "lefthook": "2.1.12",
     "turbo": "^2.10.12",
     "typescript": "catalog:",
     "ultracite": "7.11.0",

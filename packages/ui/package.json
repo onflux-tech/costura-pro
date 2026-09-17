@@ -11,15 +11,17 @@
     "./postcss.config": "./postcss.config.mjs"
   },
   "scripts": {
-    "check-types": "tsc --noEmit"
+    "check-types": "tsc --noEmit && tsc --noEmit -p tests",
+    "test": "bun test tests"
   },
   "dependencies": {
     "@base-ui/react": "^1.8.0",
-    "@shadcn/react": "^0.3.1",
+    "@fontsource-variable/geist": "^5.3.0",
+    "@fontsource-variable/jetbrains-mono": "^5.3.0",
+    "@fontsource-variable/source-serif-4": "^5.3.0",
     "class-variance-authority": "^0.7.1",
     "cn": "^0.2.5",
     "lucide-react": "catalog:",
-    "next-themes": "catalog:",
     "react": "catalog:",
     "react-dom": "catalog:",
     "shadcn": "^4.21.0",
@@ -29,6 +31,7 @@
   "devDependencies": {
     "@costura-pro/config": "workspace:*",
     "@tailwindcss/postcss": "^4.3.3",
+    "@types/bun": "catalog:",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
     "tailwindcss": "catalog:",
