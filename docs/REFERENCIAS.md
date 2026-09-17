@@ -41,12 +41,13 @@ Fonte de verdade: `package.json` de cada pacote, catálogo em `pnpm-workspace.ya
 | Build web | Vite | ^8.2.2 |
 | PWA | vite-plugin-pwa | ^1.3.0 |
 | Estilo | Tailwind CSS | ^4.3.3 |
-| Componentes | shadcn (sobre Base UI) | ^4.21.0 |
+| Componentes | shadcn (sobre Base UI), estilo `base-vega` | ^4.21.0 |
 | Instalador Windows (previsto) | NSIS | 3.12 ou superior |
 | Wrapper de serviço no Windows (previsto) | shawl ou WinSW 2.12 NET461 | a definir no S5 |
 | Pacote Ubuntu (previsto) | nFPM | a definir na F7 |
 | Espelho offline (previsto) | Dexie | a definir na F6 |
-| Design system (previsto) | Storybook | a definir na F1 |
+| Primitivas de interface | Base UI | ^1.8.0 |
+| Fontes empacotadas | `@fontsource-variable` (Geist, Source Serif 4, JetBrains Mono) | ^5.3.0 |
 
 MCPs e skills do projeto estão em [HARNESS §2](HARNESS.md#2-matriz-ferramenta--artefato).
 
@@ -78,6 +79,10 @@ MCPs e skills do projeto estão em [HARNESS §2](HARNESS.md#2-matriz-ferramenta-
 | Cópia direta do arquivo SQLite em WAL | Não garante consistência; usar `VACUUM INTO` | [SPEC §6](SPEC.md#6-documentos-backup-restauração-e-atualização) |
 | CSV na v1 | Fora do escopo; portabilidade pelo pacote de backup | DEC-04 |
 | Wireframes HTML navegáveis | Descartados na migração para Windows; a interface nasce do design system | DEC-52 |
+| Storybook 10 com addon de acessibilidade | Toolchain e major anual a mais para um dono só; a automação de acessibilidade exige Playwright | DEC-68 |
+| Google Fonts | Sem offline na PWA e requisição externa a cada carga | DEC-66 |
+| Tema escuro | Cada cor e contraste desenhados e conferidos duas vezes sem pedido real | DEC-66 |
+| Menu lateral no desktop e 13 destinos soltos | O design desenhou barra horizontal; soltos, os menos usados caíam num "Mais" sem nome | DEC-67 |
 | Symlinks para espelhar skills | Viram arquivo de texto num clone Windows sem Developer Mode | [HARNESS §1](HARNESS.md#1-decisões-do-harness) |
 | Duas instâncias do Better Auth por Host, ou `baseURL` dinâmica com `crossSubDomainCookies` | Nome de cookie diferente por origem, ou `Domain` injetado e dependência de detalhe interno; um middleware por Host resolve com uma instância | DEC-56 |
 | `shellEmulator` do pnpm, `cross-env` ou `env` do tsdown para `NODE_ENV=production` | Muda o shell de todos os scripts, traz dependência nova, ou só substitui texto no bundle sem chegar ao varlock e ao Better Auth; `bun --env-file` basta | [SPEC §1](SPEC.md#1-topologia-e-componentes) |
@@ -106,6 +111,10 @@ Consultas feitas nas sessões de planejamento de 2026-09-15, salvo indicação.
 | Host e headers que o `cloudflared` entrega à origem; `httpHostHeader` (2026-09-16) | [Cloudflare Tunnel: origin parameters](https://developers.cloudflare.com/cloudflare-one/networks/connectors/cloudflare-tunnel/configure-tunnels/cloudflared-parameters/origin-parameters/), [cloudflared: origin_proxy.go](https://github.com/cloudflare/cloudflared/blob/master/ingress/origin_proxy.go), [Cloudflare: HTTP headers](https://developers.cloudflare.com/fundamentals/reference/http-headers/) |
 | Cookie `Secure` e prefixos em `http://localhost` por motor (2026-09-16) | [httpwg: issue 2605](https://github.com/httpwg/http-extensions/issues/2605), [Tauri: issue 2604](https://github.com/tauri-apps/tauri/issues/2604), [libsoup: soup-cookie-jar.c](https://gitlab.gnome.org/GNOME/libsoup/-/blob/master/libsoup/cookies/soup-cookie-jar.c), [MDN: Set-Cookie](https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Set-Cookie) |
 | Tauri com Vite, `frontendDist` como URL e capabilities locais (2026-09-16) | [Tauri v2: Vite](https://v2.tauri.app/start/frontend/vite/), [Tauri v2: capabilities](https://v2.tauri.app/security/capabilities/) |
+| Identidade e telas de referência no Claude Design, projeto "Aplicativo atelier costura", arquivos `Costura Pro - Telas.dc.html`, `TopNav.dc.html` e `MobileNav.dc.html` (2026-09-16) | [Claude Design: projeto](https://claude.ai/design/p/c40b024b-7619-4657-a87c-ce3ed5285e36) (privado do dono) |
+| Estilos visuais do shadcn (Vega, Nova, Maia, Lyra, Mira) (2026-09-16) | [shadcn: changelog 2025-12](https://ui.shadcn.com/docs/changelog/2025-12-shadcn-create) |
+| Divisão manual de chunks no Rolldown (`codeSplitting.groups`) (2026-09-16) | [Rolldown: manual code splitting](https://rolldown.rs/in-depth/manual-code-splitting) |
+| Contraste mínimo de texto e de componente (WCAG 2.2, 1.4.3 e 1.4.11) (2026-09-16) | [WCAG 2.2: contrast minimum](https://www.w3.org/TR/WCAG22/#contrast-minimum), [WCAG 2.2: non-text contrast](https://www.w3.org/TR/WCAG22/#non-text-contrast) |
 | Cache de SPA e service worker no deploy (2026-09-16) | [vite-plugin-pwa: deployment](https://vite-pwa-org.netlify.app/deployment/), [Hono: Bun](https://hono.dev/docs/getting-started/bun) |
 | Tauri 2 e 3: versões, updater, capabilities remotas e gráficos no Linux (2026-09-16) | [crates.io: tauri](https://crates.io/crates/tauri), [Tauri v3.0.0-alpha.0](https://github.com/tauri-apps/tauri/releases/tag/tauri-v3.0.0-alpha.0), [Tauri v2: updater](https://v2.tauri.app/plugin/updater/), [Tauri v2: capabilities](https://v2.tauri.app/security/capabilities/), [Tauri v2: Linux graphics](https://v2.tauri.app/develop/debug/linux-graphics/), [Tauri: discussion 8524](https://github.com/tauri-apps/tauri/discussions/8524) |
 | Electron: suporte, tamanho e atualização sem Authenticode; Open Design (2026-09-16) | [Electron: timelines](https://www.electronjs.org/docs/latest/tutorial/electron-timelines), [Electron: schedule](https://releases.electronjs.org/schedule), [Electron v44.4.0](https://github.com/electron/electron/releases/tag/v44.4.0), [electron-updater 6.8.9: NsisUpdater.ts](https://raw.githubusercontent.com/electron-userland/electron-builder/electron-updater@6.8.9/packages/electron-updater/src/NsisUpdater.ts), [Open Design](https://github.com/nexu-io/open-design) |
@@ -134,6 +143,7 @@ O projeto foi planejado e iniciado no Linux com Codex e trazido para Windows em 
 | 2026-09-16 | F0 Mesma origem (Claude Code) | Processo único em loopback, cookie por Host (DEC-56), código sem comentários (DEC-57), Tauri verificado no Windows e Q-11 aberta sobre Tauri, Electron ou serviço com PWA |
 | 2026-09-16 | Servidor de acesso e sync (Claude Code) | Grill em cinco rodadas: dono criado no acesso local, allowlist, rate limit e bloqueio remoto, códigos em hash, auditoria append-only, dispositivos com segredo e contrato mínimo de sync (DEC-60 a DEC-64, ADRs 0012 e 0013); regra de nomes sem fase nem spec (DEC-65) |
 | 2026-09-16 | Q-11 app desktop (Claude Code) | Sem app desktop: serviço do sistema e acesso local no navegador (DEC-59, ADR 0011); NSSM descartado; wrapper, conta e porta ficam para o S5; pesquisa datada com dois agentes somente leitura |
+| 2026-09-16 | F1 Design system (Claude Code) | Paleta verde do Claude Design no lugar do vinho (DEC-07), tema claro único e fontes empacotadas (DEC-66), navegação por uso diário e grupos (DEC-67), catálogo no lugar do Storybook (DEC-68) e telas só com componentes, sem UI nativa nem emoji |
 
 Escolhas iniciais revistas durante o grill, marcadas como "Substituiu" no PRD: item independente por variação virou material base com variantes (DEC-19); baixa de estoque na aprovação virou reserva (DEC-20); "última alteração vence" virou conflito protegido (DEC-41); LAN principal virou origem canônica no Tunnel (DEC-42); sessão lembrada e cache cifrado por PIN viraram cofre com senha forte e PIN de tela (DEC-43); retenção de 7 diários ganhou 12 mensais (DEC-45).
 

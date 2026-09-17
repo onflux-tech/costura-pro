@@ -46,7 +46,7 @@ O plano aprovado tinha 5 fases: (1) documentos, scaffold, onboarding, autentica�
 | Fase | Objetivo | Critério de aceitação que fecha |
 |---|---|---|
 | F0 | Base executável e verificável em Windows e Ubuntu | Checks verdes e mesma origem |
-| F1 | Linguagem visual e componentes antes das telas reais | Storybook com componentes base |
+| F1 | Linguagem visual e componentes antes das telas reais | Catálogo com componentes base |
 | F2 | Dono único, wizard e contrato mínimo de sync | Cadastro fechado e sync idempotente provados |
 | F3 | Clientes, peças recebidas, catálogo, estoque e compras | CA-03 parcial |
 | F4 | Orçamento, OS, reservas, documentos e agenda | CA-02, CA-03, CA-04, CA-06 online |
@@ -87,10 +87,10 @@ Cada spike responde uma pergunta que muda o desenho antes de construir em cima d
   - cliente relativo, proxy do Vite e allowlist de Host e Origin;
   - cookie `costura-pro.session_token` sem `Secure` no loopback e com `Secure` no Host canônico;
   - verificado em navegador real (dev e produção, desktop e 320 px), no `tauri dev` e no executável de release do Tauri no Windows.
+- Bundle web sem aviso de chunk acima de 500 kB: devtools só em desenvolvimento e React num chunk próprio, com as rotas já divididas (2026-09-16).
 - App Tauri removido do scaffold (Q-11, DEC-59): pasta do app, scripts e CLI do Tauri, teste do `frontendDist` (o contrato do proxy do Vite segue em `apps/server/tests/vite-proxy.test.ts`), armadilhas do HARNESS e da rule de web, papel `contract` e instruções de desenvolvimento do README (2026-09-16).
 
 **Pendente:**
-- **Bundle web:** o build avisa chunk acima de 500 kB; dividir por rota antes das telas reais.
 - **Build conferido numa máquina Ubuntu 24.04** além do CI (Q-10).
 - **CI por caminho:** push só de docs e markdown roda `harness:check`, `docs:check` e `harness:test`; lint, tipos, testes e build só quando o intervalo do push toca algo fora de `docs/**`, `*.md` e `.claude/rules/**`, e push forçado roda tudo.
 
@@ -99,22 +99,33 @@ Cada spike responde uma pergunta que muda o desenho antes de construir em cima d
 - Build de produção servido por um único processo em loopback, com teste automatizado de SPA fallback e das rotas `/api` e `/rpc`.
 - CI verde no push da `main` em Ubuntu 24.04 e Windows.
 
-## F1: Design system e Storybook
+## F1: Design system
 
 **Objetivo:** definir a linguagem visual antes das telas reais. Os wireframes HTML foram descartados em 2026-09-16 ([DEC-52](PRD.md#97-engenharia-e-processo)).
 
 **Entregas:**
-- **Identidade "ateliê contemporâneo"** (RNF-09) desenhada com Claude Design: paleta, tipografia, espaçamento, raios, estados e ícones. Resolve Q-01.
-- **Tokens em `packages/ui`** e componentes base ajustados:
-  - botão, campo, cartão, lista em cartões para o celular;
-  - navegação lateral e inferior;
+- **Identidade "ateliê contemporâneo"** (RNF-09) desenhada com Claude Design: paleta, tipografia, espaçamento, raios, estados e 12 telas de referência em 1440 e 390 px.
+- **Tokens em `packages/ui`** e componentes base:
+  - texto, botão, campo, grupo de escolha, cartão e lista que vira cartão no celular;
+  - navegação horizontal com grupos no desktop e barra inferior no celular;
   - badge de estado de produção, entrega e financeiro;
-  - alerta e indicador de conexão e sync.
-- **Storybook para `packages/ui`** com estados, viewports de 320, 390, 768 e 1440 px e checagem de acessibilidade.
-- **Referências das telas-chave:** Hoje, Atendimento, OS, Estoque e prévia de documento A4 e 80 mm.
+  - alerta, métrica, medidor, trilha de etapas, checklist e indicador de conexão e sync.
+- **Catálogo `/catalogo`** só em desenvolvimento, com os estados dos componentes, no lugar do Storybook ([DEC-68](PRD.md#97-engenharia-e-processo)).
+
+**Concluído:**
+- Design system (2026-09-16), descrito em [docs/areas/design-system.md](areas/design-system.md):
+  - tokens em hexadecimal com teste de contraste AA, fontes empacotadas e sem tema escuro;
+  - componentes base e de navegação no `packages/ui`, com os 13 destinos agrupados por uso ([DEC-67](PRD.md#91-produto-e-escopo));
+  - `apps/web` só com tokens e componentes, travado por teste contra cor solta, elemento nativo, diálogo do navegador e emoji;
+  - cabeçalho, início, painel e login no desenho novo; devtools fora do build de produção;
+  - verificado em navegador real em 320, 390, 768, 1024, 1280 e 1440 px, por teclado e toque, em desenvolvimento e produção.
+
+**Pendente:**
+- Documentos A4 e 80 mm e as telas de negócio seguem o Claude Design em cada fase (F3 a F7).
+- Nome comercial e logo (Q-01).
 
 **Critério de saída:**
-- Storybook roda localmente com componentes base e seus estados.
+- Catálogo roda localmente com componentes base e seus estados.
 - Contraste AA e foco visível conferidos em navegador real em 320 e 1440 px.
 - `apps/web` consome os tokens, sem cor ou espaçamento soltos.
 
@@ -143,7 +154,7 @@ Cada spike responde uma pergunta que muda o desenho antes de construir em cima d
   - login web mínimo por username verificado em navegador real a 1440 e 320 px.
 
 **Pendente:**
-- Telas do wizard e shell de navegação com o design system, depois da F1.
+- Telas do wizard e shell de navegação sobre o design system da F1 ([docs/areas/design-system.md](areas/design-system.md)).
 - Dashboard redirecionando ao passo pendente do wizard (o servidor já responde `PRECONDITION_FAILED` com o estado).
 - Wizard verificado em navegador real no desktop e em 320 px; só então o Tunnel pode ser exposto (Q-09).
 

@@ -13,6 +13,7 @@ Não é formato fiscal. Quando um contrato muda, atualize esta SPEC, a linha cor
 | Contrato | Estado | Onde está hoje | Fase |
 |---|---|---|---|
 | Monorepo e PWA básica gerados pelo scaffold, sem app desktop (DEC-59) | Implementado | `apps/web`, `apps/server`, `packages/*` | F0 |
+| Design system: tokens, componentes base, navegação agrupada e catálogo de desenvolvimento | Implementado; shell ligado às rotas previsto com as telas da F2 | `packages/ui/src/styles/globals.css`, `packages/ui/src/components/`, `packages/ui/src/lib/navigation.ts`, `apps/web/src/lib/destinations.ts`, `apps/web/src/routes/catalogo.tsx`, [design system](areas/design-system.md) | F1 |
 | Preço sugerido com margem sobre a venda | Implementado como função pura testada | `packages/domain/src/pricing.ts` | F0 |
 | Reserva com pendência sem inventar saldo | Implementado como função pura testada | `packages/domain/src/reservation.ts` | F0 |
 | SQLite nativo em WAL, validação de caminho local, migrations por Bun | Implementado | `packages/db/src/index.ts`, `packages/db/src/migrate.ts`, `packages/db/tests/native-sqlite.test.ts` | F0 |

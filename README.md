@@ -61,7 +61,7 @@ Target scope of v1 (see [Project Status](#project-status)):
 
 ### Project Status
 
-Early development: the monorepo, pricing and reservation rules, native SQLite, the AI agent harness and the server side of single-owner access (username sign-in, no public sign-up, device approval and the minimal sync contract) are ready. The design system and the setup wizard screens are not built yet, so **do not use it with real data or expose it through a tunnel yet**. Phases and exit criteria are in the [roadmap](docs/ROADMAP.md).
+Early development: the monorepo, pricing and reservation rules, native SQLite, the AI agent harness, the design system (tokens, base components and a development catalog) and the server side of single-owner access (username sign-in, no public sign-up, device approval and the minimal sync contract) are ready. The setup wizard and business screens are not built yet, so **do not use it with real data or expose it through a tunnel yet**. Phases and exit criteria are in the [roadmap](docs/ROADMAP.md).
 
 ### Quick Start
 
@@ -166,7 +166,7 @@ Escopo previsto da v1 (veja [Estado do projeto](#estado-do-projeto)):
 
 ### Estado do projeto
 
-Desenvolvimento inicial: monorepo, regras de preço e reserva, SQLite nativo, o harness de agentes de IA e a parte de servidor do acesso do dono único (login por username, sem cadastro público, aprovação de dispositivo e o contrato mínimo de sync) estão prontos. O design system e as telas do wizard ainda não existem, então **não use com dados reais nem exponha por túnel ainda**. Fases e critérios de saída estão no [ROADMAP](docs/ROADMAP.md).
+Desenvolvimento inicial: monorepo, regras de preço e reserva, SQLite nativo, o harness de agentes de IA, o design system (tokens, componentes base e um catálogo de desenvolvimento) e a parte de servidor do acesso do dono único (login por username, sem cadastro público, aprovação de dispositivo e o contrato mínimo de sync) estão prontos. O wizard e as telas de negócio ainda não existem, então **não use com dados reais nem exponha por túnel ainda**. Fases e critérios de saída estão no [ROADMAP](docs/ROADMAP.md).
 
 ### Início rápido
 

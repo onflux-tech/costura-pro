@@ -44,4 +44,8 @@ Documentação curada e versionada do Costura Pro. Todo doc novo em `docs/` entr
 
 ## Docs por área
 
-Nenhum ainda. Quando uma área acumular conhecimento que não cabe numa rule, o `/entrega-fechar` cria o doc em `docs/areas/<area>.md` e o lista aqui.
+Quando uma área acumular conhecimento que não cabe numa rule, o `/entrega-fechar` cria o doc em `docs/areas/<area>.md` e o lista aqui.
+
+| Documento | Leia quando |
+|---|---|
+| [Design system](areas/design-system.md) | Antes de criar ou mudar tela, componente, token ou navegação: tokens, componentes, testes que travam as regras e o passo a passo de uma tela nova |

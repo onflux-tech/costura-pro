@@ -156,7 +156,7 @@ Configurados em `.claude/settings.json`. Cada script em `.claude/hooks/` exporta
 | Documentos e PDF | [SPEC §6](SPEC.md#6-documentos-backup-restauração-e-atualização), [ADR 0008](adr/0008-documentos-emitidos-imutaveis.md) |
 | Código documental ou identidade | [ADR 0009](adr/0009-uuid-e-codigo-documental-por-dispositivo.md) |
 | Backup, restauração, instalador ou atualização | [SPEC §6 e §7](SPEC.md#7-empacotamento-observabilidade-e-testes), ADRs 0004, 0005 e 0011 |
-| Interface | [PRD §6.1](PRD.md#61-primeira-experiência-e-navegação-rf-ent), RNF-03, RNF-04 e RNF-09, [ROADMAP F1](ROADMAP.md#f1-design-system-e-storybook), rule `.claude/rules/web.md` |
+| Interface | [Design system](areas/design-system.md), [PRD §6.1](PRD.md#61-primeira-experiência-e-navegação-rf-ent), RNF-03, RNF-04 e RNF-09, [ROADMAP F1](ROADMAP.md#f1-design-system), rule `.claude/rules/web.md` |
 | Docs curadas e índice | [Índice](README.md), rule `.claude/rules/docs.md` |
 | Papéis, skills, MCP, hooks ou checagens | §1 a §6 deste guia, rule `.claude/rules/harness.md` |
 | Ordem do trabalho | [ROADMAP](ROADMAP.md): fase atual, spikes e critério de saída |
@@ -203,7 +203,7 @@ Configurados em `.claude/settings.json`. Cada script em `.claude/hooks/` exporta
 | Teste de "mesma saída para chaves em outra ordem" passa sem testar nada | `pnpm fix` (regra `useSortedKeys`) reordena as chaves dos objetos literais dos dois lados | Montar os objetos com `JSON.parse` e conferir o teste depois do `fix` |
 | Login local responde 429 durante verificação manual | Toda requisição local cai no mesmo balde do rate limit (5 por 60 s, sucesso também conta) | Esperar 60 s ou usar outro processo com banco novo; nunca afrouxar a regra |
 | Teste "Unhandled error between tests" com oRPC | Chamadas disparadas num array e aguardadas uma a uma rejeitam antes do `await` | Guardar funções e rodar com `inSequence` (`apps/server/tests/support.ts`) |
-| `pnpm install` muda o lockfile sem mudança de dependência | `lefthook: latest` no `package.json` raiz é re-resolvido, também com `--lockfile-only` | Restaurar o lockfile, aplicar só a mudança (para remover dependência, apagar à mão a entrada do importer e os blocos do pacote em `packages` e `snapshots`) e validar com `pnpm install --frozen-lockfile` |
+| `pnpm install` muda o lockfile sem mudança de dependência | `lefthook: latest` no `package.json` raiz era re-resolvido, também com `--lockfile-only` | `lefthook` fixo em `2.1.12` desde 2026-09-16; ao atualizar, trocar a versão fixa e conferir o diff do lockfile |
 | Dados do celular "somem" no iPhone | Safari e ícone instalado têm armazenamentos separados | Usar sempre a instância instalada; o assistente avisa |
 | Formatação do hook diferente de `pnpm check` | `pnpm dlx ultracite` baixava outra versão | Lefthook usa `pnpm exec ultracite` |
 | Sessão de agente trava por tempo indefinido | Saída da suíte de teste passada por `tail` ou `head` | Redirecionar para arquivo; o guard bloqueia |
@@ -215,6 +215,17 @@ Configurados em `.claude/settings.json`. Cada script em `.claude/hooks/` exporta
 | Tentativas de login remoto em paralelo passam do bloqueio | A contagem de falhas só mudava depois da resposta do Better Auth | Reservar a tentativa numa transação antes de chamar o Better Auth e acertar pela resposta (`packages/api/src/sign-in-guard.ts`) |
 | `pnpm check` acusa `Bun` não declarado em teste | O Biome reconhece só globais de navegador e Node | APIs `node:*` equivalentes em vez de `Bun.*` |
 | Backup do serviço falha numa pasta que o dono escolheu e enxerga no Explorer | Serviço do Windows não vê letra de unidade mapeada da sessão do usuário e, com conta virtual, não grava em pasta do perfil sem ACL | Navegador de pastas alimentado pelo servidor, rede só por UNC e teste de gravação e releitura no wizard (SPEC §5) |
+| Classe de tamanho de fonte ou de cor some do elemento sem erro | O `cn` (merge de classes) trata `text-<nome>` desconhecido como cor; `text-body` e `text-danger-foreground` se anulam | Tamanho novo só com nome "de camiseta" (`text-2xs`, `text-md`) |
+| Foco por teclado sem anel visível, embora a classe `focus-visible:outline-2` esteja lá | No Tailwind 4, `outline-none` zera `--tw-outline-style` e a largura sozinha herda "none" | `focus-visible:outline-solid` junto; `packages/ui/tests/focus-ring.test.ts` e `apps/web/tests/tokens.test.ts` barram |
+| Página rola na horizontal em 320 px sem nenhum elemento largo visível | Lista com `overflow-x-auto` soma a largura do conteúdo ao tamanho intrínseco da grade da raiz | `contain-inline-size` na lista rolável e `grid-cols-[minmax(0,1fr)]` na grade do `__root` |
+| Fontes somem com o app offline | `globPatterns` do Workbox sem `woff2` | Padrão `**/*-latin-{wght,opsz}-normal-*.woff2`; conferir as fontes no `dist/sw.js` |
+| Aviso de chunk acima de 500 kB volta ao build | Devtools importados estaticamente no `__root` ou vendor grande no chunk de entrada | Devtools por import dinâmico sob `import.meta.env.DEV` e React no grupo `react` do `codeSplitting` |
+| Menu do Base UI parece não abrir, não focar ou não fechar no browser-harness | Aba em segundo plano segura animações e `requestAnimationFrame`; em dev o botão dos devtools do React Query cobre a barra inferior | `activate_tab` antes de testar teclado e esconder o overlay dos devtools antes de clicar |
+| Texto com acento some ou não é encontrado num roteiro do browser-harness | Caractere fora do ASCII chega corrompido na expressão JavaScript | Localizar por estrutura (`form label`, `data-slot`) em vez de texto com acento |
+| Edição em lote com `git grep` pula componentes novos | `git grep` só vê arquivos versionados | `grep -r` enquanto os arquivos ainda não estão no índice |
+| Tela só de desenvolvimento aparece no build e no precache da PWA | `beforeLoad` com `notFound()` protege a rota em tempo de execução, mas o chunk continua no bundle e no `globPatterns` | Import dinâmico sob `import.meta.env.DEV` (`apps/web/src/routes/catalogo.tsx`); conferir o `dist` por texto da tela |
+| Link com aparência de botão é anunciado como botão | `Button` do Base UI com `render` não nativo acrescenta `role="button"` | `ButtonLink` (`useRender` com as classes do botão) |
+| Teste de varredura verde com cor, elemento ou emoji novos | Regex presa a uma lista fechada ou a uma linha só | Padrões genéricos (tom numérico de qualquer paleta, JSX em várias linhas, `Emoji_Presentation` e sequências) e desafio de mutação a cada regra nova |
 
 ## 9. Registro de evolução
 
@@ -229,6 +240,7 @@ Configurados em `.claude/settings.json`. Cada script em `.claude/hooks/` exporta
 | 2026-09-16 | Armadilhas de origem local, acesso local pelo Tunnel e pasta de backup do serviço na §8 e na rule de servidor; orçamento de subagentes na §4 e no passo "Revisar" do `/entrega-fechar` | Fechamento da entrega Q-11 app desktop |
 | 2026-09-16 | Regra de nomes sem fase nem spec em código, testes, migrations e commits (`AGENTS.md`, passo de commit do `/entrega-fechar` e bloqueio no guard para nome de arquivo e mensagem de commit, com testes); armadilhas de rate limit local, ordenação de chaves do `fix`, promessas em testes oRPC, Drizzle sobre `bun:sqlite`, migrations custom e mensagens do Better Auth nas rules de servidor, banco, web e domínio e na §8; armadilhas do ledger na mesma transação, fila por `opId`, usuário órfão do Better Auth, reserva de login, log de erro de procedure, HMAC de código curto e global `Bun` no Biome, vindas da revisão, na rule de servidor, na §8 e nos papéis `reviewer` e `contract` | Pedido do dono e fechamento da entrega de servidor de acesso e sync |
 | 2026-09-16 | Armadilhas de Tauri e WebView2 removidas da §8 e da rule de web; papel `contract` sem desktop e com o proxy do Vite como exemplo de contrato; `src-tauri` fora do hook de format; armadilha do lockfile detalhada para remoção de dependência | Fechamento e revisão da entrega de remoção do app Tauri |
+| 2026-09-16 | Doc de área `docs/areas/design-system.md` no índice; rule de web com componentes e tokens obrigatórios e armadilhas de `cn`, anel de foco, largura intrínseca, zoom do iOS, fontes offline, devtools e browser-harness; §8 com essas falhas e o `lefthook` fixo; regra de UI só com componentes e sem emoji no `AGENTS.md`, travada por teste | Pedido do dono e fechamento da entrega do design system |
 
 ## 10. Sessão nova
 

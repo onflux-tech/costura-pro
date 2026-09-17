@@ -266,7 +266,7 @@ Requisitos têm ID estável para rastreio no [ROADMAP](ROADMAP.md). Contratos de
 | RNF-06 | Durabilidade: nenhuma operação confirmada é perdida ou aplicada duas vezes; histórico de negócio preservado indefinidamente |
 | RNF-07 | Segurança: servidor escuta só em loopback; cookies `HttpOnly` e `Secure` na origem pública; proteção de origem e CSRF; segredos fora do repositório, de backups e de logs |
 | RNF-08 | Privacidade: logs sem senhas, tokens, medidas, fotos ou dados completos de cliente; sem telemetria externa por padrão |
-| RNF-09 | Identidade visual "ateliê contemporâneo": base clara em creme, destaques em vinho e terracota, tipografia editorial só em títulos, componentes objetivos para o uso diário. O design system nasce na F1 do [ROADMAP](ROADMAP.md) |
+| RNF-09 | Identidade visual "ateliê contemporâneo": base clara em creme, verde-escuro como cor principal com lima no destino ativo, terracota e ocre nos estados de perigo e atenção, tipografia editorial (Source Serif 4) só em títulos, Geist na interface e JetBrains Mono em códigos, tema claro único e componentes objetivos para o uso diário. Tokens e componentes no [design system](areas/design-system.md) |
 | RNF-10 | Instalar, fazer backup, restaurar e atualizar sem terminal |
 | RNF-11 | Portabilidade: nenhuma regra depende de API exclusiva de um sistema operacional fora da camada de instalação e serviço |
 
@@ -301,8 +301,9 @@ Decisões tomadas com o dono. "Mão única" indica decisão cara de reverter; as
 | DEC-04 | Sem CSV na v1; cadastro do zero com saldos de abertura auditados | Importar e exportar CSV; apenas exportar | Dupla | RF-EST-14 |
 | DEC-05 | Wizard guiado e retomável; obrigatórios identidade, conta, códigos e backup testado; sandbox descartável | Tudo obrigatório; checklist solto; dados de exemplo na base real | Dupla | RF-ENT-02 a 04 |
 | DEC-06 | Tela inicial centrada na operação de hoje | Visão financeira; visão equilibrada | Dupla | RF-ENT-09 |
-| DEC-07 | Direção visual "ateliê contemporâneo" (2026-09-14) | Profissional minimalista; boutique artesanal | Dupla | RNF-09 |
+| DEC-07 | Direção visual "ateliê contemporâneo" (2026-09-14), com a paleta verde-escuro e creme do Claude Design (2026-09-16) | Profissional minimalista; boutique artesanal; destaques em vinho e terracota | Dupla | RNF-09 |
 | DEC-08 | Termo "faturamento" para OS aprovada e venda direta | "Vendas e recebimentos"; faturamento igual a recebimento | Dupla | RF-FIN-12 |
+| DEC-67 | Navegação principal com os destinos de uso diário soltos (Hoje, Agenda, Atendimento, Orçamentos, OS, Produção e Vendas) e os demais nos grupos "Catálogo e estoque" e "Gestão"; abaixo de 1280 px Produção e os grupos vão para "Mais", e no celular a barra inferior tem Hoje, Agenda, OS, Vendas e "Mais" (2026-09-16) | Menu lateral; 13 destinos soltos com "Mais" sem categoria; tudo por categoria, com OS e Vendas a dois cliques | Dupla | RF-ENT-05, RF-ENT-06, [design system](areas/design-system.md#navegação) |
 
 ### 9.2 Atendimento e agenda
 
@@ -382,7 +383,7 @@ Decisões tomadas com o dono. "Mão única" indica decisão cara de reverter; as
 | DEC-49 | Monorepo gerado pelo Better-T-Stack 3.43.1: TanStack Router, Hono, Bun, SQLite com Drizzle, oRPC, Better Auth, pnpm e addons PWA, Tauri, Turborepo, Biome, Lefthook, Ultracite e evlog; o addon Tauri saiu em 2026-09-16 pela DEC-59 | Oxlint, Nx e Husky (sobrepõem Biome, Turborepo e Lefthook) | Mão única | [SPEC §1](SPEC.md#1-topologia-e-componentes) |
 | DEC-50 | Jornadas de interface validadas em navegador real com browser-harness; sem Playwright | Suíte Playwright no CI | Dupla | [HARNESS](HARNESS.md) |
 | DEC-51 | PRD, SPEC, ROADMAP, CONTEXT, ADRs, HARNESS e REFERENCIAS versionados; specs e planos de sessão locais (2026-09-16) | Specs e planos versionados; ADRs locais | Dupla | [HARNESS](HARNESS.md) |
-| DEC-52 | Wireframes HTML descartados; a interface nasce de um design system com Claude Design e Storybook (2026-09-16) | Reimportar os wireframes do Linux | Dupla | [ROADMAP F1](ROADMAP.md#f1-design-system-e-storybook) |
+| DEC-52 | Wireframes HTML descartados; a interface nasce de um design system com Claude Design (2026-09-16); o Storybook previsto saiu pela DEC-68 | Reimportar os wireframes do Linux | Dupla | [ROADMAP F1](ROADMAP.md#f1-design-system) |
 | DEC-53 | Harness com Claude como padrão; portas de Codex e `.claude` geradas a partir de `.agents` e `.mcp.json`; MCPs context7 e shadcn; skills vendorizadas sem turborepo, vercel-react-best-practices e review-logging-patterns (2026-09-16) | Symlinks; cópias à mão; cinco MCPs; manter as 12 skills | Dupla | [HARNESS](HARNESS.md) |
 | DEC-54 | Harness evolutivo: hooks de sessão no Claude (guard, format, stop-check), rules por área, skills de ciclo de entrega, índice de docs com `docs-check` no pre-commit e CI em Ubuntu 24.04 e Windows; merge local na `main` e push após confirmação, sem PR (2026-09-16) | Evolução manual do harness; hooks também no Codex agora; pull requests; CI só em Ubuntu | Dupla | [HARNESS §4](HARNESS.md#4-ciclo-de-entrega-e-evolução-do-harness) |
 | DEC-55 | Repositório público `onflux-tech/costura-pro` com licença MIT e README bilíngue EN/PT no padrão do vsftpd-manager (2026-09-16) | Público sem licença; README só em português | Mão única | [LICENSE](../LICENSE) |
@@ -390,6 +391,8 @@ Decisões tomadas com o dono. "Mão única" indica decisão cara de reverter; as
 | DEC-57 | Código sem comentários: o porquê vai para armadilha do HARNESS, rule da área ou SPEC, e o guard do Claude barra comentário novo (2026-09-16) | Comentar o porquê no código; checagem também no pre-commit | Dupla | [HARNESS §5](HARNESS.md#5-hooks-do-claude-code) |
 | DEC-58 | Integração automática ao fim de cada entrega: commits por área, merge `--ff-only` na `main`, push e CI acompanhado sem confirmação (2026-09-16). Substituiu o push após confirmação da DEC-54 | Push com confirmação a cada entrega; integração só a pedido do dono | Dupla | [HARNESS §4](HARNESS.md#4-ciclo-de-entrega-e-evolução-do-harness) |
 | DEC-65 | Código, testes, migrations e mensagens de commit não citam fase, spike, spec, plano nem ID de requisito, decisão ou questão; nomes descrevem o conteúdo (2026-09-16) | Nomear arquivos e commits pela fase | Dupla | [AGENTS.md](../AGENTS.md) |
+| DEC-66 | Design system em `packages/ui`: tokens em hexadecimal com contraste AA conferido por teste, tema claro único, fontes empacotadas por `@fontsource-variable` com precache só do subconjunto latino, shadcn `base-vega` sobre Base UI, e telas só com componentes, sem elemento ou diálogo nativo do navegador e sem emoji (2026-09-16) | Tema escuro; Google Fonts; componentes do zero; classes soltas nas telas | Dupla | [design system](areas/design-system.md) |
+| DEC-68 | Catálogo de componentes em rota só de desenvolvimento no lugar do Storybook (2026-09-16) | Storybook 10 com addon de acessibilidade, cuja automação depende de Playwright (DEC-50) | Dupla | [design system](areas/design-system.md) |
 
 ## 10. Riscos e mitigação
 
@@ -421,7 +424,7 @@ Decisões tomadas com o dono. "Mão única" indica decisão cara de reverter; as
 
 | ID | Questão | Quando decidir |
 |---|---|---|
-| Q-01 | Identidade final: nome comercial, logo, paleta exata e tipografia | F1 |
+| Q-01 | Identidade final: nome comercial, logo, paleta exata e tipografia | Paleta e tipografia resolvidas em 2026-09-16 (DEC-07, DEC-66); nome comercial e logo antes do instalador da F7 |
 | Q-02 | Etapas padrão do fluxo de produção, modelos iniciais de medidas e categorias iniciais de material e despesa | F2, conteúdo do wizard e da sandbox |
 | Q-03 | Biblioteca de PDF que funcione igual no navegador móvel e no desktop | Spike S1 |
 | Q-04 | Leitura de QR e código de barras pela câmera no iPhone | Spike S3 |
