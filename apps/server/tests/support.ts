@@ -14,6 +14,7 @@ import { createORPCClient } from "@orpc/client";
 import { RPCLink } from "@orpc/client/fetch";
 
 import { type AppOptions, createApp } from "../src/app";
+import { mediaRootFor } from "../src/media";
 
 export const port = 3000;
 export const loopbackHost = `127.0.0.1:${port}`;
@@ -37,6 +38,7 @@ export type RequestOptions = {
 	host?: string;
 	method?: string;
 	origin?: string;
+	raw?: RequestInit["body"];
 };
 
 export type ServerOptions = {
@@ -51,6 +53,7 @@ export type TestServer = {
 	close: () => Promise<void>;
 	db: Database;
 	directory: string;
+	mediaRoot: string;
 	native: () => ReturnType<typeof getNativeDatabase>;
 	reopen: () => void;
 	send: (path: string, options?: RequestOptions) => Promise<Response>;
@@ -73,6 +76,7 @@ export async function startTestServer({
 		);
 	}
 	const databaseFile = join(directory, "atelier.db");
+	const mediaRoot = mediaRootFor(databaseFile);
 
 	function build() {
 		const db = createDb({ DATABASE_FILE: databaseFile });
@@ -82,7 +86,15 @@ export async function startTestServer({
 			db,
 			canonicalOrigin
 		);
-		const app = createApp({ auth, canonicalOrigin, db, drain, now, webRoot });
+		const app = createApp({
+			auth,
+			canonicalOrigin,
+			db,
+			drain,
+			mediaRoot,
+			now,
+			webRoot,
+		});
 		return { app, auth, db };
 	}
 
@@ -93,6 +105,7 @@ export async function startTestServer({
 			await rm(directory, { force: true, recursive: true });
 		},
 		directory,
+		mediaRoot,
 		native: () => getNativeDatabase(server.db),
 		reopen: () => {
 			closeDb(server.db);
@@ -107,6 +120,7 @@ export async function startTestServer({
 				host = loopbackHost,
 				method = "GET",
 				origin,
+				raw,
 			} = {}
 		) => {
 			const headers = new Headers({ ...extraHeaders, host });
@@ -119,11 +133,14 @@ export async function startTestServer({
 			if (body !== undefined) {
 				headers.set("content-type", "application/json");
 			}
+			const payload =
+				raw ?? (body === undefined ? undefined : JSON.stringify(body));
 			return await server.app.request(path, {
-				body: body === undefined ? undefined : JSON.stringify(body),
+				body: payload,
+				duplex: "half",
 				headers,
 				method,
-			});
+			} as RequestInit);
 		},
 	};
 	return server;

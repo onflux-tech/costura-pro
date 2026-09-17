@@ -8,6 +8,7 @@ import {
 	measurementsRouter,
 	measurementTemplatesRouter,
 } from "../measurements/router";
+import { receivedItemsRouter } from "../received-items/router";
 import { recoveryRouter } from "../recovery/router";
 import { syncRouter } from "../sync/router";
 
@@ -23,6 +24,7 @@ export const appRouter = {
 		user: context.session?.user,
 	})),
 	profiles: profilesRouter,
+	receivedItems: receivedItemsRouter,
 	recovery: recoveryRouter,
 	sync: syncRouter,
 };

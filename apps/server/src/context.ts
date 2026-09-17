@@ -14,6 +14,7 @@ export type CreateContextOptions = {
 	auth: Auth;
 	context: HonoContext<EvlogVariables>;
 	db: Database;
+	mediaRoot: string;
 	now: () => Date;
 };
 
@@ -21,6 +22,7 @@ export async function createContext({
 	auth,
 	context,
 	db,
+	mediaRoot,
 	now,
 }: CreateContextOptions): Promise<ApiContext> {
 	const { headers } = context.req.raw;
@@ -38,6 +40,7 @@ export async function createContext({
 		log: (fields) => {
 			context.get("log").set(fields);
 		},
+		mediaRoot,
 		now,
 		serverVersion: packageJson.version,
 		session,

@@ -16,6 +16,7 @@ import {
 	updateInstallation,
 } from "../installation/store";
 import { measurementCommands } from "../measurements/commands";
+import { receivedItemCommands } from "../received-items/commands";
 import { atelierNameSchema, deviceNameSchema } from "../schemas";
 
 export type CommandExecutor = Executor & Pick<Database, "select">;
@@ -111,6 +112,7 @@ const setAtelierName: UpdateDefinition = {
 export const syncCommands = {
 	...clientCommands,
 	...measurementCommands,
+	...receivedItemCommands,
 	"device.rename": renameDevice,
 	"installation.setAtelierName": setAtelierName,
 } satisfies Record<string, CommandDefinition>;

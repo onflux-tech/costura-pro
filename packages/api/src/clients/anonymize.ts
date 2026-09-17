@@ -3,19 +3,37 @@ import {
 	anonymizedClientName,
 	anonymizedProfileName,
 } from "@costura-pro/domain/client";
+import type { MediaType } from "@costura-pro/domain/media";
+import { anonymizedReceivedItemDescription } from "@costura-pro/domain/received-item";
 import { ORPCError } from "@orpc/server";
 
 import { appendAudit } from "../audit";
 import { commandMessages } from "../command-messages";
 import type { Context } from "../context";
+import type { Executor } from "../executor";
 import { readInstallation } from "../installation/store";
 import {
 	listMeasurementsOfProfiles,
 	measurementSnapshot,
 	updateMeasurement,
 } from "../measurements/store";
+import { removeMediaFile } from "../media/files";
+import { withMediaLock } from "../media/lock";
+import {
+	deleteMediaFile,
+	isMediaReferenced,
+	photoHashes,
+	type Querier,
+	readMediaFile,
+} from "../media/store";
 import { runDirectCommand } from "../operations";
-import { redactHistory } from "../redaction";
+import {
+	listReceivedItemsOfClient,
+	receivedItemHistoryValues,
+	receivedItemSnapshot,
+	updateReceivedItem,
+} from "../received-items/store";
+import { type RedactionStamp, redactHistory } from "../redaction";
 import {
 	clientSnapshot,
 	listProfiles,
@@ -25,10 +43,80 @@ import {
 	updateProfile,
 } from "./store";
 
+type RemovedFile = { hash: string; mime: MediaType };
+
+function anonymizeReceivedItems(
+	tx: Executor & Querier,
+	clientId: string,
+	stamp: RedactionStamp
+): { count: number; removed: RemovedFile[] } {
+	const items = listReceivedItemsOfClient(tx, clientId);
+	const collected = new Set(
+		items.flatMap((row) => [
+			...photoHashes(row),
+			...receivedItemHistoryValues(tx, row.id).flatMap(photoHashes),
+		])
+	);
+	for (const row of items) {
+		const anonymized = updateReceivedItem(
+			tx,
+			row,
+			{
+				accessories: null,
+				archivedAt: row.archivedAt ?? stamp.now,
+				description: anonymizedReceivedItemDescription,
+				notes: null,
+				photos: [],
+			},
+			stamp
+		);
+		redactHistory(
+			tx,
+			{
+				current: receivedItemSnapshot(anonymized),
+				id: anonymized.id,
+				type: "receivedItem",
+			},
+			stamp
+		);
+	}
+	const removed = [...collected].flatMap((hash) => {
+		const media = readMediaFile(tx, hash);
+		if (!media || isMediaReferenced(tx, hash)) {
+			return [];
+		}
+		deleteMediaFile(tx, hash);
+		return [{ hash, mime: media.mime }];
+	});
+	return { count: items.length, removed };
+}
+
+function removeFilesWithoutRow(
+	context: Pick<Context, "db" | "mediaRoot">,
+	files: readonly RemovedFile[]
+): Promise<number> {
+	return files.reduce<Promise<number>>(async (previous, file) => {
+		const failed = await previous;
+		const removed = await withMediaLock(file.hash, async () => {
+			if (readMediaFile(context.db, file.hash)) {
+				return true;
+			}
+			try {
+				await removeMediaFile(context.mediaRoot, file.hash, file.mime);
+				return true;
+			} catch {
+				return false;
+			}
+		});
+		return removed ? failed : failed + 1;
+	}, Promise.resolve(0));
+}
+
 export async function anonymizeClient(
-	context: Pick<Context, "access" | "db" | "log" | "now">,
+	context: Pick<Context, "access" | "db" | "log" | "mediaRoot" | "now">,
 	input: { baseVersion: number; clientId: string; opId: string }
 ): Promise<{ version: number }> {
+	const removedFiles: RemovedFile[] = [];
 	const result = await runDirectCommand(
 		context,
 		{
@@ -132,6 +220,8 @@ export async function anonymizeClient(
 						stamp
 					);
 				}
+				const receivedItems = anonymizeReceivedItems(tx, current.id, stamp);
+				removedFiles.push(...receivedItems.removed);
 				appendAudit(
 					tx,
 					now,
@@ -141,6 +231,7 @@ export async function anonymizeClient(
 							clientId: next.id,
 							measurements: measurements.length,
 							profiles: profiles.length,
+							receivedItems: receivedItems.count,
 						},
 						outcome: "succeeded",
 						type: "client.anonymized",
@@ -152,5 +243,9 @@ export async function anonymizeClient(
 		}
 	);
 	truncateWal(context.db);
+	const failed = await removeFilesWithoutRow(context, removedFiles);
+	if (failed > 0) {
+		console.error({ failed, scope: "media.anonymize" });
+	}
 	return result;
 }

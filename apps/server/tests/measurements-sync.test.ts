@@ -188,7 +188,7 @@ describe("measurement templates and measurements over sync", () => {
 			createMeasurement(setup, { ...valid, profileId: crypto.randomUUID() }),
 			createMeasurement(setup, { ...valid, templateId: crypto.randomUUID() }),
 			createMeasurement(setup, measurementPayload(saia, profileId, [])),
-			{ ...createMeasurement(setup, valid), aggregateType: "profile" },
+			{ ...createMeasurement(setup, valid), aggregateType: "installation" },
 			measurementCommand(setup, crypto.randomUUID(), "measurement.update", 1, {
 				notes: "Mede com salto",
 			}),

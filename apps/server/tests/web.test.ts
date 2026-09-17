@@ -87,6 +87,7 @@ describe("without SPA and with a missing build", () => {
 			auth: server.auth,
 			canonicalOrigin,
 			db: server.db,
+			mediaRoot: server.mediaRoot,
 		});
 		const response = await devApp.request("/dashboard", {
 			headers: { host: loopbackHost },
@@ -102,6 +103,7 @@ describe("without SPA and with a missing build", () => {
 				auth: server.auth,
 				canonicalOrigin,
 				db: server.db,
+				mediaRoot: server.mediaRoot,
 				webRoot,
 			})
 		).toThrow(

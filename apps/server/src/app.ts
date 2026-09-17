@@ -22,6 +22,7 @@ import {
 	signInUsernameRoute,
 } from "./auth-routes";
 import { createContext } from "./context";
+import { mediaRoutes } from "./media";
 import { originGuard, secureCookiesOnCanonicalHost } from "./origin";
 import { serveWeb } from "./web";
 
@@ -30,6 +31,7 @@ export type AppOptions = {
 	canonicalOrigin?: URL;
 	db: Database;
 	drain?: EvlogHonoOptions["drain"];
+	mediaRoot: string;
 	now?: () => Date;
 	webRoot?: string;
 };
@@ -73,6 +75,7 @@ export function createApp({
 	canonicalOrigin,
 	db,
 	drain,
+	mediaRoot,
 	now = () => new Date(),
 	webRoot,
 }: AppOptions) {
@@ -86,15 +89,16 @@ export function createApp({
 
 	async function apiContext(c: Context<EvlogVariables>) {
 		await identifyUser(c.get("log"), c.req.raw.headers, c.req.path);
-		return createContext({ auth, context: c, db, now });
+		return createContext({ auth, context: c, db, mediaRoot, now });
 	}
 
-	app.use(evlog({ drain }));
+	app.use(evlog({ drain, exclude: ["/api/media/**"] }));
 	app.use(originGuard(canonicalOrigin));
 	app.use(secureCookiesOnCanonicalHost(canonicalOrigin));
 
 	app.use(signInUsernameRoute, signInGuard({ db, now }));
 	app.on(["POST", "GET"], `${authBasePath}/*`, authRoutes(auth));
+	app.route("/api/media", mediaRoutes({ auth, db, mediaRoot, now }));
 
 	app.use("/rpc/*", async (c, next) => {
 		const result = await rpcHandler.handle(c.req.raw, {

@@ -16,6 +16,7 @@
     "@costura-pro/api": "workspace:*",
     "@costura-pro/auth": "workspace:*",
     "@costura-pro/db": "workspace:*",
+    "@costura-pro/domain": "workspace:*",
     "@orpc/openapi": "catalog:",
     "@orpc/server": "catalog:",
     "@orpc/zod": "catalog:",

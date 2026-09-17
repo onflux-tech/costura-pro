@@ -1,5 +1,13 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
-import { mkdtemp, readdir, rm } from "node:fs/promises";
+import { existsSync } from "node:fs";
+import {
+	mkdir,
+	mkdtemp,
+	readdir,
+	rm,
+	utimes,
+	writeFile,
+} from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import type { AppRouterClient } from "@costura-pro/api/routers/index";
@@ -23,6 +31,7 @@ let directory: string;
 let port: number;
 let baseUrl: string;
 let subprocess: Subprocess;
+let orphanMedia: string;
 
 function freePort() {
 	const probe = serve({
@@ -92,6 +101,17 @@ beforeAll(async () => {
 	const db = createDb({ DATABASE_FILE: databaseFile });
 	applyMigrations(db);
 	closeDb(db);
+	orphanMedia = join(
+		directory,
+		"media",
+		"ab",
+		"cd",
+		`${"abcd".padEnd(64, "0")}.jpg`
+	);
+	await mkdir(join(directory, "media", "ab", "cd"), { recursive: true });
+	await writeFile(orphanMedia, "x");
+	const dayAndHourAgo = new Date(Date.now() - 25 * 60 * 60 * 1000);
+	await utimes(orphanMedia, dayAndHourAgo, dayAndHourAgo);
 
 	port = freePort();
 	baseUrl = `http://127.0.0.1:${port}`;
@@ -238,6 +258,21 @@ describe("production build in one loopback process", () => {
 		expect(serviceWorker).toContain("denylist");
 		expect(serviceWorker).toContain("/^\\/api(\\/|-reference|$)/");
 		expect(serviceWorker).toContain("/^\\/rpc(\\/|$)/");
+	});
+
+	test("collects old orphan media in the folder next to the database at boot", async () => {
+		const deadline = Date.now() + 5000;
+		const gone = async (): Promise<boolean> => {
+			if (!existsSync(orphanMedia)) {
+				return true;
+			}
+			if (Date.now() > deadline) {
+				return false;
+			}
+			await sleep(50);
+			return gone();
+		};
+		expect(await gone()).toBe(true);
 	});
 
 	test("listens only on 127.0.0.1", async () => {

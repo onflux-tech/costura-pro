@@ -14,6 +14,7 @@ export type Context = {
 	device: DeviceCredential | null;
 	ip: string | null;
 	log: (fields: Record<string, unknown>) => void;
+	mediaRoot: string;
 	now: () => Date;
 	serverVersion: string;
 	session: Session;

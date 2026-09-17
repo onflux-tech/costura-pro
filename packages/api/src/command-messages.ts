@@ -5,5 +5,6 @@ export const commandMessages = {
 	measurementNotFound: "Medição não encontrada",
 	measurementTemplateNotFound: "Modelo de medidas não encontrado",
 	profileNotFound: "Perfil não encontrado",
+	receivedItemNotFound: "Peça recebida não encontrada",
 	staleVersion: "Versão desatualizada",
 } as const;

@@ -5,6 +5,8 @@ import type { Context } from "./context";
 import { authenticateDevice } from "./devices/store";
 import { readInstallation } from "./installation/store";
 
+export const notReadyMessage = "Instalação ainda no wizard";
+
 export const o = os.$context<Context>();
 
 export const publicProcedure = o;
@@ -34,7 +36,7 @@ const requireReady = o.middleware(({ context, next }) => {
 	if (!isAtLeast(state, "ready")) {
 		throw new ORPCError("PRECONDITION_FAILED", {
 			data: { state },
-			message: "Instalação ainda no wizard",
+			message: notReadyMessage,
 		});
 	}
 	return next();

@@ -99,6 +99,9 @@ importers:
       '@costura-pro/db':
         specifier: workspace:*
         version: link:../../packages/db
+      '@costura-pro/domain':
+        specifier: workspace:*
+        version: link:../../packages/domain
       '@orpc/openapi':
         specifier: 'catalog:'
         version: 1.15.0(ws@8.21.3)

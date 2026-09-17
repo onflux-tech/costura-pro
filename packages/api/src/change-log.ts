@@ -8,7 +8,8 @@ export type AggregateType =
 	| "installation"
 	| "measurement"
 	| "measurementTemplate"
-	| "profile";
+	| "profile"
+	| "receivedItem";
 
 export type ChangeInput = {
 	aggregateId: string;

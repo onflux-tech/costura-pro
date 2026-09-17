@@ -17,6 +17,7 @@ export const personalDataAggregates: ReadonlySet<AggregateType> = new Set([
 	"client",
 	"measurement",
 	"profile",
+	"receivedItem",
 ]);
 
 export const redactionReason = commandMessages.clientAnonymized;

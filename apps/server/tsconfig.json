@@ -1,6 +1,9 @@
 {
   "extends": "@costura-pro/config/tsconfig.base.json",
-  "references": [{ "path": "../../packages/api" }],
+  "references": [
+    { "path": "../../packages/api" },
+    { "path": "../../packages/domain" }
+  ],
   "compilerOptions": {
     "noEmit": true,
     "paths": {
