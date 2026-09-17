@@ -119,6 +119,7 @@ export const stockMovementTransferPayload = z
 	);
 
 export const stockMovementReversePayload = z.object({
+	counterpartId: z.uuid().nullable().default(null),
 	occurredOn: occurredOnField,
 	reason: reasonField,
 	reversesMovementId: z.uuid(),

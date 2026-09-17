@@ -746,6 +746,93 @@ describe("stock reversal", () => {
 		});
 	});
 
+	test("reverses both legs of a transfer and conserves the total", async () => {
+		const { owner } = await ownerSetup();
+		const { locationId, variantId } = await stockedVariant(owner);
+		const destination = await createLocation(owner, { name: "Prateleira B" });
+		const transfer = await owner.stockMovements.transfer({
+			fromLocationId: locationId,
+			inboundId: crypto.randomUUID(),
+			lotId: null,
+			movementId: crypto.randomUUID(),
+			occurredOn: "2026-09-17",
+			opId: newOpId(),
+			quantityMicros: "2000000",
+			reason: null,
+			toLocationId: destination.id,
+			variantId,
+		});
+		await owner.stockMovements.reverse({
+			counterpartId: crypto.randomUUID(),
+			movementId: crypto.randomUUID(),
+			occurredOn: "2026-09-18",
+			opId: newOpId(),
+			reason: "Transferi errado",
+			reversesMovementId: transfer.id,
+		});
+		const { points } = await owner.stockBalances.get({ variantId });
+		expect(points).toEqual([
+			{
+				locationId,
+				locationName: "Armário 1",
+				lotId: null,
+				lotLabel: null,
+				quantityMicros: "5000000",
+				valueCents: "6250",
+			},
+		]);
+	});
+
+	test("refuses reversing a transfer leg without the counterpart id", async () => {
+		const { owner } = await ownerSetup();
+		const { locationId, variantId } = await stockedVariant(owner);
+		const destination = await createLocation(owner, { name: "Prateleira B" });
+		const transfer = await owner.stockMovements.transfer({
+			fromLocationId: locationId,
+			inboundId: crypto.randomUUID(),
+			lotId: null,
+			movementId: crypto.randomUUID(),
+			occurredOn: "2026-09-17",
+			opId: newOpId(),
+			quantityMicros: "2000000",
+			reason: null,
+			toLocationId: destination.id,
+			variantId,
+		});
+		await expect(
+			owner.stockMovements.reverse({
+				movementId: crypto.randomUUID(),
+				occurredOn: "2026-09-18",
+				opId: newOpId(),
+				reason: "Transferi errado",
+				reversesMovementId: transfer.id,
+			})
+		).rejects.toMatchObject({ code: "NOT_FOUND" });
+	});
+
+	test("refuses a counterpart id when the movement is not a transfer", async () => {
+		const { owner } = await ownerSetup();
+		const { locationId, variantId } = await createVariant(owner).then(
+			async (variant) => {
+				const location = await createLocation(owner);
+				return { locationId: location.id, variantId: variant.variantId };
+			}
+		);
+		const opening = await owner.stockMovements.create(
+			openingInput(variantId, locationId)
+		);
+		await expect(
+			owner.stockMovements.reverse({
+				counterpartId: crypto.randomUUID(),
+				movementId: crypto.randomUUID(),
+				occurredOn: "2026-09-18",
+				opId: newOpId(),
+				reason: "Lançado errado",
+				reversesMovementId: opening.id,
+			})
+		).rejects.toMatchObject({ code: "NOT_FOUND" });
+	});
+
 	test("refuses reversing a missing movement", async () => {
 		const { owner } = await ownerSetup();
 		await expect(

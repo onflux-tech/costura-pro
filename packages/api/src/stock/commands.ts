@@ -32,10 +32,12 @@ import {
 	readStockLocation,
 	readStockLot,
 	readStockMovement,
+	readTransferCounterpart,
 	type StockLocationPatch,
 	type StockLocationRow,
 	type StockLotPatch,
 	type StockLotRow,
+	type StockMovementFields,
 	stockLocationSnapshot,
 	stockLotSnapshot,
 	updateStockLocation,
@@ -238,23 +240,42 @@ const reverseMovement: CreateDefinition = {
 		if (readReversalOf(db, original.id)) {
 			return { message: "Movimento já estornado", reason: "aggregateExists" };
 		}
-		return insertStockMovement(
-			db,
-			id,
-			{
-				kind: "reversal",
-				locationId: original.locationId,
-				lotId: original.lotId,
-				occurredOn: fields.occurredOn,
-				quantityMicros: (-original.quantityMicros).toString(),
-				reason: fields.reason,
-				reversesMovementId: original.id,
-				transferId: null,
-				valueCents: (-original.valueCents).toString(),
-				variantId: original.variantId,
-			},
-			stamp
-		).version;
+		const counterpart =
+			original.transferId === null
+				? undefined
+				: readTransferCounterpart(db, original.transferId, original.id);
+		if ((counterpart === undefined) !== (fields.counterpartId === null)) {
+			return notFound(commandMessages.stockMovementNotFound);
+		}
+		if (counterpart && readReversalOf(db, counterpart.id)) {
+			return { message: "Movimento já estornado", reason: "aggregateExists" };
+		}
+		if (fields.counterpartId && readStockMovement(db, fields.counterpartId)) {
+			return { reason: "aggregateExists" };
+		}
+		const pairId = counterpart ? id : null;
+		const reversalOf = (row: typeof original): StockMovementFields => ({
+			kind: "reversal",
+			locationId: row.locationId,
+			lotId: row.lotId,
+			occurredOn: fields.occurredOn,
+			quantityMicros: (-row.quantityMicros).toString(),
+			reason: fields.reason,
+			reversesMovementId: row.id,
+			transferId: pairId,
+			valueCents: (-row.valueCents).toString(),
+			variantId: row.variantId,
+		});
+		const reversal = insertStockMovement(db, id, reversalOf(original), stamp);
+		if (counterpart && fields.counterpartId) {
+			insertStockMovement(
+				db,
+				fields.counterpartId,
+				reversalOf(counterpart),
+				stamp
+			);
+		}
+		return reversal.version;
 	},
 	exists: (db, id) => readStockMovement(db, id) !== undefined,
 	kind: "create",

@@ -8,7 +8,7 @@ import {
 import type { StockMovementKind } from "@costura-pro/domain/stock";
 import { balancePointId } from "@costura-pro/domain/stock";
 import { ORPCError } from "@orpc/server";
-import { and, eq, sql } from "drizzle-orm";
+import { and, eq, ne, sql } from "drizzle-orm";
 
 import { appendChange } from "../change-log";
 import type { ChangeStamp } from "../devices/store";
@@ -154,6 +154,23 @@ export function readReversalOf(
 		.select()
 		.from(stockMovement)
 		.where(eq(stockMovement.reversesMovementId, movementId))
+		.get();
+}
+
+export function readTransferCounterpart(
+	db: Reader,
+	transferId: string,
+	movementId: string
+): StockMovementRow | undefined {
+	return db
+		.select()
+		.from(stockMovement)
+		.where(
+			and(
+				eq(stockMovement.transferId, transferId),
+				ne(stockMovement.id, movementId)
+			)
+		)
 		.get();
 }
 

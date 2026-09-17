@@ -258,6 +258,42 @@ describe("materials", () => {
 		});
 	});
 
+	test("the direct procedure refuses lot tracking in the patch", async () => {
+		const { owner } = await ownerSetup();
+		const { id: materialId } = await createMaterial(owner);
+		const { id: variantId } = await createVariant(owner, materialId, {
+			tracksLots: true,
+		});
+		const loose = owner.materialVariants.update as unknown as (input: {
+			baseVersion: number;
+			opId: string;
+			patch: Record<string, unknown>;
+			variantId: string;
+		}) => Promise<{ version: number }>;
+		await expect(
+			loose({
+				baseVersion: 1,
+				opId: newOpId(),
+				patch: { tracksLots: false },
+				variantId,
+			})
+		).rejects.toMatchObject({ code: "BAD_REQUEST" });
+		expect(
+			await loose({
+				baseVersion: 1,
+				opId: newOpId(),
+				patch: { name: "Azul royal", tracksLots: false },
+				variantId,
+			})
+		).toEqual({ version: 2 });
+		const { variants } = await owner.materials.get({ materialId });
+		expect(variants[0]).toMatchObject({
+			name: "Azul royal",
+			tracksLots: true,
+			version: 2,
+		});
+	});
+
 	test("repeats by opId and refuses a stale version and a repeated id", async () => {
 		const { owner } = await ownerSetup();
 		const { id: materialId } = await createMaterial(owner);
