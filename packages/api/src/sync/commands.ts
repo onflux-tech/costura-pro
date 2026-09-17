@@ -19,6 +19,7 @@ import { materialCommands } from "../materials/commands";
 import { measurementCommands } from "../measurements/commands";
 import { receivedItemCommands } from "../received-items/commands";
 import { atelierNameSchema, deviceNameSchema } from "../schemas";
+import { stockCommands } from "../stock/commands";
 
 export type CommandExecutor = Executor & Pick<Database, "select">;
 
@@ -32,7 +33,7 @@ export type LoadedAggregate = {
 
 export type CreateRejection = {
 	message?: string;
-	reason: "aggregateAnonymized" | "aggregateNotFound";
+	reason: "aggregateAnonymized" | "aggregateExists" | "aggregateNotFound";
 };
 
 export type CreateDefinition = {
@@ -115,6 +116,7 @@ export const syncCommands = {
 	...materialCommands,
 	...measurementCommands,
 	...receivedItemCommands,
+	...stockCommands,
 	"device.rename": renameDevice,
 	"installation.setAtelierName": setAtelierName,
 } satisfies Record<string, CommandDefinition>;

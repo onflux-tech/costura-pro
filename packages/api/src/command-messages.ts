@@ -9,4 +9,7 @@ export const commandMessages = {
 	profileNotFound: "Perfil não encontrado",
 	receivedItemNotFound: "Peça recebida não encontrada",
 	staleVersion: "Versão desatualizada",
+	stockLocationNotFound: "Local não encontrado",
+	stockLotNotFound: "Lote não encontrado",
+	stockMovementNotFound: "Movimento não encontrado",
 } as const;

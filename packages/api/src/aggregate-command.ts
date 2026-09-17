@@ -7,12 +7,32 @@ import { runDirectCommand } from "./operations";
 import {
 	type CreateCommandName,
 	type CreateDefinition,
+	type CreateRejection,
 	syncCommands,
 	type UpdateCommandName,
 	type UpdateDefinition,
 } from "./sync/commands";
 
 export type CommandMessages = { anonymized: string; notFound: string };
+
+function rejectionError(
+	rejection: CreateRejection,
+	messages: CommandMessages
+): ORPCError<string, unknown> {
+	if (rejection.reason === "aggregateNotFound") {
+		return new ORPCError("NOT_FOUND", {
+			message: rejection.message ?? messages.notFound,
+		});
+	}
+	if (rejection.reason === "aggregateExists") {
+		return new ORPCError("CONFLICT", {
+			message: rejection.message ?? commandMessages.aggregateExists,
+		});
+	}
+	return new ORPCError("PRECONDITION_FAILED", {
+		message: messages.anonymized,
+	});
+}
 
 type CommandContext = Pick<Context, "db" | "now">;
 
@@ -56,13 +76,7 @@ export function runCreateCommand(
 					opId,
 				});
 				if (typeof created !== "number") {
-					throw created.reason === "aggregateNotFound"
-						? new ORPCError("NOT_FOUND", {
-								message: created.message ?? messages.notFound,
-							})
-						: new ORPCError("PRECONDITION_FAILED", {
-								message: messages.anonymized,
-							});
+					throw rejectionError(created, messages);
 				}
 				return record(tx, { id: aggregateId, version: created });
 			});

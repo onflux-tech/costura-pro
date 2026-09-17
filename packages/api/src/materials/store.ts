@@ -38,10 +38,11 @@ export type MaterialVariantFields = {
 	photo: MaterialVariantPhotoRow | null;
 	referenceCostCents: string | null;
 	targetQuantityMicros: string | null;
+	tracksLots: boolean;
 };
 
 export type MaterialVariantPatch = Partial<
-	Omit<MaterialVariantFields, "baseUnit" | "materialId">
+	Omit<MaterialVariantFields, "baseUnit" | "materialId" | "tracksLots">
 > & { archivedAt?: Date | null };
 
 export type MaterialSnapshot = {
@@ -68,6 +69,7 @@ export type MaterialVariantSnapshot = {
 	photo: MaterialVariantPhotoRow | null;
 	referenceCostCents: string | null;
 	targetQuantityMicros: string | null;
+	tracksLots: boolean;
 	version: number;
 };
 
@@ -115,6 +117,7 @@ export function materialVariantSnapshot(
 		photo: row.photo,
 		referenceCostCents: textOrNull(row.referenceCostCents),
 		targetQuantityMicros: textOrNull(row.targetQuantityMicros),
+		tracksLots: row.tracksLots,
 		version: row.version,
 	};
 }
@@ -271,6 +274,7 @@ export function insertMaterialVariant(
 			materialId: fields.materialId,
 			name: fields.name,
 			searchText: variantSearchKey(fields),
+			tracksLots: fields.tracksLots,
 			updatedAt: stamp.now,
 			version: 1,
 		})

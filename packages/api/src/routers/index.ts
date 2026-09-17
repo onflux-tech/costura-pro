@@ -11,6 +11,12 @@ import {
 } from "../measurements/router";
 import { receivedItemsRouter } from "../received-items/router";
 import { recoveryRouter } from "../recovery/router";
+import {
+	stockBalancesRouter,
+	stockLocationsRouter,
+	stockLotsRouter,
+	stockMovementsRouter,
+} from "../stock/router";
 import { syncRouter } from "../sync/router";
 
 export const appRouter = {
@@ -29,6 +35,10 @@ export const appRouter = {
 	profiles: profilesRouter,
 	receivedItems: receivedItemsRouter,
 	recovery: recoveryRouter,
+	stockBalances: stockBalancesRouter,
+	stockLocations: stockLocationsRouter,
+	stockLots: stockLotsRouter,
+	stockMovements: stockMovementsRouter,
 	sync: syncRouter,
 };
 export type AppRouter = typeof appRouter;

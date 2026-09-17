@@ -83,6 +83,7 @@ export const materialVariantCreatePayload = z.object({
 	photo: photoField.default(null),
 	referenceCostCents: costField.default(null),
 	targetQuantityMicros: quantityField.default(null),
+	tracksLots: z.boolean().default(false),
 });
 
 export const materialVariantPatchPayload = z

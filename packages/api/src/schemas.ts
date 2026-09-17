@@ -47,6 +47,23 @@ export const moneyCentsSchema = exactIntegerSchema;
 
 export const quantityMicrosSchema = exactIntegerSchema;
 
+const signedIntegerText = /^-?\d{1,17}$/;
+
+const signedExactIntegerSchema = z
+	.string()
+	.refine((value) => {
+		if (!signedIntegerText.test(value)) {
+			return false;
+		}
+		const parsed = BigInt(value);
+		return parsed <= maxExactInteger && parsed >= -maxExactInteger;
+	}, "Valor inteiro inválido")
+	.transform((value) => BigInt(value).toString());
+
+export const signedMoneyCentsSchema = signedExactIntegerSchema;
+
+export const signedQuantityMicrosSchema = signedExactIntegerSchema;
+
 export const hasChange = (patch: Record<string, unknown>) =>
 	Object.values(patch).some((value) => value !== undefined);
 

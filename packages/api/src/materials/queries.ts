@@ -6,6 +6,7 @@ import { and, asc, eq, inArray, isNotNull, isNull, or, sql } from "drizzle-orm";
 import z from "zod";
 
 import { commandMessages } from "../command-messages";
+import { variantBalanceTotals } from "../stock/queries";
 import {
 	listMaterialVariants,
 	materialSnapshot,
@@ -114,15 +115,21 @@ export function getMaterial(db: Reader, materialId: string) {
 			message: commandMessages.materialNotFound,
 		});
 	}
+	const totals = variantBalanceTotals(db, materialId);
 	return {
 		material: {
 			...materialSnapshot(row),
 			updatedAt: row.updatedAt.toISOString(),
 		},
-		variants: listMaterialVariants(db, materialId).map((variant) => ({
-			...materialVariantSnapshot(variant),
-			updatedAt: variant.updatedAt.toISOString(),
-		})),
+		variants: listMaterialVariants(db, materialId).map((variant) => {
+			const balance = totals.get(variant.id);
+			return {
+				...materialVariantSnapshot(variant),
+				quantityMicros: balance?.quantityMicros ?? "0",
+				updatedAt: variant.updatedAt.toISOString(),
+				valueCents: balance?.valueCents ?? "0",
+			};
+		}),
 	};
 }
 

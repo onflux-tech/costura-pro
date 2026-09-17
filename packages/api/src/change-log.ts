@@ -11,7 +11,10 @@ export type AggregateType =
 	| "measurement"
 	| "measurementTemplate"
 	| "profile"
-	| "receivedItem";
+	| "receivedItem"
+	| "stockLocation"
+	| "stockLot"
+	| "stockMovement";
 
 export type ChangeInput = {
 	aggregateId: string;
