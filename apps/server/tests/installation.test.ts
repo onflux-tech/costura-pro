@@ -278,6 +278,46 @@ describe("installation details", () => {
 		});
 	});
 
+	test("stays closed without a session after the wizard ends", async () => {
+		const server = await freshServer();
+		await ready(server);
+		await expect(rpc(server).installation.details()).rejects.toMatchObject({
+			code: "UNAUTHORIZED",
+		});
+	});
+
+	test("renaming works without a session until the owner exists", async () => {
+		const server = await freshServer();
+		await nameAtelier(server);
+		expect(
+			await rpc(server).installation.setAtelierName({
+				atelierName: "Ateliê Linha Fina",
+				baseVersion: installationRow(server)?.version ?? 0,
+				opId: opId(),
+			})
+		).toMatchObject({ version: 3 });
+		expect(installationRow(server)?.state).toBe("atelier");
+	});
+
+	test("the atelier name has 1 to 80 characters after trimming", async () => {
+		const server = await freshServer();
+		const rename = (atelierName: string) => () =>
+			rpc(server).installation.setAtelierName({
+				atelierName,
+				baseVersion: installationRow(server)?.version ?? 0,
+				opId: opId(),
+			});
+		const outcomes = await inSequence(
+			[rename("   "), rename("a".repeat(81)), rename("a".repeat(80))],
+			(attempt) =>
+				attempt().then(
+					() => "ok",
+					(error: { code?: string }) => error.code
+				)
+		);
+		expect(outcomes).toEqual(["BAD_REQUEST", "BAD_REQUEST", "ok"]);
+	});
+
 	test("remote access never reads the wizard data", async () => {
 		const server = await freshServer();
 		await expect(
