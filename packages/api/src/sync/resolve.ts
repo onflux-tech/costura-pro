@@ -5,6 +5,7 @@ import { and, asc, eq, sql } from "drizzle-orm";
 import z from "zod";
 
 import { appendAudit } from "../audit";
+import type { AggregateType } from "../change-log";
 import type { Context } from "../context";
 import type { ChangeStamp } from "../devices/store";
 import type { Executor } from "../executor";
@@ -48,7 +49,10 @@ function conflictTarget(
 	conflict: ConflictRow
 ): { payload: z.ZodType<Record<string, unknown>>; target: LoadedAggregate } {
 	const definition = findCommand(conflict.command, conflict.aggregateType);
-	const target = definition?.load(db, conflict.aggregateId);
+	const target =
+		definition?.kind === "update"
+			? definition.load(db, conflict.aggregateId)
+			: undefined;
 	if (!(definition && target)) {
 		throw new ORPCError("PRECONDITION_FAILED", {
 			message: "Registro do conflito não existe mais",
@@ -83,9 +87,21 @@ export function resolveConflict(
 	deviceId: string | null,
 	input: ResolveInput
 ) {
+	const target = context.db
+		.select({
+			id: syncConflict.aggregateId,
+			type: syncConflict.aggregateType,
+		})
+		.from(syncConflict)
+		.where(eq(syncConflict.id, input.conflictId))
+		.get();
+	if (!target) {
+		throw new ORPCError("NOT_FOUND", { message: "Conflito não encontrado" });
+	}
 	return runDirectCommand(
 		context,
 		{
+			aggregate: { id: target.id, type: target.type as AggregateType },
 			command: "sync.resolve",
 			input: {
 				choice: input.choice,

@@ -2,7 +2,7 @@ import { changeLog } from "@costura-pro/db/schema/sync";
 
 import type { Executor } from "./executor";
 
-export type AggregateType = "device" | "installation";
+export type AggregateType = "client" | "device" | "installation" | "profile";
 
 export type ChangeInput = {
 	aggregateId: string;

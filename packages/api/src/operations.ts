@@ -3,12 +3,14 @@ import { canonicalJson } from "@costura-pro/domain/canonical-json";
 import { ORPCError } from "@orpc/server";
 import { eq } from "drizzle-orm";
 
+import type { AggregateType } from "./change-log";
 import type { Context } from "./context";
 import type { Executor } from "./executor";
 import { sha256Hex } from "./hashing";
 import { readInstallation } from "./installation/store";
 
 export type DirectCommand<T> = {
+	aggregate?: { id: string; type: AggregateType };
 	command: string;
 	input: unknown;
 	opId: string;
@@ -61,7 +63,7 @@ function queued<T>(opId: string, run: () => Promise<T>): Promise<T> {
 
 export async function runDirectCommand<T extends object>(
 	{ db, now }: Pick<Context, "db" | "now">,
-	{ command, input, opId, redact }: DirectCommand<NoInfer<T>>,
+	{ aggregate, command, input, opId, redact }: DirectCommand<NoInfer<T>>,
 	handler: (record: RecordResult) => Promise<Recorded<T>> | Recorded<T>
 ): Promise<T> {
 	const opHash = operationHash({ command, input });
@@ -69,6 +71,8 @@ export async function runDirectCommand<T extends object>(
 		executor
 			.insert(operation)
 			.values({
+				aggregateId: aggregate?.id ?? null,
+				aggregateType: aggregate?.type ?? null,
 				command,
 				epoch: readInstallation(executor).epoch,
 				opHash,

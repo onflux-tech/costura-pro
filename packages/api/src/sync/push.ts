@@ -13,8 +13,13 @@ import type { DeviceRow } from "../devices/store";
 import type { Executor } from "../executor";
 import { type InstallationRow, readInstallation } from "../installation/store";
 import { operationHash } from "../operations";
+import { isRedacted, redactedOpHash } from "../redaction";
 import { opIdSchema } from "../schemas";
-import { findCommand, type LoadedAggregate } from "./commands";
+import {
+	type CreateDefinition,
+	findCommand,
+	type LoadedAggregate,
+} from "./commands";
 
 export const quarantineReasons = [
 	"epoch",
@@ -23,10 +28,14 @@ export const quarantineReasons = [
 	"unknownCommand",
 	"invalidPayload",
 	"aggregateNotFound",
+	"aggregateExists",
+	"aggregateAnonymized",
 	"invalidEnvelope",
 ] as const;
 
 export type QuarantineReason = (typeof quarantineReasons)[number];
+
+const createdIdSchema = z.uuid();
 
 export const operationSchema = z.object({
 	aggregateId: z.string().min(1).max(100),
@@ -88,9 +97,19 @@ type Arrival = { context: PushContext; device: DeviceRow; now: Date };
 
 type Decision = Arrival & { op: SyncOperation };
 
-type Applicable = { loaded: LoadedAggregate; values: Record<string, unknown> };
+type Creation = {
+	definition: CreateDefinition;
+	kind: "create";
+	values: Record<string, unknown>;
+};
 
-type Classification = Applicable | { reason: QuarantineReason };
+type Edition = {
+	kind: "update";
+	loaded: LoadedAggregate;
+	values: Record<string, unknown>;
+};
+
+type Classification = Creation | Edition | { reason: QuarantineReason };
 
 type StoredOperation = Omit<
 	typeof operation.$inferInsert,
@@ -143,11 +162,26 @@ function classify(
 	if (!parsed.success) {
 		return { reason: "invalidPayload" };
 	}
+	if (definition.kind === "create") {
+		if (
+			op.baseVersion !== null ||
+			!createdIdSchema.safeParse(op.aggregateId).success
+		) {
+			return { reason: "invalidEnvelope" };
+		}
+		if (definition.exists(db, op.aggregateId)) {
+			return { reason: "aggregateExists" };
+		}
+		return { definition, kind: "create", values: parsed.data };
+	}
 	const loaded = definition.load(db, op.aggregateId);
 	if (!loaded) {
 		return { reason: "aggregateNotFound" };
 	}
-	return { loaded, values: parsed.data };
+	if (loaded.anonymized) {
+		return { reason: "aggregateAnonymized" };
+	}
+	return { kind: "update", loaded, values: parsed.data };
 }
 
 function quarantine(
@@ -175,7 +209,7 @@ function quarantine(
 function openConflict(
 	db: Executor,
 	{ context, device, now, op }: Decision,
-	{ loaded, values }: Applicable
+	{ loaded, values }: Edition
 ): OperationOutcome {
 	const conflictId = crypto.randomUUID();
 	db.insert(syncConflict)
@@ -223,22 +257,56 @@ function decideNew(
 	if ("reason" in classification) {
 		return quarantine(db, decision, noteOf(decision.op), classification.reason);
 	}
-	if (decision.op.baseVersion !== classification.loaded.version) {
-		return openConflict(db, decision, classification);
-	}
-	const newVersion = classification.loaded.apply(classification.values, {
+	const stamp = {
 		epoch: installation.epoch,
 		now: decision.now,
 		opId: decision.op.opId,
-	});
-	return { kind: "accepted", newVersion };
+	};
+	if (classification.kind === "create") {
+		const created = classification.definition.create(
+			db,
+			decision.op.aggregateId,
+			classification.values,
+			stamp
+		);
+		if (typeof created !== "number") {
+			return quarantine(db, decision, noteOf(decision.op), created.reason);
+		}
+		return { kind: "accepted", newVersion: created };
+	}
+	if (decision.op.baseVersion !== classification.loaded.version) {
+		return openConflict(db, decision, classification);
+	}
+	return {
+		kind: "accepted",
+		newVersion: classification.loaded.apply(classification.values, stamp),
+	};
+}
+
+function withholdsHash(
+	tx: Executor,
+	op: SyncOperation,
+	outcome: OperationOutcome
+): boolean {
+	if (isRedacted(tx, op.aggregateType, op.aggregateId)) {
+		return true;
+	}
+	if (outcome.kind !== "quarantined") {
+		return false;
+	}
+	return (
+		outcome.reason === "aggregateAnonymized" ||
+		(outcome.reason === "aggregateNotFound" &&
+			findCommand(op.command, op.aggregateType)?.kind === "create")
+	);
 }
 
 function settleOnce<O extends OperationOutcome>(
 	arrival: Arrival,
 	stored: StoredOperation,
 	note: QuarantineNote,
-	decideFirst: (tx: Executor) => O
+	decideFirst: (tx: Executor) => O,
+	withholds: (tx: Executor, outcome: O) => boolean = () => false
 ): O | Quarantined {
 	return arrival.context.db.transaction((tx) => {
 		const previous = tx
@@ -256,6 +324,7 @@ function settleOnce<O extends OperationOutcome>(
 		tx.insert(operation)
 			.values({
 				...stored,
+				opHash: withholds(tx, outcome) ? redactedOpHash : stored.opHash,
 				receivedAt: arrival.now,
 				result: outcome,
 				status: outcome.kind,
@@ -280,7 +349,8 @@ function pushValid(arrival: Arrival, op: SyncOperation): OperationOutcome {
 			opId: op.opId,
 		},
 		noteOf(op),
-		(tx) => decideNew(tx, { ...arrival, op }, readInstallation(tx))
+		(tx) => decideNew(tx, { ...arrival, op }, readInstallation(tx)),
+		(tx, outcome) => withholdsHash(tx, op, outcome)
 	);
 }
 

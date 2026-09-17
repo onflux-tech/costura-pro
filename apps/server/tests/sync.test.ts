@@ -1,13 +1,10 @@
 import { afterEach, describe, expect, test } from "bun:test";
 
 import {
-	completeWizard,
-	type DeviceCredential,
 	newOpId,
 	rpc,
-	sessionCookie,
-	signIn,
-	startTestServer,
+	type SyncSetup,
+	syncSetup,
 	type TestServer,
 } from "./support";
 
@@ -18,54 +15,6 @@ const servers: TestServer[] = [];
 afterEach(async () => {
 	await Promise.all(servers.splice(0).map((server) => server.close()));
 });
-
-type SyncSetup = {
-	device: DeviceCredential;
-	epoch: string;
-	local: ReturnType<typeof rpc>;
-	remoteCookie: string;
-	server: TestServer;
-	sync: ReturnType<typeof rpc>;
-};
-
-async function syncSetup(): Promise<SyncSetup> {
-	const server = await startTestServer();
-	servers.push(server);
-	const { cookie } = await completeWizard(server);
-	const remoteCookie = sessionCookie(
-		await signIn(server, { access: "remote", ip: "203.0.113.30" })
-	);
-	const local = rpc(server, { cookie });
-	const registered = await rpc(server, {
-		access: "remote",
-		cookie: remoteCookie,
-	}).devices.register({ name: "Celular", opId: newOpId() });
-	await local.devices.approve({
-		deviceId: registered.deviceId,
-		opId: newOpId(),
-	});
-	const device = {
-		id: registered.deviceId,
-		secret: registered.deviceSecret ?? "",
-	};
-	return {
-		device,
-		epoch: currentEpoch(server),
-		local,
-		remoteCookie,
-		server,
-		sync: rpc(server, { access: "remote", cookie: remoteCookie, device }),
-	};
-}
-
-function currentEpoch(server: TestServer) {
-	return (
-		server
-			.native()
-			.query<{ epoch: string }, []>("SELECT epoch FROM installation")
-			.get()?.epoch ?? ""
-	);
-}
 
 function deviceRow(server: TestServer, id: string) {
 	return server
@@ -99,7 +48,7 @@ function rename(
 
 describe("push", () => {
 	test("accepts an edit on the current version and replays it by opId", async () => {
-		const setup = await syncSetup();
+		const setup = await syncSetup(servers);
 		const operation = rename(setup, { baseVersion: 2, name: "Celular novo" });
 		const first = await setup.sync.sync.push({ operations: [operation] });
 		expect(first.accepted).toEqual([{ newVersion: 3, opId: operation.opId }]);
@@ -113,7 +62,7 @@ describe("push", () => {
 	});
 
 	test("an opId reused with other content goes to quarantine without touching the original", async () => {
-		const setup = await syncSetup();
+		const setup = await syncSetup(servers);
 		const operation = rename(setup, { baseVersion: 2, name: "Primeiro" });
 		await setup.sync.sync.push({ operations: [operation] });
 		const reused = await setup.sync.sync.push({
@@ -129,7 +78,7 @@ describe("push", () => {
 	});
 
 	test("a stale base version becomes a conflict listed as pending", async () => {
-		const setup = await syncSetup();
+		const setup = await syncSetup(servers);
 		await setup.sync.sync.push({
 			operations: [rename(setup, { baseVersion: 2, name: "Servidor" })],
 		});
@@ -159,7 +108,7 @@ describe("push", () => {
 	});
 
 	test("an old epoch goes to quarantine before the version check", async () => {
-		const setup = await syncSetup();
+		const setup = await syncSetup(servers);
 		const old = {
 			...rename(setup, { baseVersion: 1, name: "Antigo" }),
 			epoch: crypto.randomUUID(),
@@ -178,7 +127,7 @@ describe("push", () => {
 	});
 
 	test("classifies incompatible operations and still applies the valid ones in the batch", async () => {
-		const setup = await syncSetup();
+		const setup = await syncSetup(servers);
 		const valid = rename(setup, { baseVersion: 2, name: "Válido" });
 		const mismatch = {
 			...rename(setup, { baseVersion: 2, name: "x" }),
@@ -212,7 +161,7 @@ describe("push", () => {
 	});
 
 	test("renames the atelier through sync and exposes it on pull", async () => {
-		const setup = await syncSetup();
+		const setup = await syncSetup(servers);
 		const installation = setup.server
 			.native()
 			.query<{ id: string; version: number }, []>(
@@ -246,7 +195,7 @@ describe("push", () => {
 
 describe("pull", () => {
 	test("pages changes by cursor", async () => {
-		const setup = await syncSetup();
+		const setup = await syncSetup(servers);
 		const everything = await setup.sync.sync.pull({
 			cursor: "0",
 			epoch: setup.epoch,
@@ -276,7 +225,7 @@ describe("pull", () => {
 	});
 
 	test("another epoch asks for a rebase from the start", async () => {
-		const setup = await syncSetup();
+		const setup = await syncSetup(servers);
 		const everything = await setup.sync.sync.pull({
 			cursor: "0",
 			epoch: setup.epoch,
@@ -302,7 +251,7 @@ describe("resolve", () => {
 	}
 
 	test("keepLocal applies the local values on the current version", async () => {
-		const setup = await syncSetup();
+		const setup = await syncSetup(servers);
 		const conflictId = await openConflict(setup);
 		const input = {
 			choice: "keepLocal" as const,
@@ -324,7 +273,7 @@ describe("resolve", () => {
 	});
 
 	test("keepServer closes without changing and merge validates the values", async () => {
-		const setup = await syncSetup();
+		const setup = await syncSetup(servers);
 		const conflictId = await openConflict(setup);
 		await expect(
 			setup.sync.sync.resolve({
@@ -350,7 +299,7 @@ describe("resolve", () => {
 	});
 
 	test("merge applies the given values", async () => {
-		const setup = await syncSetup();
+		const setup = await syncSetup(servers);
 		const conflictId = await openConflict(setup);
 		expect(
 			await setup.sync.sync.resolve({
@@ -369,7 +318,7 @@ describe("resolve", () => {
 
 describe("device credential", () => {
 	test("rejects a wrong secret, a pending device and a revoked device", async () => {
-		const setup = await syncSetup();
+		const setup = await syncSetup(servers);
 		const pull = { cursor: "0", epoch: setup.epoch };
 		await expect(
 			rpc(setup.server, {
@@ -414,7 +363,7 @@ describe("device credential", () => {
 	});
 
 	test("a device secret without the owner session is rejected", async () => {
-		const setup = await syncSetup();
+		const setup = await syncSetup(servers);
 		await expect(
 			rpc(setup.server, {
 				access: "remote",
@@ -426,7 +375,7 @@ describe("device credential", () => {
 
 describe("review regressions", () => {
 	test("a remote session without a device cannot resolve or list pending items", async () => {
-		const setup = await syncSetup();
+		const setup = await syncSetup(servers);
 		const remote = rpc(setup.server, {
 			access: "remote",
 			cookie: setup.remoteCookie,
@@ -445,7 +394,7 @@ describe("review regressions", () => {
 	});
 
 	test("an opId reused with other content shows up as pending quarantine", async () => {
-		const setup = await syncSetup();
+		const setup = await syncSetup(servers);
 		const operation = rename(setup, { baseVersion: 2, name: "Primeiro" });
 		await setup.sync.sync.push({ operations: [operation] });
 		await setup.sync.sync.push({
@@ -462,7 +411,7 @@ describe("review regressions", () => {
 	});
 
 	test("the device check comes before the epoch check", async () => {
-		const setup = await syncSetup();
+		const setup = await syncSetup(servers);
 		const both = {
 			...rename(setup, { baseVersion: 2, name: "x" }),
 			deviceId: crypto.randomUUID(),
@@ -475,7 +424,7 @@ describe("review regressions", () => {
 	});
 
 	test("a malformed item goes to quarantine without blocking the batch", async () => {
-		const setup = await syncSetup();
+		const setup = await syncSetup(servers);
 		const malformed = {
 			...rename(setup, { baseVersion: 2, name: "x" }),
 			occurredAt: "ontem",
@@ -495,7 +444,7 @@ describe("review regressions", () => {
 	});
 
 	test("a null base version opens a conflict that keeps the null", async () => {
-		const setup = await syncSetup();
+		const setup = await syncSetup(servers);
 		const operation = rename(setup, { baseVersion: null, name: "Sem base" });
 		const result = await setup.sync.sync.push({ operations: [operation] });
 		expect(result.conflicts).toHaveLength(1);

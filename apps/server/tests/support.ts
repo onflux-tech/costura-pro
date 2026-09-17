@@ -265,6 +265,54 @@ export function times(count: number): number[] {
 	return Array.from({ length: count }, (_, index) => index + 1);
 }
 
+export type SyncSetup = {
+	device: DeviceCredential;
+	epoch: string;
+	local: AppRouterClient;
+	remoteCookie: string;
+	server: TestServer;
+	sync: AppRouterClient;
+};
+
+export function currentEpoch(server: TestServer): string {
+	return (
+		server
+			.native()
+			.query<{ epoch: string }, []>("SELECT epoch FROM installation")
+			.get()?.epoch ?? ""
+	);
+}
+
+export async function syncSetup(servers: TestServer[]): Promise<SyncSetup> {
+	const server = await startTestServer();
+	servers.push(server);
+	const { cookie } = await completeWizard(server);
+	const remoteCookie = sessionCookie(
+		await signIn(server, { access: "remote", ip: "203.0.113.30" })
+	);
+	const local = rpc(server, { cookie });
+	const registered = await rpc(server, {
+		access: "remote",
+		cookie: remoteCookie,
+	}).devices.register({ name: "Celular", opId: newOpId() });
+	await local.devices.approve({
+		deviceId: registered.deviceId,
+		opId: newOpId(),
+	});
+	const device = {
+		id: registered.deviceId,
+		secret: registered.deviceSecret ?? "",
+	};
+	return {
+		device,
+		epoch: currentEpoch(server),
+		local,
+		remoteCookie,
+		server,
+		sync: rpc(server, { access: "remote", cookie: remoteCookie, device }),
+	};
+}
+
 export function inSequence<T, R>(
 	items: readonly T[],
 	run: (item: T, index: number) => Promise<R>

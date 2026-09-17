@@ -1,5 +1,6 @@
 import type { RouterClient } from "@orpc/server";
 
+import { clientsRouter, profilesRouter } from "../clients/router";
 import { devicesRouter } from "../devices/router";
 import { publicProcedure, readyProcedure } from "../index";
 import { installationRouter } from "../installation/router";
@@ -7,6 +8,7 @@ import { recoveryRouter } from "../recovery/router";
 import { syncRouter } from "../sync/router";
 
 export const appRouter = {
+	clients: clientsRouter,
 	devices: devicesRouter,
 	healthCheck: publicProcedure.handler(() => "OK"),
 	installation: installationRouter,
@@ -14,6 +16,7 @@ export const appRouter = {
 		message: "This is private",
 		user: context.session?.user,
 	})),
+	profiles: profilesRouter,
 	recovery: recoveryRouter,
 	sync: syncRouter,
 };

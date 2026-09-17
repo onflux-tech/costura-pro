@@ -2,6 +2,7 @@ import type { Database } from "@costura-pro/db";
 import z from "zod";
 
 import type { AggregateType } from "../change-log";
+import { clientCommands } from "../clients/commands";
 import {
 	type ChangeStamp,
 	deviceSnapshot,
@@ -16,78 +17,119 @@ import {
 } from "../installation/store";
 import { atelierNameSchema, deviceNameSchema } from "../schemas";
 
+export type CommandExecutor = Executor & Pick<Database, "select">;
+
 export type LoadedAggregate = {
+	anonymized: boolean;
 	apply: (values: unknown, stamp: ChangeStamp) => number;
 	snapshot: unknown;
 	values: Record<string, unknown>;
 	version: number;
 };
 
-export type CommandDefinition = {
+export type CreateRejection = {
+	reason: "aggregateAnonymized" | "aggregateNotFound";
+};
+
+export type CreateDefinition = {
 	aggregateType: AggregateType;
-	load: (
-		db: Executor & Pick<Database, "select">,
-		id: string
-	) => LoadedAggregate | undefined;
+	create: (
+		db: CommandExecutor,
+		id: string,
+		values: Record<string, unknown>,
+		stamp: ChangeStamp
+	) => CreateRejection | number;
+	exists: (db: CommandExecutor, id: string) => boolean;
+	kind: "create";
 	payload: z.ZodType<Record<string, unknown>>;
 };
+
+export type UpdateDefinition = {
+	aggregateType: AggregateType;
+	kind: "update";
+	load: (db: CommandExecutor, id: string) => LoadedAggregate | undefined;
+	payload: z.ZodType<Record<string, unknown>>;
+};
+
+export type CommandDefinition = CreateDefinition | UpdateDefinition;
 
 const setAtelierNamePayload = z.object({ atelierName: atelierNameSchema });
 const renameDevicePayload = z.object({ name: deviceNameSchema });
 
-export const syncCommands: Record<string, CommandDefinition> = {
-	"device.rename": {
-		aggregateType: "device",
-		load: (db, id) => {
-			const row = readDevice(db, id);
-			if (!row) {
-				return;
-			}
-			return {
-				apply: (values, stamp) =>
-					updateDevice(
-						db,
-						row,
-						{ name: renameDevicePayload.parse(values).name },
-						stamp
-					).version,
-				snapshot: deviceSnapshot(row),
-				values: { name: row.name },
-				version: row.version,
-			};
-		},
-		payload: renameDevicePayload,
+const renameDevice: UpdateDefinition = {
+	aggregateType: "device",
+	kind: "update",
+	load: (db, id) => {
+		const row = readDevice(db, id);
+		if (!row) {
+			return;
+		}
+		return {
+			anonymized: false,
+			apply: (values, stamp) =>
+				updateDevice(
+					db,
+					row,
+					{ name: renameDevicePayload.parse(values).name },
+					stamp
+				).version,
+			snapshot: deviceSnapshot(row),
+			values: { name: row.name },
+			version: row.version,
+		};
 	},
-	"installation.setAtelierName": {
-		aggregateType: "installation",
-		load: (db, id) => {
-			const row = readInstallation(db);
-			if (row.id !== id) {
-				return;
-			}
-			return {
-				apply: (values, stamp) =>
-					updateInstallation(
-						db,
-						row,
-						{ atelierName: setAtelierNamePayload.parse(values).atelierName },
-						stamp
-					).version,
-				snapshot: installationSnapshot(row),
-				values: { atelierName: row.atelierName },
-				version: row.version,
-			};
-		},
-		payload: setAtelierNamePayload,
-	},
+	payload: renameDevicePayload,
 };
+
+const setAtelierName: UpdateDefinition = {
+	aggregateType: "installation",
+	kind: "update",
+	load: (db, id) => {
+		const row = readInstallation(db);
+		if (row.id !== id) {
+			return;
+		}
+		return {
+			anonymized: false,
+			apply: (values, stamp) =>
+				updateInstallation(
+					db,
+					row,
+					{ atelierName: setAtelierNamePayload.parse(values).atelierName },
+					stamp
+				).version,
+			snapshot: installationSnapshot(row),
+			values: { atelierName: row.atelierName },
+			version: row.version,
+		};
+	},
+	payload: setAtelierNamePayload,
+};
+
+export const syncCommands = {
+	...clientCommands,
+	"device.rename": renameDevice,
+	"installation.setAtelierName": setAtelierName,
+} satisfies Record<string, CommandDefinition>;
+
+type Commands = typeof syncCommands;
+
+type NamesOf<K extends CommandDefinition["kind"]> = {
+	[N in keyof Commands]: Commands[N] extends { kind: K } ? N : never;
+}[keyof Commands];
+
+export type CreateCommandName = NamesOf<"create">;
+export type UpdateCommandName = NamesOf<"update">;
 
 export function findCommand(
 	command: string,
 	aggregateType: string
 ): CommandDefinition | undefined {
-	const definition = Object.hasOwn(syncCommands, command)
-		? syncCommands[command]
+	const definition: CommandDefinition | undefined = Object.hasOwn(
+		syncCommands,
+		command
+	)
+		? syncCommands[command as keyof Commands]
 		: undefined;
 	return definition?.aggregateType === aggregateType ? definition : undefined;
 }
