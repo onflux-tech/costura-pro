@@ -5,6 +5,7 @@ import {
 	AlertTitle,
 } from "@costura-pro/ui/components/alert";
 import { Badge } from "@costura-pro/ui/components/badge";
+import { BrandHeader } from "@costura-pro/ui/components/brand-header";
 import { Button } from "@costura-pro/ui/components/button";
 import { CodeTag } from "@costura-pro/ui/components/code-tag";
 import { Mono } from "@costura-pro/ui/components/typography";
@@ -70,6 +71,13 @@ export function ContentSection() {
 						cobrança.
 					</AlertDescription>
 				</Alert>
+			</div>
+			<div className="flex flex-col gap-2">
+				<BrandHeader className="overflow-hidden rounded-xl" />
+				<BrandHeader
+					className="overflow-hidden rounded-xl"
+					name="Ateliê Linha Fina"
+				/>
 			</div>
 		</CatalogSection>
 	);

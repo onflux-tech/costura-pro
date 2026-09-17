@@ -1,3 +1,4 @@
+import { BrandMark } from "@costura-pro/ui/components/brand";
 import {
 	type LinkRenderer,
 	renderAnchor,
@@ -28,12 +29,7 @@ function navLinkClass(active: boolean) {
 function TopNavBrand() {
 	return (
 		<span className="flex shrink-0 items-center gap-2">
-			<span
-				aria-hidden="true"
-				className="flex size-8 items-center justify-center rounded-md bg-nav-active font-semibold font-serif text-lg text-nav-active-foreground"
-			>
-				C
-			</span>
+			<BrandMark />
 			<span className="hidden font-semibold text-sm xl:inline">
 				Costura Pro
 			</span>

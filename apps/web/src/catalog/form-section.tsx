@@ -1,4 +1,5 @@
 import { Button } from "@costura-pro/ui/components/button";
+import { Checkbox } from "@costura-pro/ui/components/checkbox";
 import { Checklist, ChecklistItem } from "@costura-pro/ui/components/checklist";
 import {
 	ChoiceChip,
@@ -82,6 +83,17 @@ export function FormSection() {
 								Checklist de continuidade
 							</ChecklistItem>
 						</Checklist>
+					</PanelContent>
+				</Panel>
+				<Panel>
+					<PanelHeader>
+						<PanelTitle>Confirmações</PanelTitle>
+						<PanelMeta>Desmarcada, marcada e desligada</PanelMeta>
+					</PanelHeader>
+					<PanelContent className="flex flex-col gap-1">
+						<Checkbox>Guardei os códigos em lugar seguro</Checkbox>
+						<Checkbox defaultChecked>Cliente autorizou o ajuste</Checkbox>
+						<Checkbox disabled>Enviar comprovante por mensagem</Checkbox>
 					</PanelContent>
 				</Panel>
 			</div>
