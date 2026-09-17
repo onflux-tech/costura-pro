@@ -5,4 +5,5 @@ export * from "./materials";
 export * from "./measurements";
 export * from "./media";
 export * from "./received-items";
+export * from "./stock";
 export * from "./sync";

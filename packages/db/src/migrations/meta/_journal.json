@@ -57,6 +57,20 @@
       "when": 1789673702191,
       "tag": "0007_materials_variants",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "6",
+      "when": 1789686079490,
+      "tag": "0008_stock_locations_lots_movements",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "6",
+      "when": 1789686095764,
+      "tag": "0009_stock_movement_append_only",
+      "breakpoints": true
     }
   ]
 }

@@ -51,6 +51,9 @@ export const materialVariant = sqliteTable(
 		referenceCostCents: bigintInteger("reference_cost_cents"),
 		searchText: text("search_text").notNull(),
 		targetQuantityMicros: bigintInteger("target_quantity_micros"),
+		tracksLots: integer("tracks_lots", { mode: "boolean" })
+			.notNull()
+			.default(false),
 		updatedAt: integer("updated_at", { mode: "timestamp_ms" }).notNull(),
 		version: integer("version").notNull(),
 	},

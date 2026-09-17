@@ -111,6 +111,7 @@ describe("materials schema", () => {
 				"reference_cost_cents",
 				"search_text",
 				"target_quantity_micros",
+				"tracks_lots",
 				"updated_at",
 				"version",
 			].sort()
