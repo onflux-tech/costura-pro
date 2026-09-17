@@ -3,7 +3,10 @@ import {
 	installation,
 	recoveryCode,
 } from "@costura-pro/db/schema/installation";
-import { isAtLeast } from "@costura-pro/domain/installation-state";
+import {
+	isAtLeast,
+	isBeforeOwner,
+} from "@costura-pro/domain/installation-state";
 import { ORPCError } from "@orpc/server";
 import { count, eq, isNull } from "drizzle-orm";
 import z from "zod";
@@ -32,8 +35,6 @@ import {
 	updateInstallation,
 } from "./store";
 
-const beforeAccount = new Set(["empty", "atelier"]);
-
 function asBadRequest(error: unknown): never {
 	if (error instanceof BackupFolderError) {
 		throw new ORPCError("BAD_REQUEST", {
@@ -48,7 +49,7 @@ function requireOwnerUnlessBeforeAccount(
 	context: Pick<Context, "db" | "session">
 ) {
 	const current = readInstallation(context.db);
-	if (!(beforeAccount.has(current.state) || context.session?.user)) {
+	if (!(isBeforeOwner(current.state) || context.session?.user)) {
 		throw new ORPCError("UNAUTHORIZED");
 	}
 	return current;

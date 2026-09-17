@@ -4,6 +4,7 @@ import {
 	atelierNameLength,
 	installationStates,
 	isAtLeast,
+	isBeforeOwner,
 } from "./installation-state";
 
 test("lists wizard states in order", () => {
@@ -26,4 +27,11 @@ test("compares wizard progress", () => {
 
 test("limits the atelier name to 1 to 80 characters", () => {
 	expect(atelierNameLength).toEqual({ max: 80, min: 1 });
+});
+
+test("only the name steps come before the owner account", () => {
+	expect(installationStates.filter(isBeforeOwner)).toEqual([
+		"empty",
+		"atelier",
+	]);
 });

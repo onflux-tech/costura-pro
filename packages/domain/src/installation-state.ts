@@ -19,3 +19,7 @@ export function isAtLeast(
 		installationStates.indexOf(current) >= installationStates.indexOf(target)
 	);
 }
+
+export function isBeforeOwner(state: InstallationState): boolean {
+	return !isAtLeast(state, "account");
+}
