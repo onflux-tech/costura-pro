@@ -87,7 +87,7 @@ export function FolderBrowser({
 						value={typed}
 					/>
 				</Field>
-				<Button type="submit" variant="outline">
+				<Button className="md:min-h-10" type="submit" variant="outline">
 					Abrir
 				</Button>
 			</form>
