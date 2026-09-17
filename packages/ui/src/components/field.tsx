@@ -24,15 +24,14 @@ function FieldLabel({
 			{...props}
 		>
 			{children}
+			{requirement ? " " : null}
 			{requirement === "required" && (
-				<span className="ml-1.5 font-normal text-danger-foreground">
+				<span className="ml-1 font-normal text-danger-foreground">
 					obrigatório
 				</span>
 			)}
 			{requirement === "optional" && (
-				<span className="ml-1.5 font-normal text-muted-foreground">
-					opcional
-				</span>
+				<span className="ml-1 font-normal text-muted-foreground">opcional</span>
 			)}
 		</FieldPrimitive.Label>
 	);

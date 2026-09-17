@@ -125,7 +125,7 @@
 		@apply border-border outline-ring;
 	}
 	html {
-		@apply bg-background font-sans text-foreground antialiased;
+		@apply bg-background font-sans text-foreground antialiased max-md:scroll-pb-20;
 	}
 	body {
 		@apply min-h-svh bg-background text-md;

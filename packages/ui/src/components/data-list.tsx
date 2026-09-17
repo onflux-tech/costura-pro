@@ -78,7 +78,9 @@ function DataListCell({
 			{...props}
 		>
 			<span className="text-muted-foreground text-xs md:sr-only">{label}</span>
-			<span className="min-w-0 text-right md:text-inherit">{children}</span>
+			<div className="min-w-0 text-right md:[text-align:inherit]">
+				{children}
+			</div>
 		</div>
 	);
 }
