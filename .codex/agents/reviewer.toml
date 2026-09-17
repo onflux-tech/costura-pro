@@ -27,4 +27,8 @@ Reporte achados por severidade com caminho, linha, cenário de falha e requisito
 - Rotina periódica sobre todas as linhas (coleta de arquivos) com consulta por item passa em teste pequeno e segura o servidor com milhares de registros: peça teste de volume com limite de tempo.
 - Rota Hono fora do oRPC não tem `logProcedureError`: exceção sem tratamento vai ao `errorHandler` padrão, que imprime caminho de arquivo e hash. Peça teste de falha de leitura e de gravação que confira o log.
 - Arquivo achado por varredura e apagado por caminho recalculado nunca sai quando está fora do lugar: peça teste com arquivo na subpasta errada.
+- Estado inicializado de consulta com `useState` (foto da variante vinda do registro) nasce vazio quando a tela renderiza antes do dado chegar e nunca reinicializa: o comando passa a mandar `null` e apaga o que estava gravado. Peça que o componente que guarda esse estado só monte com o registro em mão, e teste ou verificação que salve um campo qualquer e confira que o resto sobreviveu.
+- Falha no meio de um envio de arquivo precisa deixar o formulário num estado que não destrói o que já estava salvo: peça o cenário "escolhe arquivo novo, envio falha, salva" e confira que o valor antigo continua no banco.
+- Teste de referência de arquivo com o mesmo hash em dois campos (foto e miniatura) ou com um dos lados vazio não prova os caminhos que o código tem: peça hashes distintos em cada campo e um cenário em que o valor só existe no lado atual do conflito.
+- Constante duplicada entre pacotes que não se importam (teto exato, lista de enum) precisa de um teste num pacote que veja os dois; sem ele, a divergência só aparece em produção.
 '''

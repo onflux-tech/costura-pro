@@ -27,4 +27,7 @@ Não altere arquivos, banco, Git ou serviços; não rode testes ou navegador. En
 - Hash de arquivo guardado num agregado é contrato com a coleta e a anonimização de mídia: confira que o tipo e a coluna entram em `referencedHashes` (`packages/api/src/media/store.ts`), nos dois lados dos conflitos abertos, e que foto e miniatura saem juntas na anonimização.
 - Rota crua fora do oRPC responde por status, e a web decide pelo status (`uploadFailure`: 413, 415 e 422 sem nova tentativa, o resto com): compare a tabela da SPEC §4 com o servidor e com essa função.
 - Regra que só a tela aplica sobre campo mudado por outra ação (recepção contra devolução registrada) depende de a página passar o valor atual ao formulário; confira a prop nos dois lados.
+- Valor inteiro (dinheiro, quantidade) é contrato em quatro formas: `bigint` no domínio, coluna `integer` por tipo próprio, string canônica de dígitos no payload e no snapshot, e string do formulário na tela. `bigint` no payload derruba o push no primeiro conflito, porque o `sync_conflict` grava o payload parseado como JSON.
+- Precisão exibida é só exibição: se o servidor aceita um valor com mais casas que ela, o formulário não pode recusar esse mesmo valor, senão o registro fica impossível de editar depois de um push de outro aparelho.
+- Sentinela de filtro na tela ("todas", "sem categoria") não pode dividir espaço de nomes com texto que o dono digita; confira o valor do seletor, o parâmetro da URL e o input da procedure.
 '''
