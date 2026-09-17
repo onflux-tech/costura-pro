@@ -35,6 +35,7 @@ Documentação curada e versionada do Costura Pro. Todo doc novo em `docs/` entr
 | [0012](adr/0012-dono-unico-criado-no-acesso-local.md) | Dono único criado no acesso local, com login defendido no servidor |
 | [0013](adr/0013-contrato-minimo-de-sincronizacao.md) | Contrato mínimo de sincronização por operação, cursor e epoch |
 | [0014](adr/0014-anonimizacao-redige-historico-de-sincronizacao.md) | Anonimização redige o histórico de sincronização |
+| [0015](adr/0015-medidas-em-milimetros-e-medicao-autocontida.md) | Medidas em milímetros inteiros e medição autocontida |
 
 ## Agentes e harness
 

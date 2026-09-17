@@ -1,22 +1,23 @@
 # Agregados
 
-**Files:** `packages/api/src/sync/commands.ts`, `packages/api/src/aggregate-command.ts`, `packages/api/src/command-messages.ts`, `packages/api/src/redaction.ts`, `packages/api/src/operations.ts`, `packages/api/src/change-log.ts`, `packages/api/src/sync/push.ts`, `packages/api/src/sync/resolve.ts`, `packages/api/src/clients/`, `packages/db/src/schema/clients.ts`, `packages/db/src/migrations/0004_change_log_redaction.sql`, `apps/server/tests/clients.test.ts`, `apps/server/tests/clients-sync.test.ts`
+**Files:** `packages/api/src/sync/commands.ts`, `packages/api/src/update-command.ts`, `packages/api/src/aggregate-command.ts`, `packages/api/src/command-messages.ts`, `packages/api/src/redaction.ts`, `packages/api/src/operations.ts`, `packages/api/src/change-log.ts`, `packages/api/src/sync/push.ts`, `packages/api/src/sync/resolve.ts`, `packages/api/src/clients/`, `packages/api/src/measurements/`, `packages/db/src/schema/clients.ts`, `packages/db/src/schema/measurements.ts`, `packages/db/src/migrations/0004_change_log_redaction.sql`, `apps/server/src/app.ts`, `apps/server/tests/clients.test.ts`, `apps/server/tests/clients-sync.test.ts`, `apps/server/tests/measurements.test.ts`, `apps/server/tests/measurements-sync.test.ts`
 
 ## Overview
 
-Todo agregado de negócio nasce pronto para o sync ([ROADMAP, premissas](../ROADMAP.md#premissas)): UUID gerado no dispositivo ([ADR 0009](../adr/0009-uuid-e-codigo-documental-por-dispositivo.md)), `version` e comandos idempotentes por `opId` que conferem a versão-base. Cada comando é definido uma única vez e chega ao servidor por dois caminhos com a mesma regra: a procedure oRPC tipada, usada pela web online, e o `sync.push`, usado pela outbox ([DEC-76](../PRD.md#96-plataforma-acesso-e-operação), [ADR 0013](../adr/0013-contrato-minimo-de-sincronizacao.md)). Cliente e perfil de usuário da peça foram os primeiros e servem de modelo.
+Todo agregado de negócio nasce pronto para o sync ([ROADMAP, premissas](../ROADMAP.md#premissas)): UUID gerado no dispositivo ([ADR 0009](../adr/0009-uuid-e-codigo-documental-por-dispositivo.md)), `version` e comandos idempotentes por `opId` que conferem a versão-base. Cada comando é definido uma única vez e chega ao servidor por dois caminhos com a mesma regra: a procedure oRPC tipada, usada pela web online, e o `sync.push`, usado pela outbox ([DEC-76](../PRD.md#96-plataforma-acesso-e-operação), [ADR 0013](../adr/0013-contrato-minimo-de-sincronizacao.md)). Cliente e perfil de usuário da peça foram os primeiros; modelo de medidas e medição seguiram o mesmo padrão ([ADR 0015](../adr/0015-medidas-em-milimetros-e-medicao-autocontida.md)).
 
 ## Peças de um agregado
 
 | Peça | Onde | O que faz |
 |---|---|---|
-| Tabela | `packages/db/src/schema/<area>.ts` e migration gerada | Linha viva com `id` texto, `version`, `created_at` e `updated_at`; nada de apagar, erro vira arquivamento |
+| Tabela | `packages/db/src/schema/<area>.ts` e migration gerada | Linha viva com `id` texto, `version`, `created_at` e `updated_at`; nada de apagar, erro vira arquivamento. Lista de itens que viaja inteira (campos de um modelo, valores de uma medição) cabe numa coluna JSON com `$type` |
 | Store | `packages/api/src/<area>/store.ts` | `read`, `insert` e `update` com compare-and-set pela versão; toda escrita anexa o snapshot ao `change_log` com o `opId` |
 | Snapshot | Mesmo store | Forma pública do agregado no `change_log` e no `sync.pull`, com datas em ISO 8601 e sem segredo nem campo derivado (como `search_text`) |
-| Schemas | `packages/api/src/<area>/schemas.ts` | Payload de criação (opcionais com `.default(null)`) e patch de edição (pelo menos um campo), com normalização na fronteira |
-| Comandos | `packages/api/src/<area>/commands.ts` | `CreateDefinition` (`exists` e `create`) ou `UpdateDefinition` (`load` que devolve `anonymized`, `snapshot`, `values`, `version` e `apply`); espalhados em `syncCommands` |
+| Schemas | `packages/api/src/<area>/schemas.ts` | Payload de criação (opcionais com `.default(null)`) e patch de edição (pelo menos um campo, `hasChange` de `packages/api/src/schemas.ts`), com normalização na fronteira. Texto opcional usa `optionalText`, que aceita `null`: o conflito guarda o payload já normalizado e o `keepLocal` o valida de novo, então todo schema precisa aceitar a própria saída |
+| Comandos | `packages/api/src/<area>/commands.ts` | `CreateDefinition` (`exists` e `create`) ou edições feitas por `updateCommands<Row, Patch>({ aggregateType, anonymized, read, snapshot, update })(payload, patchFor)`, com `archivePatch`, `unarchivePatch` e `definedFields` de `packages/api/src/update-command.ts`; espalhados em `syncCommands` |
 | Procedures | `packages/api/src/<area>/router.ts` | `runCreateCommand` e `runUpdateCommand` com o nome do comando tipado (`CreateCommandName`, `UpdateCommandName`) e as mensagens de não encontrado e anonimizado, tiradas de `commandMessages`, que a web também importa |
 | Tipo do agregado | `packages/api/src/change-log.ts` | Novo valor em `AggregateType` |
+| Dados iniciais | Função `ensure<Area>` chamada no `createApp` (`apps/server/src/app.ts`) | Opcional. Cria o conteúdo inicial numa transação só quando a tabela está vazia, com snapshot no `change_log` e `opId` nulo. O boot passa a exigir a migration da tabela |
 
 ## Decisão por caminho
 
@@ -26,16 +27,18 @@ Todo agregado de negócio nasce pronto para o sync ([ROADMAP, premissas](../ROAD
 | `opId` repetido com outro conteúdo | `CONFLICT` `opId reutilizado com conteúdo diferente` | Quarentena `opIdReused` |
 | Criação com id que já existe | `CONFLICT` `Registro já existe` | Quarentena `aggregateExists` |
 | Criação com `baseVersion` diferente de `null` ou id que não é UUID | Não se aplica (a procedure recebe versão só na edição e valida o id com `z.uuid()`) | Quarentena `invalidEnvelope` |
-| Pai inexistente ou agregado inexistente | `NOT_FOUND` com a mensagem do agregado | Quarentena `aggregateNotFound` |
+| Pai inexistente ou agregado inexistente | `NOT_FOUND` com a mensagem do agregado; a criação pode devolver `{ reason: "aggregateNotFound", message }` quando há mais de um pai (perfil e modelo da medição) | Quarentena `aggregateNotFound` |
 | Agregado anonimizado | `PRECONDITION_FAILED` | Quarentena `aggregateAnonymized` |
 | Versão-base diferente | `CONFLICT` `Versão desatualizada` com `current` e `currentVersion` | Conflito aberto com valores lado a lado |
 | Comando sem efeito (arquivar o que já está arquivado) | Devolve a versão atual sem escrever | Aceito com a versão atual |
 
 A operação direta grava `aggregate_type` e `aggregate_id` na tabela `operation`, como o push; a resolução de conflito grava o agregado do conflito. É isso que permite a redação.
 
+Quando a regra dependeria de consultar o banco para validar o payload (um campo que não pode sumir, um rótulo copiado), prefira desenhar o dado para a validação ficar só na forma: o modelo de medidas recebe só os campos ativos e o servidor desativa os ausentes; a medição copia os rótulos que o aparelho viu. Assim o push não precisa de razão de quarentena nova.
+
 ## Redação de dado pessoal
 
-Agregado com dado pessoal participa da anonimização ([ADR 0014](../adr/0014-anonimizacao-redige-historico-de-sincronizacao.md)) chamando `redactHistory` de `packages/api/src/redaction.ts` na transação, depois de gravar a versão anonimizada:
+Agregado com dado pessoal entra em `personalDataAggregates` (`packages/api/src/redaction.ts`: `client`, `profile` e `measurement`) e participa da anonimização ([ADR 0014](../adr/0014-anonimizacao-redige-historico-de-sincronizacao.md)) chamando `redactHistory` na transação, depois de gravar a versão anonimizada:
 
 | Onde o dado fica | O que a redação faz |
 |---|---|
@@ -44,15 +47,20 @@ Agregado com dado pessoal participa da anonimização ([ADR 0014](../adr/0014-an
 | `sync_conflict` | Fecha os abertos com `keepServer` e, em todos, esvazia `local_values` e `current_values` e troca o motivo (texto livre do dono) por "Cliente anonimizado" |
 | `operation` | Troca o `op_hash` por `redacted` e o `current` dos resultados de conflito pelo snapshot anonimizado |
 | `audit_event` | Nada a limpar: detalhes guardam só ids e contagens |
-| Operações que chegam depois | O push grava `op_hash` `redacted` quando o agregado já está em `redacted_aggregate`, quando o desfecho é `aggregateAnonymized` e quando uma criação cai em `aggregateNotFound` por pai inexistente |
+| Operações que chegam depois | O push grava `op_hash` `redacted` quando o agregado já está em `redacted_aggregate`, quando o desfecho é `aggregateAnonymized` e em qualquer quarentena de comando cujo agregado está em `personalDataAggregates`, inclusive `invalidEnvelope`, com o comando procurado pelo nome (`commandNamed`), porque uma operação que nunca virou linha (edição de medição criada offline depois da anonimização, `unknownCommand` com tipo trocado) não é alcançada pela redação |
+| Pendências | `sync.pending` não repete como `opIdReused` a operação que já está em quarentena na `operation` com hash redigido (com hash real, a repetição listada é conteúdo diferente e continua aparecendo) |
 | Arquivo do banco | `secure_delete` ligado na abertura e `truncateWal` depois da anonimização, com teste que procura os valores nos bytes do `.db` e do `-wal` |
+
+Agregado filho com dado pessoal (medições dos perfis) é anonimizado na mesma transação do cliente, arquivados inclusive, e redigido com o próprio tipo.
 
 ## Testes mínimos de um agregado novo
 
 | Arquivo | Prova |
 |---|---|
 | `packages/db/tests/<area>-schema.test.ts` | Colunas, chaves estrangeiras e triggers |
-| `apps/server/tests/<area>.test.ts` | Criar, ler, editar, arquivar, repetição por `opId`, versão velha, id repetido, não encontrado e, se tiver dado pessoal, varredura das tabelas depois da anonimização |
-| `apps/server/tests/<area>-sync.test.ts` | Criação e edição pelo push e pelo pull, cada razão de quarentena nova, conflito resolvido com `keepLocal` |
+| `apps/server/tests/<area>.test.ts` | Criar, ler, editar, arquivar, repetição por `opId`, versão velha, id repetido, não encontrado, patch vazio e, se tiver dado pessoal, varredura depois da anonimização, com um segundo cliente intocado quando o agregado é filho |
+| `apps/server/tests/<area>-sync.test.ts` | Criação e edição pelo push e pelo pull, cada razão de quarentena nova, hash das quarentenas e conflito resolvido com `keepLocal` |
+
+A varredura de dado pessoal lê todas as tabelas de `sqlite_master` com os valores crus (`.values()`), não com `JSON.stringify` da linha, que escaparia as aspas do JSON das colunas e faria o padrão `"valueMm":\d` nunca casar. Número curto se procura por padrão com contexto, nunca pelos dígitos soltos, que aparecem em UUIDs.
 
 Cada contrato leva uma mutação plausível com o teste que morre; o `/revisar` cobra esse desafio.

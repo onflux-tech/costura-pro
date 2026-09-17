@@ -13,7 +13,11 @@ Pessoa para quem uma peça é feita ou ajustada, vinculada a um cliente pagador.
 _Evitar_: cliente secundário
 
 **Modelo de medidas**:
-Conjunto versionado e personalizável de campos de medidas, em centímetros, para um tipo de peça.
+Conjunto versionado e personalizável de campos de medidas, em centímetros, para um tipo de peça. Cada salvamento gera uma versão; campo deixa de ser usado por desativação, nunca por exclusão.
+
+**Medição**:
+Registro datado das medidas de um perfil num modelo de medidas, com cópia do nome, da versão e dos rótulos do modelo. Pode ser corrigida e arquivada; cada prova ou visita gera uma medição nova.
+_Evitar_: ficha de medidas, medida atual
 
 **Snapshot de medidas**:
 Cópia das medidas aprovadas para um subitem de OS. Atualizar o perfil não altera o snapshot.
@@ -43,7 +47,7 @@ _Evitar_: envio automático, notificação ao cliente
 Retirada de um cadastro das telas do dia a dia sem apagar sua identidade nem seu histórico.
 
 **Anonimização**:
-Remoção irreversível dos dados pessoais de um cliente sem OS ou saldo aberto e de seus perfis, inclusive das cópias guardadas no histórico de sincronização, preservando o histórico financeiro sem identificá-lo.
+Remoção irreversível dos dados pessoais de um cliente sem OS ou saldo aberto, de seus perfis e dos valores e notas das medições, inclusive das cópias guardadas no histórico de sincronização, preservando o histórico financeiro sem identificá-lo.
 _Evitar_: exclusão
 
 ## Catálogo e preço

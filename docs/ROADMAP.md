@@ -197,9 +197,14 @@ Cada spike responde uma pergunta que muda o desenho antes de construir em cima d
   - cada comando definido uma vez e exposto pela procedure direta e pelo `sync.push`, com criação no registro e as quarentenas `aggregateExists` e `aggregateAnonymized` ([DEC-76](PRD.md#96-plataforma-acesso-e-operação));
   - telas em `/atendimento/clientes` (lista, novo, ficha e edição) com a sub-aba Clientes, e `Textarea`, `Dialog`, `AlertDialog` e `Monogram` no design system;
   - verificado em navegador real no build de produção com banco novo: 1440, 768, 390 e 320 px sem rolagem horizontal, por toque e teclado (foco preso no diálogo, Esc devolve o foco, menu por Enter), conflito de edição entre janelas e acesso remoto simulado sem a opção de anonimizar.
+- Modelos de medidas e medições (2026-09-17), descritos em [agregados](areas/agregados.md):
+  - medida em milímetros inteiros, digitada e exibida em centímetros com uma casa, e medição autocontida que copia nome, versão e rótulos do modelo ([DEC-77](PRD.md#92-atendimento-e-agenda), [DEC-79](PRD.md#92-atendimento-e-agenda), [ADR 0015](adr/0015-medidas-em-milimetros-e-medicao-autocontida.md));
+  - modelos iniciais Vestido, Saia, Calça, Blusa e camisa e Blazer e paletó, semeados no boot uma única vez (Q-02 parcial, [DEC-78](PRD.md#92-atendimento-e-agenda));
+  - modelos em Catálogo > Modelos de medidas, com editor que salva uma versão e campos só desativados ([DEC-80](PRD.md#92-atendimento-e-agenda)); ficha com perfis e medidas lado a lado, registrar, corrigir e histórico com diferença para a medição anterior ([DEC-81](PRD.md#92-atendimento-e-agenda));
+  - anonimização zera valores e notas das medições e redige o histórico delas; toda quarentena de comando com dado pessoal guarda o hash redigido ([DEC-82](PRD.md#96-plataforma-acesso-e-operação));
+  - verificado em navegador real no build de produção com banco novo: 1440, 768, 390 e 320 px sem rolagem horizontal, editor por teclado com foco seguindo o campo movido, conflito entre janelas no editor e na correção, resposta perdida seguida de nova tentativa sem duplicar, toque a 390 px e anonimização.
 
 **Pendente:**
-- Modelos de medidas versionados, modelos iniciais (Q-02) e medições, sobre a ficha do cliente.
 - Peça recebida com fotos e a infraestrutura de mídia (RF-ATD-05, 07, RF-ACE-14).
 
 **Critério de saída:**
