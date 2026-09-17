@@ -58,6 +58,10 @@
       "types": "./dist/src/sign-in-lockout.d.ts",
       "default": "./src/sign-in-lockout.ts"
     },
+    "./stock": {
+      "types": "./dist/src/stock.d.ts",
+      "default": "./src/stock.ts"
+    },
     "./unit": {
       "types": "./dist/src/unit.d.ts",
       "default": "./src/unit.ts"
