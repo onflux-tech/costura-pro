@@ -22,6 +22,10 @@
       "types": "./dist/src/installation-state.d.ts",
       "default": "./src/installation-state.ts"
     },
+    "./measurement": {
+      "types": "./dist/src/measurement.d.ts",
+      "default": "./src/measurement.ts"
+    },
     "./pricing": {
       "types": "./dist/src/pricing.d.ts",
       "default": "./src/pricing.ts"
