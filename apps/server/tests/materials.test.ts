@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, test } from "bun:test";
+import { maxExactInteger as columnCeiling } from "@costura-pro/db/columns";
 import { baseUnitValues } from "@costura-pro/db/schema/materials";
 import { maxExactInteger } from "@costura-pro/domain/quantity";
 import { baseUnitCodes } from "@costura-pro/domain/unit";
@@ -66,8 +67,9 @@ function createVariant(
 }
 
 describe("materials", () => {
-	test("keeps the base unit list of the database equal to the domain", () => {
+	test("keeps the base unit list and the ceiling of the database equal to the domain", () => {
 		expect([...baseUnitValues]).toEqual([...baseUnitCodes]);
+		expect(columnCeiling).toBe(maxExactInteger);
 	});
 
 	test("creates, reads and edits a material", async () => {
@@ -172,6 +174,20 @@ describe("materials", () => {
 		});
 	});
 
+	test("canonicalizes an integer with leading zeros", async () => {
+		const { owner } = await ownerSetup();
+		const { id: materialId } = await createMaterial(owner);
+		await createVariant(owner, materialId, {
+			minQuantityMicros: "0001500000",
+			referenceCostCents: "0012",
+		});
+		const { variants } = await owner.materials.get({ materialId });
+		expect(variants[0]).toMatchObject({
+			minQuantityMicros: "1500000",
+			referenceCostCents: "12",
+		});
+	});
+
 	test("edits the variant, clears optional values and refuses the base unit", async () => {
 		const { owner } = await ownerSetup();
 		const { id: materialId } = await createMaterial(owner);
@@ -206,6 +222,40 @@ describe("materials", () => {
 				variantId,
 			})
 		).rejects.toMatchObject({ code: "BAD_REQUEST" });
+	});
+
+	test("the direct procedure refuses the base unit in the patch", async () => {
+		const { owner } = await ownerSetup();
+		const { id: materialId } = await createMaterial(owner);
+		const { id: variantId } = await createVariant(owner, materialId);
+		const loose = owner.materialVariants.update as unknown as (input: {
+			baseVersion: number;
+			opId: string;
+			patch: Record<string, unknown>;
+			variantId: string;
+		}) => Promise<{ version: number }>;
+		await expect(
+			loose({
+				baseVersion: 1,
+				opId: newOpId(),
+				patch: { baseUnit: "cm" },
+				variantId,
+			})
+		).rejects.toMatchObject({ code: "BAD_REQUEST" });
+		expect(
+			await loose({
+				baseVersion: 1,
+				opId: newOpId(),
+				patch: { baseUnit: "cm", name: "Azul royal" },
+				variantId,
+			})
+		).toEqual({ version: 2 });
+		const { variants } = await owner.materials.get({ materialId });
+		expect(variants[0]).toMatchObject({
+			baseUnit: "m",
+			name: "Azul royal",
+			version: 2,
+		});
 	});
 
 	test("repeats by opId and refuses a stale version and a repeated id", async () => {

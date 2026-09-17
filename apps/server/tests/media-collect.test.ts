@@ -357,7 +357,7 @@ describe("media collection", () => {
 		]);
 	});
 
-	test("keeps a variant photo that exists only in an open conflict", async () => {
+	test("keeps the variant photos of the live row and of both sides of an open conflict", async () => {
 		const setup: SyncSetup = await syncSetup(servers);
 		const { server } = setup;
 		const materialId = crypto.randomUUID();
@@ -367,12 +367,23 @@ describe("media collection", () => {
 			name: "Gorgurão",
 			opId: newOpId(),
 		});
+		const seeds = [
+			"variante-atual",
+			"variante-atual-mini",
+			"variante-conflito",
+			"variante-conflito-mini",
+		];
+		const [current, currentThumb, local, localThumb] = await inSequence(
+			seeds,
+			(seed) => upload(server, setup.remoteCookie, seed, true)
+		);
 		await setup.local.materialVariants.create({
 			baseUnit: "m",
 			displayPrecision: 2,
 			materialId,
 			name: "Azul marinho",
 			opId: newOpId(),
+			photo: { photoHash: current ?? "", thumbnailHash: currentThumb ?? "" },
 			variantId,
 		});
 		await setup.local.materialVariants.update({
@@ -381,12 +392,6 @@ describe("media collection", () => {
 			patch: { name: "Azul royal" },
 			variantId,
 		});
-		const hash = await upload(
-			server,
-			setup.remoteCookie,
-			"variante-conflito",
-			true
-		);
 		const pushed = await setup.sync.sync.push({
 			operations: [
 				{
@@ -398,14 +403,46 @@ describe("media collection", () => {
 					epoch: setup.epoch,
 					occurredAt: "2026-09-17T12:00:00.000Z",
 					opId: newOpId(),
-					payload: { photo: { photoHash: hash, thumbnailHash: hash } },
+					payload: {
+						photo: { photoHash: local ?? "", thumbnailHash: localThumb ?? "" },
+					},
 				},
 			],
 		});
 		expect(pushed.conflicts).toHaveLength(1);
 		const later = new Date(Date.now() + 25 * hour);
 		await collect(server, later);
-		expect([hasRow(server, hash), hasFile(server, hash)]).toEqual([true, true]);
+		expect(
+			[current, currentThumb, local, localThumb].map((photo) =>
+				hasFile(server, photo ?? "")
+			)
+		).toEqual([true, true, true, true]);
+		const replacement = await upload(
+			server,
+			setup.remoteCookie,
+			"variante-nova",
+			true
+		);
+		const replacementThumb = await upload(
+			server,
+			setup.remoteCookie,
+			"variante-nova-mini",
+			true
+		);
+		await setup.local.materialVariants.update({
+			baseVersion: 2,
+			opId: newOpId(),
+			patch: {
+				photo: { photoHash: replacement, thumbnailHash: replacementThumb },
+			},
+			variantId,
+		});
+		await collect(server, later);
+		expect(
+			[current, currentThumb, local, localThumb].map((photo) =>
+				hasFile(server, photo ?? "")
+			)
+		).toEqual([true, true, true, true]);
 		await setup.sync.sync.resolve({
 			choice: "keepServer",
 			conflictId: pushed.conflicts[0]?.conflictId ?? "",
@@ -413,10 +450,22 @@ describe("media collection", () => {
 			reason: "Fica o do PC",
 		});
 		await collect(server, later);
-		expect([hasRow(server, hash), hasFile(server, hash)]).toEqual([
-			false,
-			false,
+		expect(
+			[current, currentThumb, local, localThumb].map((photo) => [
+				hasRow(server, photo ?? ""),
+				hasFile(server, photo ?? ""),
+			])
+		).toEqual([
+			[false, false],
+			[false, false],
+			[false, false],
+			[false, false],
 		]);
+		expect(
+			[replacement, replacementThumb].map((photo) =>
+				hasFile(server, photo ?? "")
+			)
+		).toEqual([true, true]);
 	});
 
 	test("collects thousands of referenced old photos without reading every item per photo", async () => {

@@ -29,6 +29,11 @@ const variantMessages = {
 	notFound: commandMessages.materialVariantNotFound,
 };
 
+const variantCreateMessages = {
+	anonymized: commandMessages.materialVariantNotFound,
+	notFound: commandMessages.materialNotFound,
+};
+
 const materialVersionInput = z.object({
 	baseVersion: z.number().int().positive(),
 	materialId: z.uuid(),
@@ -145,7 +150,7 @@ export const materialVariantsRouter = {
 			runCreateCommand(context, {
 				aggregateId: variantId,
 				command: "materialVariant.create",
-				messages: materialMessages,
+				messages: variantCreateMessages,
 				opId,
 				values,
 			})
