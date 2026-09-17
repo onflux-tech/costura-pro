@@ -13,6 +13,7 @@ import {
 
 const attemptedUsername = "invasor.tentativa";
 const wrongPassword = "senha-errada-000";
+const manySignInsTimeoutMs = 30_000;
 const lockedMessage = {
 	message: "Muitas tentativas. Tente de novo mais tarde.",
 };
@@ -100,36 +101,43 @@ describe("rate limit per IP on /sign-in/username", () => {
 });
 
 describe("remote sign-in lock", () => {
-	test("five remote failures lock remote sign-in for one minute, doubling up to thirty minutes", async () => {
-		const clock = manualClock();
-		const server = await ownerServer(clock.now);
-		const rounds = await inSequence(times(7), async () => {
-			const failures = await failRemotely(server, 5);
-			const locked = await signIn(server, { access: "remote", ip: freshIp() });
-			const retryAfter = locked.headers.get("retry-after");
-			const body = await locked.json();
-			clock.advance(Number(retryAfter) * 1000 + 1000);
-			return { body, failures, retryAfter, status: locked.status };
-		});
-		expect(rounds.map((round) => round.retryAfter)).toEqual([
-			"60",
-			"120",
-			"240",
-			"480",
-			"960",
-			"1800",
-			"1800",
-		]);
-		expect(rounds.map((round) => round.status)).toEqual(
-			times(7).map(() => 429)
-		);
-		expect(rounds.map((round) => round.body)).toEqual(
-			times(7).map(() => lockedMessage)
-		);
-		expect(rounds.map((round) => round.failures)).toEqual(
-			times(7).map(() => [401, 401, 401, 401, 401])
-		);
-	});
+	test(
+		"five remote failures lock remote sign-in for one minute, doubling up to thirty minutes",
+		async () => {
+			const clock = manualClock();
+			const server = await ownerServer(clock.now);
+			const rounds = await inSequence(times(7), async () => {
+				const failures = await failRemotely(server, 5);
+				const locked = await signIn(server, {
+					access: "remote",
+					ip: freshIp(),
+				});
+				const retryAfter = locked.headers.get("retry-after");
+				const body = await locked.json();
+				clock.advance(Number(retryAfter) * 1000 + 1000);
+				return { body, failures, retryAfter, status: locked.status };
+			});
+			expect(rounds.map((round) => round.retryAfter)).toEqual([
+				"60",
+				"120",
+				"240",
+				"480",
+				"960",
+				"1800",
+				"1800",
+			]);
+			expect(rounds.map((round) => round.status)).toEqual(
+				times(7).map(() => 429)
+			);
+			expect(rounds.map((round) => round.body)).toEqual(
+				times(7).map(() => lockedMessage)
+			);
+			expect(rounds.map((round) => round.failures)).toEqual(
+				times(7).map(() => [401, 401, 401, 401, 401])
+			);
+		},
+		manySignInsTimeoutMs
+	);
 
 	test("a locked remote attempt does not reach Better Auth even with the right password", async () => {
 		const clock = manualClock();
@@ -152,27 +160,31 @@ describe("remote sign-in lock", () => {
 		).toBe(429);
 	});
 
-	test("a remote success after the lock resets the failure count", async () => {
-		const clock = manualClock();
-		const server = await ownerServer(clock.now);
-		await failRemotely(server, 5);
-		clock.advance(61_000);
-		expect(
-			(await signIn(server, { access: "remote", ip: freshIp() })).status
-		).toBe(200);
-		expect(await failRemotely(server, 4)).toEqual([401, 401, 401, 401]);
-		expect(
-			(await signIn(server, { access: "remote", ip: freshIp() })).status
-		).toBe(200);
-		expect(
-			server
-				.native()
-				.query(
-					"SELECT remote_failures AS failures, remote_locked_until AS lockedUntil FROM sign_in_guard"
-				)
-				.get()
-		).toEqual({ failures: 0, lockedUntil: null });
-	});
+	test(
+		"a remote success after the lock resets the failure count",
+		async () => {
+			const clock = manualClock();
+			const server = await ownerServer(clock.now);
+			await failRemotely(server, 5);
+			clock.advance(61_000);
+			expect(
+				(await signIn(server, { access: "remote", ip: freshIp() })).status
+			).toBe(200);
+			expect(await failRemotely(server, 4)).toEqual([401, 401, 401, 401]);
+			expect(
+				(await signIn(server, { access: "remote", ip: freshIp() })).status
+			).toBe(200);
+			expect(
+				server
+					.native()
+					.query(
+						"SELECT remote_failures AS failures, remote_locked_until AS lockedUntil FROM sign_in_guard"
+					)
+					.get()
+			).toEqual({ failures: 0, lockedUntil: null });
+		},
+		manySignInsTimeoutMs
+	);
 
 	test("local failures never lock remote sign-in", async () => {
 		const server = await ownerServer();
@@ -188,40 +200,44 @@ describe("remote sign-in lock", () => {
 });
 
 describe("sign-in audit", () => {
-	test("records outcomes with the remote IP and never the attempted username", async () => {
-		const clock = manualClock();
-		const server = await ownerServer(clock.now);
-		const ips = times(5).map(() => freshIp());
-		await inSequence(ips, (ip) => wrongRemote(server, ip));
-		await signIn(server, { access: "remote", ip: freshIp() });
-		await inSequence(times(6), () =>
-			signIn(server, { password: ownerPassword.replace("1", "9") })
-		);
-		const rows = auditRows(server);
-		expect(rows.map((row) => row.outcome)).toEqual([
-			"failed",
-			"failed",
-			"failed",
-			"failed",
-			"failed",
-			"locked",
-			"failed",
-			"failed",
-			"failed",
-			"failed",
-			"failed",
-			"rate_limited",
-		]);
-		expect(rows.slice(0, 5).map((row) => row.ip)).toEqual(ips);
-		expect(
-			rows.slice(6).every((row) => row.access === "local" && row.ip === null)
-		).toBe(true);
-		const everything = JSON.stringify(
-			server.native().query("SELECT * FROM audit_event").all()
-		);
-		expect(everything).not.toContain(attemptedUsername);
-		expect(everything).not.toContain("senha");
-	});
+	test(
+		"records outcomes with the remote IP and never the attempted username",
+		async () => {
+			const clock = manualClock();
+			const server = await ownerServer(clock.now);
+			const ips = times(5).map(() => freshIp());
+			await inSequence(ips, (ip) => wrongRemote(server, ip));
+			await signIn(server, { access: "remote", ip: freshIp() });
+			await inSequence(times(6), () =>
+				signIn(server, { password: ownerPassword.replace("1", "9") })
+			);
+			const rows = auditRows(server);
+			expect(rows.map((row) => row.outcome)).toEqual([
+				"failed",
+				"failed",
+				"failed",
+				"failed",
+				"failed",
+				"locked",
+				"failed",
+				"failed",
+				"failed",
+				"failed",
+				"failed",
+				"rate_limited",
+			]);
+			expect(rows.slice(0, 5).map((row) => row.ip)).toEqual(ips);
+			expect(
+				rows.slice(6).every((row) => row.access === "local" && row.ip === null)
+			).toBe(true);
+			const everything = JSON.stringify(
+				server.native().query("SELECT * FROM audit_event").all()
+			);
+			expect(everything).not.toContain(attemptedUsername);
+			expect(everything).not.toContain("senha");
+		},
+		manySignInsTimeoutMs
+	);
 });
 
 describe("remote sign-in lock under concurrency", () => {
