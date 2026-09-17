@@ -1,15 +1,14 @@
 import { Toaster } from "@costura-pro/ui/components/sonner";
 import type { QueryClient } from "@tanstack/react-query";
-import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 import {
 	createRootRouteWithContext,
 	HeadContent,
 	Outlet,
 } from "@tanstack/react-router";
-import { TanStackRouterDevtools } from "@tanstack/react-router-devtools";
+import { lazy, Suspense } from "react";
 
 import Header from "@/components/header";
-import { ThemeProvider } from "@/components/theme-provider";
+import NotFound from "@/components/not-found";
 import type { orpc } from "@/utils/orpc";
 
 import "../index.css";
@@ -19,22 +18,20 @@ export interface RouterAppContext {
 	queryClient: QueryClient;
 }
 
+const Devtools = import.meta.env.DEV
+	? lazy(() => import("@/components/devtools"))
+	: () => null;
+
 export const Route = createRootRouteWithContext<RouterAppContext>()({
 	component: RootComponent,
+	notFoundComponent: NotFound,
 	head: () => ({
+		links: [{ href: "/favicon.ico", rel: "icon" }],
 		meta: [
+			{ title: "Costura Pro" },
 			{
-				title: "costura-pro",
-			},
-			{
+				content: "Atendimento, produção, estoque e finanças do ateliê",
 				name: "description",
-				content: "costura-pro is a web application",
-			},
-		],
-		links: [
-			{
-				rel: "icon",
-				href: "/favicon.ico",
 			},
 		],
 	}),
@@ -44,20 +41,14 @@ function RootComponent() {
 	return (
 		<>
 			<HeadContent />
-			<ThemeProvider
-				attribute="class"
-				defaultTheme="dark"
-				disableTransitionOnChange
-				storageKey="vite-ui-theme"
-			>
-				<div className="grid h-svh grid-rows-[auto_1fr]">
-					<Header />
-					<Outlet />
-				</div>
-				<Toaster richColors />
-			</ThemeProvider>
-			<TanStackRouterDevtools position="bottom-left" />
-			<ReactQueryDevtools buttonPosition="bottom-right" position="bottom" />
+			<div className="grid min-h-svh grid-cols-[minmax(0,1fr)] grid-rows-[auto_1fr]">
+				<Header />
+				<Outlet />
+			</div>
+			<Toaster />
+			<Suspense>
+				<Devtools />
+			</Suspense>
 		</>
 	);
 }

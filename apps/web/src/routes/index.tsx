@@ -1,3 +1,11 @@
+import {
+	Panel,
+	PanelContent,
+	PanelHeader,
+	PanelTitle,
+} from "@costura-pro/ui/components/panel";
+import { SyncStatus } from "@costura-pro/ui/components/sync-status";
+import { Heading } from "@costura-pro/ui/components/typography";
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 
@@ -7,47 +15,30 @@ export const Route = createFileRoute("/")({
 	component: HomeComponent,
 });
 
-const TITLE_TEXT = `
- ██████╗ ███████╗████████╗████████╗███████╗██████╗
- ██╔══██╗██╔════╝╚══██╔══╝╚══██╔══╝██╔════╝██╔══██╗
- ██████╔╝█████╗     ██║      ██║   █████╗  ██████╔╝
- ██╔══██╗██╔══╝     ██║      ██║   ██╔══╝  ██╔══██╗
- ██████╔╝███████╗   ██║      ██║   ███████╗██║  ██║
- ╚═════╝ ╚══════╝   ╚═╝      ╚═╝   ╚══════╝╚═╝  ╚═╝
-
- ████████╗    ███████╗████████╗ █████╗  ██████╗██╗  ██╗
- ╚══██╔══╝    ██╔════╝╚══██╔══╝██╔══██╗██╔════╝██║ ██╔╝
-    ██║       ███████╗   ██║   ███████║██║     █████╔╝
-    ██║       ╚════██║   ██║   ██╔══██║██║     ██╔═██╗
-    ██║       ███████║   ██║   ██║  ██║╚██████╗██║  ██╗
-    ╚═╝       ╚══════╝   ╚═╝   ╚═╝  ╚═╝ ╚═════╝╚═╝  ╚═╝
- `;
+type ServerStatus = { label: string; tone: "offline" | "ok" | "warning" };
 
 function HomeComponent() {
 	const healthCheck = useQuery(orpc.healthCheck.queryOptions());
-	let connectionStatus = "Disconnected";
+	let status: ServerStatus = {
+		label: "Sem conexão com o servidor",
+		tone: "offline",
+	};
 	if (healthCheck.isLoading) {
-		connectionStatus = "Checking...";
+		status = { label: "Verificando conexão", tone: "warning" };
 	} else if (healthCheck.data) {
-		connectionStatus = "Connected";
+		status = { label: "Conectado ao servidor", tone: "ok" };
 	}
-
 	return (
-		<div className="container mx-auto max-w-3xl px-4 py-2">
-			<pre className="overflow-x-auto font-mono text-sm">{TITLE_TEXT}</pre>
-			<div className="grid gap-6">
-				<section className="rounded-lg border p-4">
-					<h2 className="mb-2 font-medium">API Status</h2>
-					<div className="flex items-center gap-2">
-						<div
-							className={`h-2 w-2 rounded-full ${healthCheck.data ? "bg-green-500" : "bg-red-500"}`}
-						/>
-						<span className="text-muted-foreground text-sm">
-							{connectionStatus}
-						</span>
-					</div>
-				</section>
-			</div>
-		</div>
+		<main className="mx-auto flex w-full max-w-3xl flex-col gap-4 px-4 py-8">
+			<Heading>Costura Pro</Heading>
+			<Panel>
+				<PanelHeader>
+					<PanelTitle>Estado do servidor</PanelTitle>
+				</PanelHeader>
+				<PanelContent>
+					<SyncStatus tone={status.tone}>{status.label}</SyncStatus>
+				</PanelContent>
+			</Panel>
+		</main>
 	);
 }

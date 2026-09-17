@@ -5,12 +5,13 @@
   "type": "module",
   "scripts": {
     "build": "tsc -b ../../packages/api && vite build",
-    "check-types": "tsc -b ../../packages/api && vite build && tsc --noEmit",
+    "check-types": "tsc -b ../../packages/api && vite build && tsc --noEmit && tsc --noEmit -p tests",
     "dev": "vite dev",
     "env:generate": "varlock codegen",
     "generate-pwa-assets": "pwa-assets-generator",
     "serve": "vite preview",
-    "start": "vite"
+    "start": "vite",
+    "test": "bun test tests"
   },
   "dependencies": {
     "@costura-pro/api": "workspace:*",
@@ -26,7 +27,6 @@
     "@varlock/vite-integration": "1.5.1",
     "better-auth": "catalog:",
     "lucide-react": "catalog:",
-    "next-themes": "catalog:",
     "react": "catalog:",
     "react-dom": "catalog:",
     "sonner": "catalog:",
@@ -39,6 +39,7 @@
     "@tanstack/react-query-devtools": "^5.102.8",
     "@tanstack/react-router-devtools": "^1.167.1",
     "@tanstack/router-plugin": "^1.168.35",
+    "@types/bun": "catalog:",
     "@types/node": "^26.4.1",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",

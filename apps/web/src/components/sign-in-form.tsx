@@ -3,8 +3,14 @@ import {
 	usernameLength,
 } from "@costura-pro/domain/credentials";
 import { Button } from "@costura-pro/ui/components/button";
+import {
+	Field,
+	FieldError,
+	FieldLabel,
+} from "@costura-pro/ui/components/field";
 import { Input } from "@costura-pro/ui/components/input";
-import { Label } from "@costura-pro/ui/components/label";
+import { Panel, PanelContent } from "@costura-pro/ui/components/panel";
+import { Eyebrow, Heading, Text } from "@costura-pro/ui/components/typography";
 import { useForm } from "@tanstack/react-form";
 import { useNavigate } from "@tanstack/react-router";
 import { toast } from "sonner";
@@ -76,83 +82,87 @@ export default function SignInForm() {
 	}
 
 	return (
-		<div className="mx-auto mt-10 w-full max-w-md p-6">
-			<h1 className="mb-6 text-center font-bold text-3xl">Entrar</h1>
-
-			<form
-				className="space-y-4"
-				onSubmit={(e) => {
-					e.preventDefault();
-					e.stopPropagation();
-					form.handleSubmit();
-				}}
-			>
-				<div>
-					<form.Field name="username">
-						{(field) => (
-							<div className="space-y-2">
-								<Label htmlFor={field.name}>Usuário</Label>
-								<Input
-									autoCapitalize="none"
-									autoComplete="username"
-									id={field.name}
+		<main className="flex items-start justify-center px-4 py-10 md:py-16">
+			<Panel className="w-full max-w-sm">
+				<PanelContent className="flex flex-col gap-6 p-6">
+					<div className="flex flex-col gap-1">
+						<Eyebrow>Costura Pro</Eyebrow>
+						<Heading>Entrar</Heading>
+						<Text tone="muted">Acesso do dono do ateliê.</Text>
+					</div>
+					<form
+						className="flex flex-col gap-4"
+						noValidate
+						onSubmit={(e) => {
+							e.preventDefault();
+							e.stopPropagation();
+							form.handleSubmit();
+						}}
+					>
+						<form.Field name="username">
+							{(field) => (
+								<Field
+									invalid={field.state.meta.errors.length > 0}
 									name={field.name}
-									onBlur={field.handleBlur}
-									onChange={(e) => field.handleChange(e.target.value)}
-									type="text"
-									value={field.state.value}
-								/>
-								{field.state.meta.errors.map((error) => (
-									<p className="text-red-500" key={error?.message}>
-										{error?.message}
-									</p>
-								))}
-							</div>
-						)}
-					</form.Field>
-				</div>
-
-				<div>
-					<form.Field name="password">
-						{(field) => (
-							<div className="space-y-2">
-								<Label htmlFor={field.name}>Senha</Label>
-								<Input
-									autoComplete="current-password"
-									id={field.name}
+								>
+									<FieldLabel>Usuário</FieldLabel>
+									<Input
+										autoCapitalize="none"
+										autoComplete="username"
+										onBlur={field.handleBlur}
+										onChange={(e) => field.handleChange(e.target.value)}
+										type="text"
+										value={field.state.value}
+									/>
+									{field.state.meta.errors.map((error) => (
+										<FieldError key={error?.message} match>
+											{error?.message}
+										</FieldError>
+									))}
+								</Field>
+							)}
+						</form.Field>
+						<form.Field name="password">
+							{(field) => (
+								<Field
+									invalid={field.state.meta.errors.length > 0}
 									name={field.name}
-									onBlur={field.handleBlur}
-									onChange={(e) => field.handleChange(e.target.value)}
-									type="password"
-									value={field.state.value}
-								/>
-								{field.state.meta.errors.map((error) => (
-									<p className="text-red-500" key={error?.message}>
-										{error?.message}
-									</p>
-								))}
-							</div>
-						)}
-					</form.Field>
-				</div>
-
-				<form.Subscribe
-					selector={(state) => ({
-						canSubmit: state.canSubmit,
-						isSubmitting: state.isSubmitting,
-					})}
-				>
-					{({ canSubmit, isSubmitting }) => (
-						<Button
-							className="w-full"
-							disabled={!canSubmit || isSubmitting}
-							type="submit"
+								>
+									<FieldLabel>Senha</FieldLabel>
+									<Input
+										autoComplete="current-password"
+										onBlur={field.handleBlur}
+										onChange={(e) => field.handleChange(e.target.value)}
+										type="password"
+										value={field.state.value}
+									/>
+									{field.state.meta.errors.map((error) => (
+										<FieldError key={error?.message} match>
+											{error?.message}
+										</FieldError>
+									))}
+								</Field>
+							)}
+						</form.Field>
+						<form.Subscribe
+							selector={(state) => ({
+								canSubmit: state.canSubmit,
+								isSubmitting: state.isSubmitting,
+							})}
 						>
-							{isSubmitting ? "Entrando..." : "Entrar"}
-						</Button>
-					)}
-				</form.Subscribe>
-			</form>
-		</div>
+							{({ canSubmit, isSubmitting }) => (
+								<Button
+									disabled={!canSubmit || isSubmitting}
+									size="touch"
+									type="submit"
+								>
+									{isSubmitting ? "Entrando..." : "Entrar"}
+								</Button>
+							)}
+						</form.Subscribe>
+					</form>
+				</PanelContent>
+			</Panel>
+		</main>
 	);
 }

@@ -1,4 +1,5 @@
 import { Button } from "@costura-pro/ui/components/button";
+import { ButtonLink } from "@costura-pro/ui/components/button-link";
 import {
 	DropdownMenu,
 	DropdownMenuContent,
@@ -23,9 +24,9 @@ export default function UserMenu() {
 
 	if (!session) {
 		return (
-			<Link to="/login">
-				<Button variant="outline">Entrar</Button>
-			</Link>
+			<ButtonLink render={<Link to="/login" />} variant="outline">
+				Entrar
+			</ButtonLink>
 		);
 	}
 
@@ -34,7 +35,7 @@ export default function UserMenu() {
 			<DropdownMenuTrigger render={<Button variant="outline" />}>
 				{session.user.name}
 			</DropdownMenuTrigger>
-			<DropdownMenuContent className="bg-card">
+			<DropdownMenuContent>
 				<DropdownMenuGroup>
 					<DropdownMenuLabel>Minha conta</DropdownMenuLabel>
 					<DropdownMenuSeparator />

@@ -1,0 +1,12 @@
+{
+  "extends": "@costura-pro/config/tsconfig.base.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "strictNullChecks": true,
+    "types": ["bun"],
+    "paths": {
+      "@costura-pro/ui/*": ["../../../packages/ui/src/*"]
+    }
+  },
+  "include": ["./**/*.ts", "../src/lib/destinations.ts"]
+}
