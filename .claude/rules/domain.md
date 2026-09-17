@@ -18,3 +18,5 @@ paths:
 - Margem é sobre a venda, não markup: custo R$ 60 com meta de 40% sugere R$ 100.
 - Reserva nunca inventa saldo: falta vira pendência de abastecimento.
 - `pnpm fix` ordena as chaves de objeto literal: teste que depende da ordem de chaves monta o objeto com `JSON.parse`.
+- `parseQuantity` recusa mais casas que a precisão recebida e `formatQuantity` nunca arredonda. Precisão exibida é só exibição: o formulário valida contra o máximo (6 casas) e não contra a precisão da variante, senão baixar a precisão travaria a edição de um valor já gravado.
+- `pnpm fix` ordena as chaves de objeto literal, então lista com ordem significativa (unidades base) nasce de uma tupla `as const` e o `Record` só guarda os detalhes.

@@ -192,13 +192,19 @@ _Evitar_: nota, cupom fiscal
 Definição comum de tecido, linha, zíper, botão ou outro insumo.
 
 **Variante de material**:
-Cor, tamanho ou especificação com código, imagem, unidade base, custo, mínimo, alvo e saldo próprios.
+Cor, tamanho ou especificação com código, imagem, unidade base, precisão exibida, custo de referência, mínimo, alvo e saldo próprios. O código é livre e pode repetir; a unidade base não muda depois da criação.
 
 **Unidade base**:
-Unidade em que o saldo de um material é controlado, independentemente da embalagem de compra.
+Unidade em que o saldo de um material é controlado, independentemente da embalagem de compra. Vem de uma lista fechada (metro, centímetro, metro quadrado, unidade, par, grama, quilograma, mililitro e litro), cada uma com abreviação e precisão sugerida.
+
+**Precisão exibida**:
+Número de casas decimais, de 0 a 6, com que a quantidade de uma variante aparece e pode ser digitada. É só exibição: o valor gravado continua em milionésimos.
+
+**Categoria de material**:
+Texto curto que agrupa materiais base na lista e no filtro, escolhido entre sugestões ou escrito pelo dono. Não é cadastro próprio.
 
 **Conversão de compra**:
-Fator que transforma a embalagem comprada, como rolo, cone ou pacote, na unidade base.
+Fator que transforma a embalagem comprada, como rolo, cone ou pacote, na unidade base. A variante guarda a embalagem padrão (rótulo e quanto ela tem na unidade base) e a compra copia esse fator, podendo sobrescrever.
 
 **Local de estoque**:
 Armário, prateleira ou área com saldo físico próprio.
@@ -223,6 +229,9 @@ Soma das pendências de abastecimento com a reposição até o alvo, explicando 
 
 **Mínimo e alvo**:
 Limite abaixo do qual a variante pede reposição e quantidade até a qual a lista sugere comprar.
+
+**Custo de referência**:
+Custo por unidade base que o dono informa na variante antes de existir compra, usado como ponto de partida para preço sugerido e custo provisório. Só o dono vê.
 
 **Custo de aquisição**:
 Preço dos itens de uma compra após o rateio proporcional de frete e desconto.

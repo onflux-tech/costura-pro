@@ -4,7 +4,7 @@
 
 ## Overview
 
-Fotos são arquivos imutáveis identificados pelo SHA-256 do próprio conteúdo ([ADR 0016](../adr/0016-midia-enderecada-por-conteudo.md)). O aparelho otimiza cada foto, calcula o hash e envia os bytes por uma rota Hono própria; o servidor grava o arquivo de forma atômica e registra a linha de `media_file`. O registro de negócio que usa a foto (a [peça recebida](agregados.md)) guarda só os hashes, pelos comandos de agregado de sempre, e o comando não confere se o arquivo existe. A primeira usuária é a peça recebida; fotos de perfil e a galeria do catálogo reaproveitam a mesma infraestrutura.
+Fotos são arquivos imutáveis identificados pelo SHA-256 do próprio conteúdo ([ADR 0016](../adr/0016-midia-enderecada-por-conteudo.md)). O aparelho otimiza cada foto, calcula o hash e envia os bytes por uma rota Hono própria; o servidor grava o arquivo de forma atômica e registra a linha de `media_file`. O registro de negócio que usa a foto (a [peça recebida](agregados.md)) guarda só os hashes, pelos comandos de agregado de sempre, e o comando não confere se o arquivo existe. A primeira usuária foi a peça recebida, com até 12 fotos; a variante de material veio depois, com uma foto ([catálogo de materiais](catalogo.md)). Fotos de perfil e a galeria do produto reaproveitam a mesma infraestrutura.
 
 ## Caminho de uma foto
 
@@ -48,6 +48,7 @@ As duas rotas aceitam qualquer acesso com sessão do dono (o celular chega pelo 
 | Momento | O que acontece |
 |---|---|
 | Upload | Dentro de `withMediaLock(hash)`: se a linha existe e o arquivo tem o tamanho dela, 200 sem regravar; senão `writeMediaFile` (temporário, `sync`, `rename`, nunca `rename` sobre final existente; final igual fica intacto, final corrompido é apagado antes) e só então `upsertMediaFile` |
+| Referência | Um hash está referenciado quando aparece em `received_item.photos`, em `material_variant.photo` ou nos valores locais e atuais de um conflito aberto desses dois tipos; agregado novo com foto acrescenta seus caminhos JSON ao `referencedHashes` |
 | Coleta | `collectMedia` no boot e a cada 1 h, sem sobrepor execuções (`startMediaCollection`): as candidatas saem de uma consulta só (`listUnreferencedMediaFilesUploadedBefore`, com o conjunto `referencedHashes` montado uma vez por `json_each` sobre `received_item` e os valores locais e atuais dos conflitos abertos de `receivedItem`); cada candidata é conferida de novo por `isMediaReferenced` numa transação dentro da trava, com `setImmediate` entre elas para não segurar o servidor, e sai a linha na transação e o arquivo depois; arquivo sem linha com mais de 24 h (removido pelo caminho em que foi achado) e temporário com mais de 1 h saem |
 | Anonimização | Junta os hashes da linha viva, do `change_log` e de todos os conflitos de cada peça do cliente, redige as peças, apaga as linhas de `media_file` sem outra referência na mesma transação (antes do `truncateWal`) e remove os arquivos depois do commit; falha de remoção não muda a resposta e fica para a coleta |
 

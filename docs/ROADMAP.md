@@ -210,8 +210,14 @@ Cada spike responde uma pergunta que muda o desenho antes de construir em cima d
   - painel "Peças em custódia" na ficha, páginas de receber, ver e corrigir, visualizador com Baixar e `Photo`, `PhotoTile` e `FilePickerButton` no design system;
   - verificado em navegador real no build de produção com banco novo: fotos grandes reais gravadas em WebP, reserva JPEG, HEIC, limite de 12, foto repetida, falha de envio com nova tentativa, resposta perdida sem duplicar, refetch com falha sem perder o formulário, visualizador por teclado, devolução, conflito entre janelas, 320 a 1440 px, toque em Câmera e Galeria e anonimização com as fotos respondendo 404 e os arquivos fora do disco.
 
+- Catálogo de materiais (2026-09-17), descrito em [catálogo de materiais](areas/catalogo.md):
+  - material base com categoria de texto livre com sugestões e variante com código livre, unidade base de lista fechada e imutável, precisão exibida, custo de referência, mínimo, alvo, embalagem de compra padrão e uma foto ([DEC-93 a DEC-97](PRD.md#93-catálogo-estoque-e-produção), Q-02 parcial);
+  - dinheiro e quantidade em coluna inteira do SQLite por tipo próprio que devolve `bigint`, com teto validado, e inteiro em string no JSON ([DEC-98](PRD.md#96-plataforma-acesso-e-operação), [ADR 0017](adr/0017-dinheiro-e-quantidade-em-coluna-inteira.md));
+  - telas em Catálogo > Materiais (lista com busca que acha por variante e código, filtro por categoria, ficha com painel de variantes, criação e edição de material e de variante), com `NumberField`, `Select` e `SuggestionField` no design system;
+  - verificado em navegador real no build de produção com banco novo: material e duas variantes com unidades e precisões diferentes, foto enviada e relida, aviso de código repetido, conflito entre janelas com "Carregar versão atual", 320, 390, 768 e 1440 px sem rolagem horizontal, toque a 390 px e teclado no seletor.
+
 **Pendente:**
-- Catálogo de serviços, materiais e produtos com variantes, estoque, compras, contas financeiras, etiquetas com leitura por câmera (S3) e busca global.
+- Catálogo de serviços e produtos com variantes e ficha técnica, estoque, compras, contas financeiras, etiquetas com leitura por câmera (S3) e busca global.
 
 **Critério de saída:**
 - Parte de cadastro de estoque do CA-03 com teste de integração: variantes, local, lote, compra em embalagem, conversão e custo de aquisição com frete e desconto.
