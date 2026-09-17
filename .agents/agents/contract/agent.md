@@ -22,3 +22,6 @@ Não altere arquivos, banco, Git ou serviços; não rode testes ou navegador. En
 - Limite de payload da API (campos ativos de um modelo) é contrato com a tela: o editor precisa travar e explicar o mesmo teto, senão o dono recebe só "Confira os campos".
 - Schema de patch validado de novo no `keepLocal` precisa aceitar a própria saída (`null` de texto vazio); confira com um conflito de patch que limpa um campo.
 - Filtro que esconde repetições em `sync.pending` só vale para quarentena com hash redigido: com hash real, toda repetição com `opIdReused` é conteúdo diferente e precisa aparecer.
+- Hash de arquivo guardado num agregado é contrato com a coleta e a anonimização de mídia: confira que o tipo e a coluna entram em `referencedHashes` (`packages/api/src/media/store.ts`), nos dois lados dos conflitos abertos, e que foto e miniatura saem juntas na anonimização.
+- Rota crua fora do oRPC responde por status, e a web decide pelo status (`uploadFailure`: 413, 415 e 422 sem nova tentativa, o resto com): compare a tabela da SPEC §4 com o servidor e com essa função.
+- Regra que só a tela aplica sobre campo mudado por outra ação (recepção contra devolução registrada) depende de a página passar o valor atual ao formulário; confira a prop nos dois lados.
