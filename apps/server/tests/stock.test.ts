@@ -573,7 +573,7 @@ describe("stock movements", () => {
 			reason: "Perda no corte",
 			variantId,
 		});
-		await owner.stockMovements.transfer({
+		const transfer = await owner.stockMovements.transfer({
 			fromLocationId: locationId,
 			inboundId: crypto.randomUUID(),
 			lotId: null,
@@ -584,6 +584,14 @@ describe("stock movements", () => {
 			reason: null,
 			toLocationId: other.id,
 			variantId,
+		});
+		await owner.stockMovements.reverse({
+			counterpartId: crypto.randomUUID(),
+			movementId: crypto.randomUUID(),
+			occurredOn: "2026-09-18",
+			opId: newOpId(),
+			reason: "Transferi errado",
+			reversesMovementId: transfer.id,
 		});
 		const drift = server
 			.native()
