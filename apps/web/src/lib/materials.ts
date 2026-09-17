@@ -217,23 +217,26 @@ export function emptyVariantValues(
 	};
 }
 
-function quantityError(text: string, precision: number): string | null {
-	if (text.trim() === "") {
+function quantityError(text: string): string | null {
+	const trimmed = text.trim();
+	if (trimmed === "") {
 		return null;
 	}
-	return parseQuantity(text, precision) === null
-		? `Use número com até ${precision} casas`
-		: null;
+	if (parseQuantity(trimmed, displayPrecision.max) !== null) {
+		return null;
+	}
+	return parseQuantity(trimmed, 0) === null && trimmed.includes(",")
+		? `Use no máximo ${displayPrecision.max} casas decimais`
+		: "Use só número, com vírgula";
 }
 
 export function variantFormErrors(
 	values: VariantFormValues
 ): Partial<Record<VariantField, string>> {
-	const precision = Number(values.displayPrecision);
 	const name = values.name.trim();
-	const min = quantityError(values.minQuantity, precision);
-	const target = quantityError(values.targetQuantity, precision);
-	const packagingQuantity = quantityError(values.packagingQuantity, precision);
+	const min = quantityError(values.minQuantity);
+	const target = quantityError(values.targetQuantity);
+	const packagingQuantity = quantityError(values.packagingQuantity);
 	const cost =
 		values.referenceCost.trim() !== "" &&
 		parseMoney(values.referenceCost) === null
@@ -266,9 +269,9 @@ export function variantFields(
 	values: VariantFormValues,
 	photo: VariantPhotoView | null
 ): VariantFields {
-	const precision = Number(values.displayPrecision);
 	const quantity = (text: string) => {
-		const micros = text.trim() === "" ? null : parseQuantity(text, precision);
+		const micros =
+			text.trim() === "" ? null : parseQuantity(text, displayPrecision.max);
 		return micros === null ? null : micros.toString();
 	};
 	const label = values.packagingLabel.trim();
@@ -280,7 +283,7 @@ export function variantFields(
 	return {
 		baseUnit: values.baseUnit,
 		code: emptyToNull(values.code),
-		displayPrecision: precision,
+		displayPrecision: Number(values.displayPrecision),
 		minQuantityMicros: quantity(values.minQuantity),
 		name: values.name.trim(),
 		packaging:
@@ -293,8 +296,23 @@ export function variantFields(
 	};
 }
 
-const sameJson = (left: unknown, right: unknown) =>
-	JSON.stringify(left) === JSON.stringify(right);
+const samePhoto = (
+	left: VariantPhotoView | null,
+	right: VariantPhotoView | null
+) =>
+	left === null || right === null
+		? left === right
+		: left.photoHash === right.photoHash &&
+			left.thumbnailHash === right.thumbnailHash;
+
+const samePackaging = (
+	left: VariantPackagingView | null,
+	right: VariantPackagingView | null
+) =>
+	left === null || right === null
+		? left === right
+		: left.label === right.label &&
+			left.quantityMicros === right.quantityMicros;
 
 export function changedVariant(
 	opened: VariantView,
@@ -316,10 +334,10 @@ export function changedVariant(
 	);
 	const patch: Partial<VariantFields> = {
 		...scalars,
-		...(sameJson(fields.packaging, opened.packaging)
+		...(samePackaging(fields.packaging, opened.packaging)
 			? {}
 			: { packaging: fields.packaging }),
-		...(sameJson(fields.photo, opened.photo) ? {} : { photo: fields.photo }),
+		...(samePhoto(fields.photo, opened.photo) ? {} : { photo: fields.photo }),
 	};
 	return Object.keys(patch).length === 0 ? null : patch;
 }

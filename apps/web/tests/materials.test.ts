@@ -100,11 +100,14 @@ describe("variant form", () => {
 		});
 	});
 
-	test("refuses a name, a quantity beyond the precision and a half packaging", () => {
+	test("refuses a name, a quantity beyond six decimals and a half packaging", () => {
 		expect(variantFormErrors(values({ name: "  " })).name).toBeString();
 		expect(
-			variantFormErrors(values({ minQuantity: "1,555" })).minQuantity
-		).toBeString();
+			variantFormErrors(values({ minQuantity: "1,5555555" })).minQuantity
+		).toBe("Use no máximo 6 casas decimais");
+		expect(
+			variantFormErrors(values({ minQuantity: "um e meio" })).minQuantity
+		).toBe("Use só número, com vírgula");
 		expect(
 			variantFormErrors(values({ referenceCost: "12,555" })).referenceCost
 		).toBeString();
@@ -115,6 +118,17 @@ describe("variant form", () => {
 			variantFormErrors(values({ packagingLabel: "" })).packagingLabel
 		).toBeString();
 		expect(variantFormErrors(values())).toEqual({});
+	});
+
+	test("lowering the exhibited precision keeps the stored quantities editable", () => {
+		const lowered = values({ displayPrecision: "0" });
+		expect(variantFormErrors(lowered)).toEqual({});
+		expect(variantFields(lowered, variant.photo)).toMatchObject({
+			displayPrecision: 0,
+			minQuantityMicros: "1500000",
+			packaging: { label: "Rolo", quantityMicros: "50000000" },
+			targetQuantityMicros: "10000000",
+		});
 	});
 
 	test("writes integers as strings and clears optional values", () => {

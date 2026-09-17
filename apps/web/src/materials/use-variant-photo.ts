@@ -14,9 +14,12 @@ import { sessionQuery } from "@/lib/session";
 
 export type VariantPhotoStatus = "empty" | "failed" | "ready" | "uploading";
 
+export type VariantPhotoFailure = { message: string; retry: boolean };
+
 export type VariantPhoto = {
-	busy: boolean;
-	failure: string | null;
+	blocked: boolean;
+	discard: () => void;
+	failure: VariantPhotoFailure | null;
 	photo: VariantPhotoView | null;
 	pick: (files: readonly File[]) => Promise<void>;
 	preview: string | null;
@@ -25,19 +28,20 @@ export type VariantPhoto = {
 	status: VariantPhotoStatus;
 };
 
+const previewOf = (photo: VariantPhotoView | null) =>
+	photo ? photoUrl(photo.thumbnailHash) : null;
+
 export function useVariantPhoto(
 	initial: VariantPhotoView | null
 ): VariantPhoto {
 	const queryClient = useQueryClient();
 	const [photo, setPhoto] = useState<VariantPhotoView | null>(initial);
-	const [preview, setPreview] = useState<string | null>(
-		initial ? photoUrl(initial.thumbnailHash) : null
-	);
-	const [prepared, setPrepared] = useState<PreparedPhoto | null>(null);
+	const [preview, setPreview] = useState<string | null>(previewOf(initial));
+	const [pending, setPending] = useState<PreparedPhoto | null>(null);
 	const [status, setStatus] = useState<VariantPhotoStatus>(
 		initial ? "ready" : "empty"
 	);
-	const [failure, setFailure] = useState<string | null>(null);
+	const [failure, setFailure] = useState<VariantPhotoFailure | null>(null);
 	const objectUrls = useRef(new Set<string>());
 
 	useEffect(() => {
@@ -62,7 +66,7 @@ export function useVariantPhoto(
 						queryKey: sessionQuery.queryKey,
 					});
 				}
-				setFailure(captureFailure(error).message);
+				setFailure(captureFailure(error));
 				setStatus("failed");
 				return;
 			}
@@ -70,6 +74,7 @@ export function useVariantPhoto(
 				photoHash: ready.photo.hash,
 				thumbnailHash: ready.thumbnail.hash,
 			});
+			setPending(null);
 			setStatus("ready");
 		},
 		[queryClient]
@@ -83,19 +88,18 @@ export function useVariantPhoto(
 			}
 			setStatus("uploading");
 			setFailure(null);
-			setPhoto(null);
-			setPrepared(null);
 			let ready: PreparedPhoto;
 			try {
 				ready = await preparePhoto(file);
 			} catch (error) {
-				setFailure(captureFailure(error).message);
+				setPending(null);
+				setFailure(captureFailure(error));
 				setStatus("failed");
 				return;
 			}
 			const url = URL.createObjectURL(ready.thumbnail.blob);
 			objectUrls.current.add(url);
-			setPrepared(ready);
+			setPending(ready);
 			setPreview(url);
 			await send(ready);
 		},
@@ -103,13 +107,20 @@ export function useVariantPhoto(
 	);
 
 	const retry = useCallback(async () => {
-		if (prepared) {
-			await send(prepared);
+		if (pending) {
+			await send(pending);
 		}
-	}, [prepared, send]);
+	}, [pending, send]);
+
+	const discard = useCallback(() => {
+		setPending(null);
+		setPreview(previewOf(photo));
+		setFailure(null);
+		setStatus(photo ? "ready" : "empty");
+	}, [photo]);
 
 	const remove = useCallback(() => {
-		setPrepared(null);
+		setPending(null);
 		setPreview(null);
 		setPhoto(null);
 		setFailure(null);
@@ -117,7 +128,8 @@ export function useVariantPhoto(
 	}, []);
 
 	return {
-		busy: status === "uploading",
+		blocked: status === "failed" || status === "uploading",
+		discard,
 		failure,
 		photo,
 		pick,

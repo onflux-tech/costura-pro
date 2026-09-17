@@ -96,7 +96,11 @@ function QuantityField({
 }
 
 function useRepeatedCode(code: string, variantId: string | undefined) {
-	const trimmed = code.trim();
+	const [trimmed, setTrimmed] = useState(code.trim());
+	useEffect(() => {
+		const timer = setTimeout(() => setTrimmed(code.trim()), 400);
+		return () => clearTimeout(timer);
+	}, [code]);
 	const found = useQuery({
 		...orpc.materialVariants.byCode.queryOptions({
 			input: { code: trimmed },
@@ -266,11 +270,16 @@ function PhotoPanel({ photo }: { photo: VariantPhoto }) {
 				) : null}
 				{photo.failure ? (
 					<Alert tone="danger">
-						<AlertTitle>Não foi possível enviar a foto</AlertTitle>
-						<AlertDescription>{photo.failure}</AlertDescription>
+						<AlertTitle>A foto nova não entrou</AlertTitle>
+						<AlertDescription>{photo.failure.message}</AlertDescription>
 						<AlertActions>
-							<Button onClick={photo.retry} variant="outline">
-								Tentar de novo
+							{photo.failure.retry ? (
+								<Button onClick={photo.retry} variant="outline">
+									Tentar de novo
+								</Button>
+							) : null}
+							<Button onClick={photo.discard} variant="outline">
+								Descartar a foto nova
 							</Button>
 						</AlertActions>
 					</Alert>
@@ -283,7 +292,7 @@ function PhotoPanel({ photo }: { photo: VariantPhoto }) {
 					>
 						{pickLabel}
 					</FilePickerButton>
-					{photo.preview ? (
+					{photo.photo ? (
 						<Button onClick={photo.remove} variant="ghost">
 							Remover foto
 						</Button>
@@ -298,6 +307,7 @@ export function VariantForm({
 	editingUnit,
 	failure,
 	initialValues,
+	onDirtyChange,
 	onReloadCurrent,
 	onSubmit,
 	photo,
@@ -307,6 +317,7 @@ export function VariantForm({
 	editingUnit: boolean;
 	failure: ClientCommandFailure | null;
 	initialValues: VariantFormValues;
+	onDirtyChange?: (dirty: boolean) => void;
 	onReloadCurrent?: () => void;
 	onSubmit: (fields: VariantFields) => Promise<void>;
 	photo: VariantPhoto;
@@ -325,7 +336,8 @@ export function VariantForm({
 			targets.current.delete(field);
 		}
 	};
-	const onChange = (field: keyof VariantFormValues, value: string) =>
+	const onChange = (field: keyof VariantFormValues, value: string) => {
+		onDirtyChange?.(true);
 		setValues((current) =>
 			field === "baseUnit"
 				? {
@@ -338,6 +350,7 @@ export function VariantForm({
 					}
 				: { ...current, [field]: value }
 		);
+	};
 
 	useEffect(() => {
 		if (failure) {
@@ -419,7 +432,7 @@ export function VariantForm({
 			) : null}
 			<Button
 				className="md:w-auto md:self-start"
-				disabled={submitting || photo.busy}
+				disabled={submitting || photo.blocked}
 				size="touch"
 				type="submit"
 			>

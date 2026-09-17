@@ -9,7 +9,7 @@ import { Badge } from "@costura-pro/ui/components/badge";
 import { Button } from "@costura-pro/ui/components/button";
 import { ButtonLink } from "@costura-pro/ui/components/button-link";
 import { Skeleton } from "@costura-pro/ui/components/skeleton";
-import { Heading } from "@costura-pro/ui/components/typography";
+import { Heading, Text } from "@costura-pro/ui/components/typography";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
@@ -50,8 +50,13 @@ function VariantEditor({
 	const { opIdFor, reset } = useOpId();
 	const [failure, setFailure] = useState<ClientCommandFailure | null>(null);
 	const [archiving, setArchiving] = useState(false);
+	const [formDirty, setFormDirty] = useState(false);
 	const photo = useVariantPhoto(variant.photo);
 	const variantId = variant.id;
+	const dirty =
+		formDirty ||
+		photo.blocked ||
+		(photo.photo?.photoHash ?? null) !== (variant.photo?.photoHash ?? null);
 
 	const openMaterial = () =>
 		navigate({
@@ -117,14 +122,26 @@ function VariantEditor({
 					<Heading className="max-md:sr-only">{variant.name}</Heading>
 					{variant.archivedAt ? <Badge tone="warning">arquivada</Badge> : null}
 				</div>
-				<Button disabled={archiving} onClick={toggleArchive} variant="outline">
-					{archiveLabel}
-				</Button>
+				<div className="flex flex-col items-end gap-1">
+					<Button
+						disabled={archiving || dirty}
+						onClick={toggleArchive}
+						variant="outline"
+					>
+						{archiveLabel}
+					</Button>
+					{dirty ? (
+						<Text size="xs" tone="muted">
+							Salve as mudanças antes de arquivar
+						</Text>
+					) : null}
+				</div>
 			</div>
 			<VariantForm
 				editingUnit={false}
 				failure={failure}
 				initialValues={variantFormValues(variant)}
+				onDirtyChange={setFormDirty}
 				onReloadCurrent={reloadCurrent}
 				onSubmit={submit}
 				photo={photo}

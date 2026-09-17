@@ -30,14 +30,28 @@ import { materialCategoriesQuery } from "./material-queries";
 
 const route = getRouteApi("/_app/catalogo-produtos/materiais/");
 
-const allCategories = "todas";
-const withoutCategory = "sem-categoria";
+const allCategories = "*";
+const withoutCategory = "-";
+const namedCategory = (name: string) => `c:${name}`;
 
-function categoryInput(choice: string): string | undefined {
-	if (choice === allCategories) {
-		return;
+function categoryChoice(
+	categoria: string | undefined,
+	semCategoria: 1 | undefined
+): string {
+	if (semCategoria === 1) {
+		return withoutCategory;
 	}
-	return choice === withoutCategory ? "" : choice;
+	return categoria === undefined ? allCategories : namedCategory(categoria);
+}
+
+function categorySearch(choice: string) {
+	if (choice === allCategories) {
+		return { categoria: undefined, semCategoria: undefined };
+	}
+	if (choice === withoutCategory) {
+		return { categoria: undefined, semCategoria: 1 as const };
+	}
+	return { categoria: choice.slice(2), semCategoria: undefined };
 }
 
 function emptyState(search: string, archived: boolean) {
@@ -60,7 +74,7 @@ function emptyState(search: string, archived: boolean) {
 }
 
 export function MaterialListPage() {
-	const { arquivados, busca = "", categoria } = route.useSearch();
+	const { arquivados, busca = "", categoria, semCategoria } = route.useSearch();
 	const navigate = route.useNavigate();
 	const archived = arquivados === 1;
 	const [query, setQuery] = useState(busca);
@@ -87,7 +101,7 @@ export function MaterialListPage() {
 			initialPageParam: 0,
 			input: (offset: number) => ({
 				archived,
-				category: categoryInput(categoria ?? allCategories),
+				category: semCategoria === 1 ? "" : categoria,
 				offset,
 				query: busca || undefined,
 			}),
@@ -101,7 +115,7 @@ export function MaterialListPage() {
 		{ label: "Sem categoria", value: withoutCategory },
 		...(categories.data?.categories ?? []).map((name) => ({
 			label: name,
-			value: name,
+			value: namedCategory(name),
 		})),
 	];
 
@@ -135,11 +149,11 @@ export function MaterialListPage() {
 							navigate({
 								search: (previous) => ({
 									...previous,
-									categoria: value === allCategories ? undefined : value,
+									...categorySearch(value),
 								}),
 							})
 						}
-						value={categoria ?? allCategories}
+						value={categoryChoice(categoria, semCategoria)}
 					/>
 				</Field>
 				<ChoiceChips
