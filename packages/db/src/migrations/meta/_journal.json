@@ -43,6 +43,13 @@
       "when": 1789640753146,
       "tag": "0005_measurement_templates_measurements",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1789649827275,
+      "tag": "0006_received_items_media",
+      "breakpoints": true
     }
   ]
 }
