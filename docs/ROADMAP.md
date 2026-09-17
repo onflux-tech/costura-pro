@@ -153,10 +153,16 @@ Cada spike responde uma pergunta que muda o desenho antes de construir em cima d
   - dispositivos com segredo, aprovação direta e código de ativação, e contrato mínimo de sync com `push`, `pull`, `resolve` e `pending`, quarentena por item e resultado de cada comando gravado na transação do efeito ([ADR 0013](adr/0013-contrato-minimo-de-sincronizacao.md));
   - login web mínimo por username verificado em navegador real a 1440 e 320 px.
 
+- Telas da F2 (2026-09-16), sobre o [design system](areas/design-system.md):
+  - shell de navegação ligado às rotas, com destino sem tela aberto num estado vazio e o estado da conexão com o servidor na faixa de sub-abas ([DEC-70](PRD.md#91-produto-e-escopo));
+  - wizard retomável numa tela focada, com nome, conta e login automático, códigos de recuperação baixados ou copiados com confirmação, e pasta de backup escolhida no navegador de pastas do servidor e testada ([DEC-69](PRD.md#91-produto-e-escopo));
+  - Hoje, destinos, login e wizard redirecionando ao passo pendente por guardas de rota; acesso remoto antes do fim do wizard vê só o aviso de concluir no PC; `installation.status` com o acesso e `installation.details` só local ([DEC-71](PRD.md#96-plataforma-acesso-e-operação));
+  - checklist de continuidade em Hoje, com os itens pendentes;
+  - verificado em navegador real no build de produção com banco novo: wizard completo a 1440 px e por toque a 390 px, recarga em cada passo, 320, 390, 768, 1024 e 1440 px sem rolagem horizontal, teclado nos menus e no `Checkbox`, e acesso remoto simulado com `cf-connecting-ip`.
+
 **Pendente:**
-- Telas do wizard e shell de navegação sobre o design system da F1 ([docs/areas/design-system.md](areas/design-system.md)).
-- Dashboard redirecionando ao passo pendente do wizard (o servidor já responde `PRECONDITION_FAILED` com o estado).
-- Wizard verificado em navegador real no desktop e em 320 px; só então o Tunnel pode ser exposto (Q-09).
+- Exposição do Tunnel: o critério de saída da F2 está cumprido, e a exposição depende do domínio do dono (Q-09) e do assistente de Tunnel da F7.
+- Teste da pasta de backup: falha de releitura (`EACCES`) ou de remoção (`EPERM`) do arquivo de teste ainda chega à tela como erro genérico, e não como "Sem permissão de leitura"; tratar junto com o backup diário, com teste que simule a permissão negada.
 
 **Critério de saída:**
 - Testes com SQLite real provam:

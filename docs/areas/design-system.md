@@ -1,6 +1,6 @@
 # Design system
 
-**Files:** `packages/ui/src/styles/globals.css`, `packages/ui/src/components/`, `packages/ui/src/lib/navigation.ts`, `packages/ui/tests/`, `apps/web/src/lib/destinations.ts`, `apps/web/src/catalog/`, `apps/web/src/routes/catalogo.tsx`, `apps/web/tests/`
+**Files:** `packages/ui/src/styles/globals.css`, `packages/ui/src/components/`, `packages/ui/src/lib/navigation.ts`, `packages/ui/tests/`, `apps/web/src/lib/destinations.ts`, `apps/web/src/lib/active-destination.ts`, `apps/web/src/shell/`, `apps/web/src/routes/_app/`, `apps/web/src/catalog/`, `apps/web/src/routes/catalogo.tsx`, `apps/web/tests/`
 
 ## Overview
 
@@ -52,8 +52,10 @@ As fontes vêm de `@fontsource-variable` e o service worker guarda só os arquiv
 | `DataList`, `DataListHeader`, `DataListHeaderCell`, `DataListRow`, `DataListCell` | Tabela no desktop que vira cartão abaixo de 768 px (RF-ENT-06) |
 | `Field`, `FieldLabel` (`requirement`), `FieldHint`, `FieldError`, `Input` | Campo de formulário; o Base UI liga rótulo, dica e erro ao controle |
 | `Fieldset`, `FieldsetLegend`, `ChoiceChips`, `ChoiceChip` | Escolha única entre poucas opções (estado da peça, meio de pagamento) |
-| `Stat`, `Meter`, `StageTrack` (etapas com `id` e `label`), `Checklist` | Métrica, capacidade com excesso marcado por cor e entalhe, etapa de produção, passos do wizard |
-| `TopNav`, `TopNavSearch`, `TopNavAvatar`, `SubTabs`, `SyncStatus` | Barra do desktop, abas da seção e estado do sync |
+| `Stat`, `Meter`, `StageTrack` (etapas com `id` e `label`), `Checklist` | Métrica, capacidade com excesso marcado por cor e entalhe, etapa de produção, passos do wizard; abaixo de 768 px o `StageTrack` mostra o rótulo da etapa atual numa linha própria sob as barras, e os rótulos das colunas ficam só para leitor de tela |
+| `Checkbox` | Confirmação isolada com o texto como rótulo ("Guardei os códigos em lugar seguro"); usa `Field.Root` e `Field.Label` do Base UI, que associam rótulo e controle |
+| `BrandHeader` (`name`, `actions`), `BrandMark` | Barra verde das telas sem navegação (wizard, login, erro e página não encontrada), com o nome do ateliê como segunda linha |
+| `TopNav`, `TopNavSearch`, `TopNavAvatar`, `SubTabs`, `SyncStatus` | Barra do desktop, abas da seção e estado do sync; `SubTabs` sem itens mostra só o `status` |
 | `MobileHeader` (`heading`, `headingAs`), `MobileHeaderBack`, `MobileNav` | Cabeçalho e barra inferior abaixo de 768 px; o título só vira `h1` com `headingAs="h1"`, quando a tela não tem `Heading` próprio |
 | `NavMenu`, `DropdownMenu*`, `Skeleton`, `Toaster` | Menus, carregamento e avisos breves |
 
@@ -67,11 +69,22 @@ Os 13 destinos da RF-ENT-05 moram em `apps/web/src/lib/destinations.ts`, e a reg
 | 768 a 1279 px | Hoje, Agenda, Atendimento, Orçamentos, OS, Vendas | "Mais" com Produção e os dois grupos com título |
 | Abaixo de 768 px | Barra inferior com Hoje, Agenda, OS, Vendas | "Mais" com os soltos restantes e os dois grupos com título |
 
-Os componentes de navegação recebem `renderLink` e não dependem do TanStack Router; o shell ligado às rotas chega com as telas da F2.
+Os componentes de navegação recebem `renderLink` e não dependem do TanStack Router. O shell (`apps/web/src/shell/app-shell.tsx`) é o componente do layout sem caminho `apps/web/src/routes/_app/route.tsx` e liga os componentes às rotas:
+
+| Peça | Como funciona |
+|---|---|
+| `renderRouterLink` | Hoje vira `<Link to="/">`; os outros destinos, `<Link to="/$destino" params>`, porque o `to` do router só aceita caminho conhecido pelo tipo. O `Link` marca `aria-current` do mesmo jeito que o `activeId` |
+| `activeDestination` | Destino ativo pelo pathname: `/` só casa exato e os outros casam o próprio caminho ou um subcaminho com fronteira `/` |
+| Faixa de sub-abas | No desktop, `SubTabs` sem itens com o estado da conexão com o servidor (`healthCheck` a cada 30 s); as abas por rota nascem com a primeira seção que tiver abas |
+| Celular | `MobileHeader` com o rótulo do destino ativo, o estado da conexão e o menu da conta; `MobileNav` embaixo |
+| Conta | `TopNavAvatar` com as iniciais do username abre o menu com o username e "Sair" |
+| Destino sem tela | `routes/_app/$destino.tsx` mostra "Esta área ainda não está disponível" para um `href` de `destinations.ts`; qualquer outro caminho dá a página não encontrada. Uma rota real criada depois (`routes/_app/agenda.tsx`) vence a dinâmica sem mexer nela |
+
+O layout `_app` só renderiza com a instalação em `ready` e sessão; as guardas estão na [SPEC §5](../SPEC.md#5-segurança-e-armazenamento-local).
 
 ## Antes de criar uma tela
 
 1. Abra a tela correspondente no projeto do Claude Design e o `/catalogo` com `pnpm dev:web`.
-2. Monte só com componentes do `packages/ui`; componente que falta nasce lá, com os estados no catálogo.
+2. Monte só com componentes do `packages/ui`; componente que falta nasce lá, com os estados no catálogo. Tela de destino entra em `apps/web/src/routes/_app/`, dentro do shell, com `Heading` próprio em `max-md:sr-only`, porque o `MobileHeader` já mostra o título no celular; tela sem navegação usa `BrandHeader`.
 3. Layout (`div`, `main`, `section`, `nav`) usa utilitários de espaçamento e grade; cor, tamanho de texto e raio vêm dos tokens.
 4. Rode `pnpm --filter web test` e `pnpm --filter @costura-pro/ui test`, e valide com browser-harness em 320, 390, 768 e 1440 px, por toque e teclado.
