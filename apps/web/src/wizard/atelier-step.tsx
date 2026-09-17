@@ -17,8 +17,8 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import z from "zod";
 
-import { commandErrorMessage } from "@/lib/command-error";
 import {
+	failedCommand,
 	type InstallationDetails,
 	refreshInstallation,
 } from "@/lib/installation-queries";
@@ -54,10 +54,10 @@ export function AtelierStep({
 				});
 				reset();
 				onPreview(null);
+				await refreshInstallation(queryClient);
 			} catch (error) {
-				setFailure(commandErrorMessage(error));
+				setFailure(await failedCommand(queryClient, error));
 			}
-			await refreshInstallation(queryClient);
 		},
 		validators: {
 			onSubmit: z.object({

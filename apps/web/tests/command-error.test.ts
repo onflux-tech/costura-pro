@@ -1,7 +1,13 @@
 import { expect, test } from "bun:test";
 import { ORPCError } from "@orpc/client";
 
-import { commandErrorMessage } from "../src/lib/command-error";
+import { commandErrorMessage, sessionEnded } from "../src/lib/command-error";
+
+test("só UNAUTHORIZED do servidor encerra a sessão na tela", () => {
+	expect(sessionEnded(new ORPCError("UNAUTHORIZED"))).toBe(true);
+	expect(sessionEnded(new ORPCError("FORBIDDEN"))).toBe(false);
+	expect(sessionEnded(new TypeError("Failed to fetch"))).toBe(false);
+});
 
 test("mensagem do servidor em pedido inválido sem problemas de campo", () => {
 	expect(
@@ -33,6 +39,9 @@ test("códigos conhecidos e desconhecidos", () => {
 	);
 	expect(commandErrorMessage(new ORPCError("UNAUTHORIZED"))).toBe(
 		"Sua sessão terminou. Entre de novo."
+	);
+	expect(commandErrorMessage(new ORPCError("PRECONDITION_FAILED"))).toBe(
+		"A configuração avançou em outra janela. A tela foi atualizada."
 	);
 	expect(commandErrorMessage(new ORPCError("INTERNAL_SERVER_ERROR"))).toBe(
 		"Não foi possível concluir. Tente de novo."

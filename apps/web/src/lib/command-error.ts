@@ -3,8 +3,14 @@ import { ORPCError } from "@orpc/client";
 const messages: Partial<Record<string, string>> = {
 	CONFLICT: "A instalação mudou. Confira e envie de novo.",
 	FORBIDDEN: "Disponível só no acesso local do PC.",
+	PRECONDITION_FAILED:
+		"A configuração avançou em outra janela. A tela foi atualizada.",
 	UNAUTHORIZED: "Sua sessão terminou. Entre de novo.",
 };
+
+export function sessionEnded(error: unknown): boolean {
+	return error instanceof ORPCError && error.code === "UNAUTHORIZED";
+}
 
 function hasIssues(data: unknown) {
 	return typeof data === "object" && data !== null && "issues" in data;

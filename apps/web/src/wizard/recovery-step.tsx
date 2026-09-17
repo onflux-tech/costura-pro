@@ -12,8 +12,7 @@ import { CopyIcon, DownloadIcon } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
-import { commandErrorMessage } from "@/lib/command-error";
-import { refreshInstallation } from "@/lib/installation-queries";
+import { failedCommand, refreshInstallation } from "@/lib/installation-queries";
 import {
 	recoveryCodesFile,
 	recoveryCodesFileName,
@@ -48,7 +47,7 @@ export function RecoveryStep({ atelierName }: { atelierName: string | null }) {
 			});
 			setCodes({ generatedAt: new Date(), values: result.codes });
 		} catch (error) {
-			setFailure(commandErrorMessage(error));
+			setFailure(await failedCommand(queryClient, error));
 		}
 	};
 
@@ -57,10 +56,10 @@ export function RecoveryStep({ atelierName }: { atelierName: string | null }) {
 		try {
 			await confirm.mutateAsync({ opId: opIdFor("confirm") });
 			reset();
+			await refreshInstallation(queryClient);
 		} catch (error) {
-			setFailure(commandErrorMessage(error));
+			setFailure(await failedCommand(queryClient, error));
 		}
-		await refreshInstallation(queryClient);
 	};
 
 	const copyCodes = async (values: string[]) => {

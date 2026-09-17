@@ -24,9 +24,8 @@ import { useState } from "react";
 import z from "zod";
 
 import { authClient } from "@/lib/auth-client";
-import { commandErrorMessage } from "@/lib/command-error";
 import { wizardRoute } from "@/lib/installation-gates";
-import { refreshInstallation } from "@/lib/installation-queries";
+import { failedCommand, refreshInstallation } from "@/lib/installation-queries";
 import { sessionQuery } from "@/lib/session";
 import { useOpId } from "@/lib/use-op-id";
 import { orpc } from "@/utils/orpc";
@@ -79,18 +78,16 @@ export function AccountStep() {
 					username,
 				});
 			} catch (error) {
-				setFailure(commandErrorMessage(error));
-				await refreshInstallation(queryClient);
+				setFailure(await failedCommand(queryClient, error));
 				return;
 			}
 			reset();
-			const signedIn = await authClient.signIn.username({
-				password: value.password,
-				username,
-			});
+			const signedIn = await authClient.signIn
+				.username({ password: value.password, username })
+				.catch(() => null);
 			await queryClient.invalidateQueries({ queryKey: sessionQuery.queryKey });
 			await refreshInstallation(queryClient);
-			if (signedIn.error) {
+			if (!signedIn || signedIn.error) {
 				await navigate({ search: { redirect: wizardRoute }, to: "/login" });
 			}
 		},

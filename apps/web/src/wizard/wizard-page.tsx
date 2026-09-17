@@ -1,5 +1,12 @@
+import {
+	Alert,
+	AlertActions,
+	AlertDescription,
+	AlertTitle,
+} from "@costura-pro/ui/components/alert";
 import { Badge } from "@costura-pro/ui/components/badge";
 import { BrandHeader } from "@costura-pro/ui/components/brand-header";
+import { Button } from "@costura-pro/ui/components/button";
 import {
 	Panel,
 	PanelContent,
@@ -8,10 +15,11 @@ import {
 } from "@costura-pro/ui/components/panel";
 import { Skeleton } from "@costura-pro/ui/components/skeleton";
 import { Heading, Text } from "@costura-pro/ui/components/typography";
-import { useQuery } from "@tanstack/react-query";
+import { type UseQueryResult, useQuery } from "@tanstack/react-query";
 import { Navigate } from "@tanstack/react-router";
 import { useState } from "react";
 
+import { commandErrorMessage } from "@/lib/command-error";
 import {
 	canReadDetails,
 	type WizardStep,
@@ -36,16 +44,45 @@ function StepContent({
 	onPreview,
 	step,
 }: {
-	details: InstallationDetails | undefined;
+	details: UseQueryResult<InstallationDetails>;
 	onPreview: (name: string | null) => void;
 	step: WizardStep;
 }) {
 	if (step === "account") {
 		return <AccountStep />;
 	}
-	if (!details) {
+	if (details.isError) {
+		return (
+			<Alert tone="danger">
+				<AlertTitle>Não foi possível carregar a configuração</AlertTitle>
+				<AlertDescription>
+					{commandErrorMessage(details.error)}
+				</AlertDescription>
+				<AlertActions>
+					<Button onClick={() => details.refetch()} size="sm">
+						Tentar de novo
+					</Button>
+				</AlertActions>
+			</Alert>
+		);
+	}
+	if (!details.data) {
 		return <Skeleton className="h-48" />;
 	}
+	return (
+		<LoadedStep details={details.data} onPreview={onPreview} step={step} />
+	);
+}
+
+function LoadedStep({
+	details,
+	onPreview,
+	step,
+}: {
+	details: InstallationDetails;
+	onPreview: (name: string | null) => void;
+	step: Exclude<WizardStep, "account">;
+}) {
 	if (step === "atelier") {
 		return <AtelierStep details={details} onPreview={onPreview} />;
 	}
@@ -60,6 +97,7 @@ export function WizardPage() {
 	const details = useQuery(detailsQueryOptions(canReadDetails(gate)));
 	const [preview, setPreview] = useState<string | null>(null);
 	const decision = wizardGate(gate);
+	const namingStep = decision.screen === "step" && decision.step === "atelier";
 
 	if ("to" in decision) {
 		return decision.to === "/login" ? (
@@ -71,7 +109,11 @@ export function WizardPage() {
 
 	return (
 		<div className="flex min-h-svh flex-col bg-background">
-			<BrandHeader name={preview ?? details.data?.atelierName} />
+			<BrandHeader
+				name={
+					namingStep && preview !== null ? preview : details.data?.atelierName
+				}
+			/>
 			<main className="mx-auto grid w-full max-w-5xl gap-4 px-4 py-6 md:grid-cols-[minmax(0,1fr)_18rem] md:items-start md:px-6">
 				{decision.screen === "remote" ? (
 					<Panel className="md:col-span-2">
@@ -97,7 +139,7 @@ export function WizardPage() {
 							</PanelHeader>
 							<PanelContent className="flex flex-col gap-5 md:p-6">
 								<StepContent
-									details={details.data}
+									details={details}
 									onPreview={setPreview}
 									step={decision.step}
 								/>

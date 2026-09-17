@@ -20,15 +20,17 @@ import { ArrowUpIcon, FolderIcon } from "lucide-react";
 import { useState } from "react";
 
 import { commandErrorMessage } from "@/lib/command-error";
-import { refreshInstallation } from "@/lib/installation-queries";
+import { failedCommand, refreshInstallation } from "@/lib/installation-queries";
 import { useOpId } from "@/lib/use-op-id";
 import { orpc } from "@/utils/orpc";
 
 export function FolderBrowser({
 	initialPath,
+	onCancel,
 	onTested,
 }: {
 	initialPath: string | null;
+	onCancel?: () => void;
 	onTested: () => void;
 }) {
 	const queryClient = useQueryClient();
@@ -59,13 +61,14 @@ export function FolderBrowser({
 			await test.mutateAsync({ opId: opIdFor(target), path: target });
 			reset();
 			onTested();
+			await refreshInstallation(queryClient);
 		} catch (error) {
-			setFailure(commandErrorMessage(error));
+			setFailure(await failedCommand(queryClient, error));
 		}
-		await refreshInstallation(queryClient);
 	};
 
 	const current = listing.data?.path ?? null;
+	const selected = typed.trim();
 
 	return (
 		<>
@@ -160,14 +163,26 @@ export function FolderBrowser({
 					<AlertDescription>{failure}</AlertDescription>
 				</Alert>
 			) : null}
-			<Button
-				className="md:w-auto md:self-end"
-				disabled={!current || test.isPending}
-				onClick={() => current && testFolder(current)}
-				size="touch"
-			>
-				{test.isPending ? "Testando..." : "Testar esta pasta"}
-			</Button>
+			<div className="flex flex-col-reverse gap-2 md:flex-row md:justify-end">
+				{onCancel ? (
+					<Button
+						className="md:w-auto"
+						onClick={onCancel}
+						size="touch"
+						variant="outline"
+					>
+						Manter a pasta testada
+					</Button>
+				) : null}
+				<Button
+					className="md:w-auto"
+					disabled={!selected || test.isPending}
+					onClick={() => testFolder(selected)}
+					size="touch"
+				>
+					{test.isPending ? "Testando..." : "Testar esta pasta"}
+				</Button>
+			</div>
 		</>
 	);
 }

@@ -10,6 +10,7 @@ import {
 import { TopNavAvatar } from "@costura-pro/ui/components/top-nav";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
+import { toast } from "sonner";
 
 import { authClient } from "@/lib/auth-client";
 import { initials } from "@/lib/initials";
@@ -22,7 +23,11 @@ export function AccountMenu() {
 	const username = session?.user.username ?? session?.user.name ?? "";
 
 	const signOut = async () => {
-		await authClient.signOut();
+		const result = await authClient.signOut().catch(() => null);
+		if (!result || result.error) {
+			toast.error("Não foi possível sair. Tente de novo.");
+			return;
+		}
 		queryClient.removeQueries({ queryKey: sessionQuery.queryKey });
 		await navigate({ to: "/login" });
 	};

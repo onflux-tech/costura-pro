@@ -6,11 +6,14 @@ import {
 
 import {
 	appGate,
+	appRedirect,
 	canReadDetails,
 	type Gate,
 	loginGate,
+	loginRedirect,
 	safeRedirect,
 	wizardGate,
+	wizardRedirect,
 } from "../src/lib/installation-gates";
 
 const wizardStates = installationStates.filter((state) => state !== "ready");
@@ -92,12 +95,14 @@ describe("wizardGate", () => {
 });
 
 describe("loginGate", () => {
-	test("sem dono ainda, o login leva ao wizard", () => {
+	test("sem dono ainda, o login leva ao wizard, local ou remoto", () => {
 		for (const state of ["empty", "atelier"] as const) {
 			for (const signedIn of [false, true]) {
-				expect(loginGate(gate(state, signedIn))).toEqual({
-					to: "/configuracao-inicial",
-				});
+				for (const access of ["local", "remote"] as const) {
+					expect(loginGate(gate(state, signedIn, access))).toEqual({
+						to: "/configuracao-inicial",
+					});
+				}
 			}
 		}
 	});
@@ -129,11 +134,56 @@ describe("safeRedirect", () => {
 			"/agenda?dia=2026-09-16"
 		);
 		expect(safeRedirect("/configuracao-inicial")).toBe("/configuracao-inicial");
+		expect(safeRedirect("/os/12#pagamento")).toBe("/os/12#pagamento");
 		expect(safeRedirect("//evil.example/x")).toBe("/");
+		expect(safeRedirect("/\t/evil.example")).toBe("/");
+		expect(safeRedirect("/\n/evil.example")).toBe("/");
+		expect(safeRedirect("/ /evil.example")).toBe("/");
+		expect(safeRedirect("/%2F%2Fevil.example")).toBe("/%2F%2Fevil.example");
 		expect(safeRedirect("/\\evil.example")).toBe("/");
 		expect(safeRedirect("https://evil.example")).toBe("/");
 		expect(safeRedirect("agenda")).toBe("/");
 		expect(safeRedirect(undefined)).toBe("/");
 		expect(safeRedirect(42)).toBe("/");
+	});
+});
+
+describe("redirecionamentos das rotas", () => {
+	test("o shell manda ao login guardando o destino pedido", () => {
+		expect(appRedirect(gate("ready", false), "/agenda?dia=2")).toEqual({
+			search: { redirect: "/agenda?dia=2" },
+			to: "/login",
+		});
+		expect(appRedirect(gate("recovery", true), "/agenda")).toEqual({
+			to: "/configuracao-inicial",
+		});
+		expect(appRedirect(gate("ready", true), "/agenda")).toBeNull();
+	});
+
+	test("o login com sessão segue só para caminho interno", () => {
+		expect(loginRedirect(gate("ready", true), { redirect: "/agenda" })).toEqual(
+			{ href: "/agenda" }
+		);
+		expect(
+			loginRedirect(gate("ready", true), { redirect: "https://evil.example" })
+		).toEqual({ href: "/" });
+		expect(
+			loginRedirect(gate("ready", true), { redirect: "/\t/evil.example" })
+		).toEqual({ href: "/" });
+		expect(loginRedirect(gate("ready", true), {})).toEqual({ href: "/" });
+		expect(loginRedirect(gate("ready", false), { redirect: "/" })).toBeNull();
+		expect(loginRedirect(gate("atelier", false), {})).toEqual({
+			to: "/configuracao-inicial",
+		});
+	});
+
+	test("o wizard volta ao início ou vai ao login voltando a ele", () => {
+		expect(wizardRedirect(gate("ready", true))).toEqual({ to: "/" });
+		expect(wizardRedirect(gate("backup", false))).toEqual({
+			search: { redirect: "/configuracao-inicial" },
+			to: "/login",
+		});
+		expect(wizardRedirect(gate("backup", true))).toBeNull();
+		expect(wizardRedirect(gate("empty", false, "remote"))).toBeNull();
 	});
 });

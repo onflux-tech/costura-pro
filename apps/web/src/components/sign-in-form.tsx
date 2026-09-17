@@ -1,4 +1,5 @@
 import {
+	normalizeUsername,
 	passwordLength,
 	usernameLength,
 } from "@costura-pro/domain/credentials";
@@ -19,12 +20,7 @@ import z from "zod";
 
 import { authClient } from "@/lib/auth-client";
 import { sessionQuery } from "@/lib/session";
-
-const signInErrorMessages: Partial<Record<number, string>> = {
-	401: "Usuário ou senha inválidos",
-	422: "Usuário ou senha inválidos",
-	429: "Muitas tentativas. Tente de novo mais tarde.",
-};
+import { signInErrorMessage } from "@/lib/sign-in-error";
 
 export default function SignInForm({ redirectTo }: { redirectTo: string }) {
 	const navigate = useNavigate();
@@ -36,26 +32,27 @@ export default function SignInForm({ redirectTo }: { redirectTo: string }) {
 			username: "",
 		},
 		onSubmit: async ({ value }) => {
-			await authClient.signIn.username(
-				{
-					password: value.password,
-					username: value.username,
-				},
-				{
-					onError: (error) => {
-						toast.error(
-							signInErrorMessages[error.error.status] ??
-								(error.error.message || error.error.statusText)
-						);
+			await authClient.signIn
+				.username(
+					{
+						password: value.password,
+						username: normalizeUsername(value.username),
 					},
-					onSuccess: async () => {
-						await queryClient.invalidateQueries({
-							queryKey: sessionQuery.queryKey,
-						});
-						await navigate({ href: redirectTo });
-					},
-				}
-			);
+					{
+						onError: (error) => {
+							toast.error(signInErrorMessage(error.error.status));
+						},
+						onSuccess: async () => {
+							await queryClient.invalidateQueries({
+								queryKey: sessionQuery.queryKey,
+							});
+							await navigate({ href: redirectTo });
+						},
+					}
+				)
+				.catch(() => {
+					toast.error(signInErrorMessage(0));
+				});
 		},
 		validators: {
 			onSubmit: z.object({

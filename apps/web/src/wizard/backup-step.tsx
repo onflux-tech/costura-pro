@@ -8,9 +8,9 @@ import { Mono, Text } from "@costura-pro/ui/components/typography";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 
-import { commandErrorMessage } from "@/lib/command-error";
 import { formatDateTime } from "@/lib/format-date-time";
 import {
+	failedCommand,
 	type InstallationDetails,
 	refreshInstallation,
 } from "@/lib/installation-queries";
@@ -38,10 +38,10 @@ export function BackupStep({
 		try {
 			await finish.mutateAsync({ opId: opIdFor("finish") });
 			reset();
+			await refreshInstallation(queryClient);
 		} catch (error) {
-			setFailure(commandErrorMessage(error));
+			setFailure(await failedCommand(queryClient, error));
 		}
-		await refreshInstallation(queryClient);
 	};
 
 	if (browsing || !details.backupFolder) {
@@ -52,6 +52,11 @@ export function BackupStep({
 				</StepHeading>
 				<FolderBrowser
 					initialPath={details.backupFolder}
+					onCancel={
+						tested && details.backupFolder
+							? () => setBrowsing(false)
+							: undefined
+					}
 					onTested={() => setBrowsing(false)}
 				/>
 			</>
