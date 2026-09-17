@@ -4,6 +4,7 @@ import { clientsRouter, profilesRouter } from "../clients/router";
 import { devicesRouter } from "../devices/router";
 import { publicProcedure, readyProcedure } from "../index";
 import { installationRouter } from "../installation/router";
+import { materialsRouter, materialVariantsRouter } from "../materials/router";
 import {
 	measurementsRouter,
 	measurementTemplatesRouter,
@@ -17,6 +18,8 @@ export const appRouter = {
 	devices: devicesRouter,
 	healthCheck: publicProcedure.handler(() => "OK"),
 	installation: installationRouter,
+	materials: materialsRouter,
+	materialVariants: materialVariantsRouter,
 	measurements: measurementsRouter,
 	measurementTemplates: measurementTemplatesRouter,
 	privateData: readyProcedure.handler(({ context }) => ({

@@ -15,6 +15,7 @@ import {
 	readInstallation,
 	updateInstallation,
 } from "../installation/store";
+import { materialCommands } from "../materials/commands";
 import { measurementCommands } from "../measurements/commands";
 import { receivedItemCommands } from "../received-items/commands";
 import { atelierNameSchema, deviceNameSchema } from "../schemas";
@@ -111,6 +112,7 @@ const setAtelierName: UpdateDefinition = {
 
 export const syncCommands = {
 	...clientCommands,
+	...materialCommands,
 	...measurementCommands,
 	...receivedItemCommands,
 	"device.rename": renameDevice,

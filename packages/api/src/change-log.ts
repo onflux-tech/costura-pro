@@ -6,6 +6,8 @@ export type AggregateType =
 	| "client"
 	| "device"
 	| "installation"
+	| "material"
+	| "materialVariant"
 	| "measurement"
 	| "measurementTemplate"
 	| "profile"

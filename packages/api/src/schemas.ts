@@ -4,6 +4,7 @@ import {
 	passwordLength,
 } from "@costura-pro/domain/credentials";
 import { atelierNameLength } from "@costura-pro/domain/installation-state";
+import { maxExactInteger } from "@costura-pro/domain/quantity";
 import z from "zod";
 
 export const opIdSchema = z.uuid();
@@ -31,6 +32,20 @@ const blankToNull = (value: string | null) =>
 
 export const optionalText = (max: number) =>
 	z.string().trim().max(max).nullable().transform(blankToNull);
+
+const integerText = /^\d{1,17}$/;
+
+const exactIntegerSchema = z
+	.string()
+	.refine(
+		(value) => integerText.test(value) && BigInt(value) <= maxExactInteger,
+		"Valor inteiro inválido"
+	)
+	.transform((value) => BigInt(value).toString());
+
+export const moneyCentsSchema = exactIntegerSchema;
+
+export const quantityMicrosSchema = exactIntegerSchema;
 
 export const hasChange = (patch: Record<string, unknown>) =>
 	Object.values(patch).some((value) => value !== undefined);

@@ -2,6 +2,8 @@ export const commandMessages = {
 	aggregateExists: "Registro já existe",
 	clientAnonymized: "Cliente anonimizado",
 	clientNotFound: "Cliente não encontrado",
+	materialNotFound: "Material não encontrado",
+	materialVariantNotFound: "Variante não encontrada",
 	measurementNotFound: "Medição não encontrada",
 	measurementTemplateNotFound: "Modelo de medidas não encontrado",
 	profileNotFound: "Perfil não encontrado",
