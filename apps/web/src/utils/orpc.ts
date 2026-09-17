@@ -5,13 +5,22 @@ import { createTanstackQueryUtils } from "@orpc/tanstack-query";
 import { QueryCache, QueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
+declare module "@tanstack/react-query" {
+	interface Register {
+		queryMeta: { silent?: boolean };
+	}
+}
+
 export function createQueryClient() {
 	return new QueryClient({
 		queryCache: new QueryCache({
-			onError: (error, query) => {
-				toast.error(`Error: ${error.message}`, {
+			onError: (_error, query) => {
+				if (query.meta?.silent) {
+					return;
+				}
+				toast.error("Não foi possível carregar os dados", {
 					action: {
-						label: "retry",
+						label: "Tentar de novo",
 						onClick: () => {
 							query.invalidate();
 						},

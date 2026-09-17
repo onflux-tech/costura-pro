@@ -7,8 +7,8 @@ import {
 } from "@tanstack/react-router";
 import { lazy, Suspense } from "react";
 
-import Header from "@/components/header";
 import NotFound from "@/components/not-found";
+import RouteError from "@/components/route-error";
 import type { orpc } from "@/utils/orpc";
 
 import "../index.css";
@@ -24,6 +24,7 @@ const Devtools = import.meta.env.DEV
 
 export const Route = createRootRouteWithContext<RouterAppContext>()({
 	component: RootComponent,
+	errorComponent: RouteError,
 	notFoundComponent: NotFound,
 	head: () => ({
 		links: [{ href: "/favicon.ico", rel: "icon" }],
@@ -41,8 +42,7 @@ function RootComponent() {
 	return (
 		<>
 			<HeadContent />
-			<div className="grid min-h-svh grid-cols-[minmax(0,1fr)] grid-rows-[auto_1fr]">
-				<Header />
+			<div className="grid min-h-svh grid-cols-[minmax(0,1fr)]">
 				<Outlet />
 			</div>
 			<Toaster />

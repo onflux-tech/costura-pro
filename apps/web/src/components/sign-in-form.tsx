@@ -12,13 +12,13 @@ import { Input } from "@costura-pro/ui/components/input";
 import { Panel, PanelContent } from "@costura-pro/ui/components/panel";
 import { Eyebrow, Heading, Text } from "@costura-pro/ui/components/typography";
 import { useForm } from "@tanstack/react-form";
+import { useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { toast } from "sonner";
 import z from "zod";
 
 import { authClient } from "@/lib/auth-client";
-
-import Loader from "./loader";
+import { sessionQuery } from "@/lib/session";
 
 const signInErrorMessages: Partial<Record<number, string>> = {
 	401: "Usuário ou senha inválidos",
@@ -26,11 +26,9 @@ const signInErrorMessages: Partial<Record<number, string>> = {
 	429: "Muitas tentativas. Tente de novo mais tarde.",
 };
 
-export default function SignInForm() {
-	const navigate = useNavigate({
-		from: "/",
-	});
-	const { isPending } = authClient.useSession();
+export default function SignInForm({ redirectTo }: { redirectTo: string }) {
+	const navigate = useNavigate();
+	const queryClient = useQueryClient();
 
 	const form = useForm({
 		defaultValues: {
@@ -50,11 +48,11 @@ export default function SignInForm() {
 								(error.error.message || error.error.statusText)
 						);
 					},
-					onSuccess: () => {
-						navigate({
-							to: "/dashboard",
+					onSuccess: async () => {
+						await queryClient.invalidateQueries({
+							queryKey: sessionQuery.queryKey,
 						});
-						toast.success("Login feito");
+						await navigate({ href: redirectTo });
 					},
 				}
 			);
@@ -76,10 +74,6 @@ export default function SignInForm() {
 			}),
 		},
 	});
-
-	if (isPending) {
-		return <Loader />;
-	}
 
 	return (
 		<main className="flex items-start justify-center px-4 py-10 md:py-16">
