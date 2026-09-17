@@ -22,6 +22,7 @@ import { destinationGroups, destinations } from "@/lib/destinations";
 import { ContentSection } from "./content-section";
 import { DataSection } from "./data-section";
 import { FormSection } from "./form-section";
+import { PhotoSection } from "./photo-section";
 
 const connection = {
 	offline: { label: "Offline · 3 operações na fila", tone: "offline" },
@@ -34,6 +35,7 @@ type Connection = keyof typeof connection;
 const tabs = [
 	{ href: "#acoes", id: "acoes", label: "Ações e avisos" },
 	{ href: "#formularios", id: "formularios", label: "Formulários" },
+	{ href: "#fotos", id: "fotos", label: "Fotos" },
 	{ href: "#dados", id: "dados", label: "Dados e progresso" },
 ];
 
@@ -83,6 +85,7 @@ export function CatalogPage() {
 				</div>
 				<ContentSection />
 				<FormSection />
+				<PhotoSection />
 				<DataSection />
 			</main>
 			<MobileNav
