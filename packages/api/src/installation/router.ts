@@ -9,6 +9,7 @@ import { count, eq, isNull } from "drizzle-orm";
 import z from "zod";
 
 import { appendAudit } from "../audit";
+import type { Context } from "../context";
 import { localProcedure, ownerLocalProcedure, publicProcedure } from "../index";
 import { runDirectCommand } from "../operations";
 import { generateRecoveryCodes } from "../recovery/codes";
@@ -41,6 +42,16 @@ function asBadRequest(error: unknown): never {
 		});
 	}
 	throw error;
+}
+
+function requireOwnerUnlessBeforeAccount(
+	context: Pick<Context, "db" | "session">
+) {
+	const current = readInstallation(context.db);
+	if (!(beforeAccount.has(current.state) || context.session?.user)) {
+		throw new ORPCError("UNAUTHORIZED");
+	}
+	return current;
 }
 
 export const installationRouter = {
@@ -180,6 +191,16 @@ export const installationRouter = {
 			)
 		),
 
+	details: localProcedure.handler(({ context }) => {
+		const current = requireOwnerUnlessBeforeAccount(context);
+		return {
+			atelierName: current.atelierName,
+			backupFolder: current.backupFolder,
+			backupTestedAt: current.backupTestedAt?.toISOString() ?? null,
+			version: current.version,
+		};
+	}),
+
 	finish: ownerLocalProcedure
 		.input(z.object({ opId: opIdSchema }))
 		.handler(({ context, input }) =>
@@ -277,14 +298,7 @@ export const installationRouter = {
 			})
 		)
 		.handler(({ context, input }) => {
-			if (
-				!(
-					beforeAccount.has(readInstallation(context.db).state) ||
-					context.session?.user
-				)
-			) {
-				throw new ORPCError("UNAUTHORIZED");
-			}
+			requireOwnerUnlessBeforeAccount(context);
 			return runDirectCommand(
 				context,
 				{
@@ -334,6 +348,7 @@ export const installationRouter = {
 		}),
 
 	status: publicProcedure.handler(({ context }) => ({
+		access: context.access,
 		state: readInstallation(context.db).state,
 	})),
 

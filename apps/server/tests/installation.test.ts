@@ -249,6 +249,63 @@ describe("access rules", () => {
 	});
 });
 
+describe("installation details", () => {
+	test("local access reads the wizard data without a session before the account", async () => {
+		const server = await freshServer();
+		expect(await rpc(server).installation.details()).toEqual({
+			atelierName: null,
+			backupFolder: null,
+			backupTestedAt: null,
+			version: 1,
+		});
+		await nameAtelier(server);
+		expect(await rpc(server).installation.details()).toEqual({
+			atelierName: "Ateliê da Dona",
+			backupFolder: null,
+			backupTestedAt: null,
+			version: 2,
+		});
+	});
+
+	test("needs the owner session from the account step on", async () => {
+		const server = await freshServer();
+		const cookie = await createOwner(server);
+		await expect(rpc(server).installation.details()).rejects.toMatchObject({
+			code: "UNAUTHORIZED",
+		});
+		expect(await rpc(server, { cookie }).installation.details()).toMatchObject({
+			atelierName: "Ateliê da Dona",
+		});
+	});
+
+	test("remote access never reads the wizard data", async () => {
+		const server = await freshServer();
+		await expect(
+			rpc(server, { access: "remote" }).installation.details()
+		).rejects.toMatchObject({ code: "FORBIDDEN" });
+		const { cookie } = await ready(server);
+		await expect(
+			rpc(server, { access: "remote", cookie }).installation.details()
+		).rejects.toMatchObject({ code: "FORBIDDEN" });
+	});
+
+	test("shows the tested backup folder with the current version", async () => {
+		const server = await freshServer();
+		const { client } = await throughRecovery(server);
+		const folder = await temporaryFolder();
+		const { testedAt } = await client.installation.testBackupFolder({
+			opId: opId(),
+			path: folder,
+		});
+		expect(await client.installation.details()).toEqual({
+			atelierName: "Ateliê da Dona",
+			backupFolder: folder,
+			backupTestedAt: testedAt,
+			version: installationRow(server)?.version ?? 0,
+		});
+	});
+});
+
 describe("single owner", () => {
 	test("two concurrent createOwner calls create one user", async () => {
 		const server = await freshServer();

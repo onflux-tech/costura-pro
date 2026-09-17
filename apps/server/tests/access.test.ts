@@ -98,11 +98,12 @@ describe("Better Auth allowlist", () => {
 describe("installation singleton", () => {
 	test("a fresh installation starts empty with a UUID epoch", async () => {
 		expect(await rpc(server).installation.status()).toEqual({
+			access: "local",
 			state: "empty",
 		});
 		expect(
 			await rpc(server, { access: "remote" }).installation.status()
-		).toEqual({ state: "empty" });
+		).toEqual({ access: "remote", state: "empty" });
 		const rows = server
 			.native()
 			.query<{ epoch: string; singleton: number; version: number }, []>(

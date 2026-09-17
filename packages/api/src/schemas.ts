@@ -3,6 +3,7 @@ import {
 	normalizeUsername,
 	passwordLength,
 } from "@costura-pro/domain/credentials";
+import { atelierNameLength } from "@costura-pro/domain/installation-state";
 import z from "zod";
 
 export const opIdSchema = z.uuid();
@@ -17,6 +18,10 @@ export const usernameSchema = z
 	.transform(normalizeUsername)
 	.refine(isValidUsername, "Usuário inválido");
 
-export const atelierNameSchema = z.string().trim().min(1).max(80);
+export const atelierNameSchema = z
+	.string()
+	.trim()
+	.min(atelierNameLength.min)
+	.max(atelierNameLength.max);
 
 export const deviceNameSchema = z.string().trim().min(1).max(60);

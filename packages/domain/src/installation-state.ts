@@ -7,6 +7,8 @@ export const installationStates = [
 	"ready",
 ] as const;
 
+export const atelierNameLength = { max: 80, min: 1 } as const;
+
 export type InstallationState = (typeof installationStates)[number];
 
 export function isAtLeast(
