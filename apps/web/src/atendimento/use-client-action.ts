@@ -2,6 +2,8 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { toast } from "sonner";
 
+import type { CommandSubject } from "@/lib/client-command-error";
+
 import { failedClientCommand, refreshClients } from "./client-queries";
 
 export function useClientAction() {
@@ -10,7 +12,7 @@ export function useClientAction() {
 	const run = async (
 		label: string,
 		command: () => Promise<unknown>,
-		subject: "cliente" | "perfil"
+		subject: CommandSubject
 	) => {
 		setPending(label);
 		try {

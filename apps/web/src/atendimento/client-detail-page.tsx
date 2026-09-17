@@ -25,11 +25,14 @@ import { useState } from "react";
 import { clientCommandFailure } from "@/lib/client-command-error";
 import { nameInitials } from "@/lib/initials";
 import { statusQuery } from "@/lib/installation-queries";
+import { clientMeasurementsQuery } from "@/lib/measurement-queries";
+import { profileSummaries, selectedProfileId } from "@/lib/measurements";
 import { usePageHeader } from "@/shell/page-header";
 import { client as api } from "@/utils/orpc";
 
 import { AnonymizeDialog } from "./anonymize-dialog";
 import { clientDetailQuery } from "./client-queries";
+import { MeasurementPanel } from "./measurement-panel";
 import { ProfilePanel } from "./profile-panel";
 import { useClientAction } from "./use-client-action";
 
@@ -50,8 +53,15 @@ function contactLine(client: ContactFields): string {
 	return parts.length > 0 ? parts.join(" · ") : "Sem contato cadastrado";
 }
 
-export function ClientDetailPage({ clientId }: { clientId: string }) {
+export function ClientDetailPage({
+	clientId,
+	perfil,
+}: {
+	clientId: string;
+	perfil: string | undefined;
+}) {
 	const detail = useQuery(clientDetailQuery(clientId));
+	const measurements = useQuery(clientMeasurementsQuery(clientId));
 	const status = useQuery(statusQuery);
 	const action = useClientAction();
 	const [anonymizing, setAnonymizing] = useState(false);
@@ -78,6 +88,9 @@ export function ClientDetailPage({ clientId }: { clientId: string }) {
 	const { client, profiles } = detail.data;
 	const anonymized = client.anonymizedAt !== null;
 	const archived = client.archivedAt !== null;
+	const measurementItems = measurements.data?.items;
+	const selectedId = selectedProfileId(profiles, perfil);
+	const selected = profiles.find((profile) => profile.id === selectedId);
 
 	const toggleArchive = () => {
 		const command = archived ? api.clients.unarchive : api.clients.archive;
@@ -162,11 +175,25 @@ export function ClientDetailPage({ clientId }: { clientId: string }) {
 					)}
 				</PanelContent>
 			</Panel>
-			<ProfilePanel
-				clientId={clientId}
-				profiles={profiles}
-				readOnly={anonymized}
-			/>
+			<div className="grid grid-cols-[minmax(0,1fr)] gap-4 md:grid-cols-[18rem_minmax(0,1fr)] md:items-start">
+				<ProfilePanel
+					clientId={clientId}
+					profiles={profiles}
+					readOnly={anonymized}
+					selectedId={selectedId}
+					summaries={profileSummaries(profiles, measurementItems)}
+				/>
+				{selected ? (
+					<MeasurementPanel
+						clientId={clientId}
+						loadFailed={measurements.isError}
+						measurements={measurementItems}
+						onRetry={() => measurements.refetch()}
+						profile={selected}
+						readOnly={anonymized}
+					/>
+				) : null}
+			</div>
 			<AnonymizeDialog
 				client={client}
 				onOpenChange={setAnonymizing}

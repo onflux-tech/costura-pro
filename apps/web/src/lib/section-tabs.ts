@@ -6,6 +6,13 @@ export const sectionTabs = {
 	atendimento: [
 		{ href: "/atendimento/clientes", id: "clientes", label: "Clientes" },
 	],
+	catalogo: [
+		{
+			href: "/catalogo-produtos/modelos-de-medidas",
+			id: "modelos-de-medidas",
+			label: "Modelos de medidas",
+		},
+	],
 } as const satisfies Record<string, readonly LinkTarget[]>;
 
 export type SectionHref =

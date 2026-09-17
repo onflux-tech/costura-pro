@@ -8,9 +8,18 @@ export type ClientCommandFailure = {
 	message: string;
 };
 
+export type CommandSubject = "cliente" | "medição" | "modelo" | "perfil";
+
+const staleMessages: Record<CommandSubject, string> = {
+	cliente: "Este cliente mudou em outra janela ou aparelho.",
+	medição: "Esta medição mudou em outra janela ou aparelho.",
+	modelo: "Este modelo mudou em outra janela ou aparelho.",
+	perfil: "Este perfil mudou em outra janela ou aparelho.",
+};
+
 export function clientCommandFailure(
 	error: unknown,
-	subject: "cliente" | "perfil"
+	subject: CommandSubject
 ): ClientCommandFailure {
 	if (!(error instanceof ORPCError)) {
 		return { kind: "other", message: commandErrorMessage(error) };
@@ -21,7 +30,7 @@ export function clientCommandFailure(
 	) {
 		return {
 			kind: "stale",
-			message: `Este ${subject} mudou em outra janela ou aparelho.`,
+			message: staleMessages[subject],
 		};
 	}
 	if (

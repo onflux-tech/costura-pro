@@ -16,6 +16,12 @@ describe("falhas de comando de cliente", () => {
 		expect(clientCommandFailure(error, "perfil").message).toBe(
 			"Este perfil mudou em outra janela ou aparelho."
 		);
+		expect(clientCommandFailure(error, "medição").message).toBe(
+			"Esta medição mudou em outra janela ou aparelho."
+		);
+		expect(clientCommandFailure(error, "modelo").message).toBe(
+			"Este modelo mudou em outra janela ou aparelho."
+		);
 	});
 
 	test("registro já gravado vira exists, e opId reutilizado segue genérico", () => {

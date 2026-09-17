@@ -1,5 +1,6 @@
 import { Badge } from "@costura-pro/ui/components/badge";
 import { Button } from "@costura-pro/ui/components/button";
+import { ButtonLink } from "@costura-pro/ui/components/button-link";
 import {
 	DataList,
 	DataListCell,
@@ -13,6 +14,7 @@ import {
 	PanelTitle,
 } from "@costura-pro/ui/components/panel";
 import { Text } from "@costura-pro/ui/components/typography";
+import { Link } from "@tanstack/react-router";
 import { useState } from "react";
 
 import { client as api } from "@/utils/orpc";
@@ -22,14 +24,86 @@ import { useClientAction } from "./use-client-action";
 
 type Profile = EditableProfile & { archivedAt: string | null };
 
+function ProfileRow({
+	clientId,
+	onEdit,
+	onToggle,
+	pending,
+	profile,
+	readOnly,
+	selected,
+	summary,
+}: {
+	clientId: string;
+	onEdit: () => void;
+	onToggle: () => void;
+	pending: boolean;
+	profile: Profile;
+	readOnly: boolean;
+	selected: boolean;
+	summary: string | null;
+}) {
+	const toggleLabel = profile.archivedAt ? "Desarquivar" : "Arquivar";
+	return (
+		<DataListRow className={selected ? "bg-accent" : undefined}>
+			<DataListCell label="Perfil">
+				<ButtonLink
+					aria-current={selected ? "true" : undefined}
+					className="h-auto min-h-11 justify-start whitespace-normal px-0 text-left font-semibold md:min-h-0"
+					render={
+						<Link
+							params={{ clienteId: clientId }}
+							search={{ perfil: profile.id }}
+							to="/atendimento/clientes/$clienteId"
+						/>
+					}
+					variant="link"
+				>
+					{profile.name}
+				</ButtonLink>
+				{summary === null ? null : (
+					<Text size="xs" tone="muted">
+						{summary}
+					</Text>
+				)}
+				{profile.notes ? (
+					<Text size="xs" tone="muted">
+						{profile.notes}
+					</Text>
+				) : null}
+				{profile.archivedAt ? <Badge tone="warning">arquivado</Badge> : null}
+			</DataListCell>
+			{readOnly ? null : (
+				<DataListCell align="end" label="Ações">
+					<Button onClick={onEdit} size="sm" variant="ghost">
+						Editar
+					</Button>
+					<Button
+						disabled={pending}
+						onClick={onToggle}
+						size="sm"
+						variant="ghost"
+					>
+						{toggleLabel}
+					</Button>
+				</DataListCell>
+			)}
+		</DataListRow>
+	);
+}
+
 export function ProfilePanel({
 	clientId,
 	profiles,
 	readOnly,
+	selectedId,
+	summaries,
 }: {
 	clientId: string;
 	profiles: readonly Profile[];
 	readOnly: boolean;
+	selectedId: string | null;
+	summaries: ReadonlyMap<string, string> | null;
 }) {
 	const action = useClientAction();
 	const [showArchived, setShowArchived] = useState(false);
@@ -65,40 +139,21 @@ export function ProfilePanel({
 					<Text tone="subtle">Nenhum perfil ainda.</Text>
 				</PanelContent>
 			) : (
-				<DataList aria-label="Perfis" columns="minmax(0,1fr) auto">
+				<DataList aria-label="Perfis" columns="minmax(0,1fr)">
 					{visible.map((profile) => (
-						<DataListRow key={profile.id}>
-							<DataListCell label="Perfil">
-								<Text weight="medium">{profile.name}</Text>
-								{profile.notes ? (
-									<Text size="xs" tone="muted">
-										{profile.notes}
-									</Text>
-								) : null}
-								{profile.archivedAt ? (
-									<Badge tone="warning">arquivado</Badge>
-								) : null}
-							</DataListCell>
-							{readOnly ? null : (
-								<DataListCell align="end" label="Ações">
-									<Button
-										onClick={() => setEditing(profile.id)}
-										size="sm"
-										variant="ghost"
-									>
-										Editar
-									</Button>
-									<Button
-										disabled={action.pending === profile.id}
-										onClick={() => toggle(profile)}
-										size="sm"
-										variant="ghost"
-									>
-										{profile.archivedAt ? "Desarquivar" : "Arquivar"}
-									</Button>
-								</DataListCell>
-							)}
-						</DataListRow>
+						<ProfileRow
+							clientId={clientId}
+							key={profile.id}
+							onEdit={() => setEditing(profile.id)}
+							onToggle={() => toggle(profile)}
+							pending={action.pending === profile.id}
+							profile={profile}
+							readOnly={readOnly}
+							selected={profile.id === selectedId}
+							summary={
+								summaries ? (summaries.get(profile.id) ?? "Sem medição") : null
+							}
+						/>
 					))}
 				</DataList>
 			)}

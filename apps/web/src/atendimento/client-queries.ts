@@ -2,6 +2,7 @@ import type { QueryClient } from "@tanstack/react-query";
 
 import {
 	type ClientCommandFailure,
+	type CommandSubject,
 	clientCommandFailure,
 } from "@/lib/client-command-error";
 import { sessionEnded } from "@/lib/command-error";
@@ -16,13 +17,16 @@ export function clientDetailQuery(clientId: string) {
 }
 
 export async function refreshClients(queryClient: QueryClient) {
-	await queryClient.invalidateQueries({ queryKey: orpc.clients.key() });
+	await Promise.all([
+		queryClient.invalidateQueries({ queryKey: orpc.clients.key() }),
+		queryClient.invalidateQueries({ queryKey: orpc.measurements.key() }),
+	]);
 }
 
 export async function failedClientCommand(
 	queryClient: QueryClient,
 	error: unknown,
-	subject: "cliente" | "perfil"
+	subject: CommandSubject
 ): Promise<ClientCommandFailure> {
 	if (sessionEnded(error)) {
 		await queryClient.invalidateQueries({ queryKey: sessionQuery.queryKey });

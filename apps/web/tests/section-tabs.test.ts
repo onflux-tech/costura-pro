@@ -23,6 +23,24 @@ describe("abas por destino", () => {
 		}
 	});
 
+	test("Catálogo marca Modelos de medidas na lista e no editor", () => {
+		for (const path of [
+			"/catalogo-produtos/modelos-de-medidas",
+			"/catalogo-produtos/modelos-de-medidas/3f1c",
+		]) {
+			expect(sectionTabsFor("catalogo", path)).toEqual({
+				activeId: "modelos-de-medidas",
+				items: [
+					{
+						href: "/catalogo-produtos/modelos-de-medidas",
+						id: "modelos-de-medidas",
+						label: "Modelos de medidas",
+					},
+				],
+			});
+		}
+	});
+
 	test("destino sem abas e rota fora do shell devolvem lista vazia", () => {
 		expect(sectionTabsFor("agenda", "/agenda")).toEqual({
 			activeId: undefined,
