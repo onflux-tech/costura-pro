@@ -22,6 +22,7 @@ export function createDb(env: DatabaseConfig) {
 	const client = new NativeDatabase(databaseFile, { create: true });
 	client.run("PRAGMA foreign_keys = ON");
 	client.run("PRAGMA journal_mode = WAL");
+	client.run("PRAGMA secure_delete = ON");
 	const database = drizzle({ client, schema });
 	connections.set(database, client);
 
@@ -42,6 +43,10 @@ export function closeDb(database: Database) {
 	// Windows o arquivo segue travado; close(true) fecha na hora e libera o arquivo.
 	client.close(true);
 	connections.delete(database);
+}
+
+export function truncateWal(database: Database) {
+	getNativeDatabase(database).run("PRAGMA wal_checkpoint(TRUNCATE)");
 }
 
 export function applyMigrations(database: Database) {

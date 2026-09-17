@@ -46,19 +46,31 @@ export const operation = sqliteTable(
 		result: text("result", { mode: "json" }).notNull(),
 		status: text("status", { enum: operationStatusValues }).notNull(),
 	},
-	(table) => [index("operation_status_idx").on(table.status)]
+	(table) => [
+		index("operation_status_idx").on(table.status),
+		index("operation_aggregate_idx").on(table.aggregateType, table.aggregateId),
+	]
 );
 
-export const changeLog = sqliteTable("change_log", {
-	aggregateId: text("aggregate_id").notNull(),
-	aggregateType: text("aggregate_type").notNull(),
-	changedAt: integer("changed_at", { mode: "timestamp_ms" }).notNull(),
-	cursor: integer("cursor").primaryKey({ autoIncrement: true }),
-	data: text("data", { mode: "json" }).notNull(),
-	epoch: text("epoch").notNull(),
-	opId: text("op_id"),
-	version: integer("version").notNull(),
-});
+export const changeLog = sqliteTable(
+	"change_log",
+	{
+		aggregateId: text("aggregate_id").notNull(),
+		aggregateType: text("aggregate_type").notNull(),
+		changedAt: integer("changed_at", { mode: "timestamp_ms" }).notNull(),
+		cursor: integer("cursor").primaryKey({ autoIncrement: true }),
+		data: text("data", { mode: "json" }).notNull(),
+		epoch: text("epoch").notNull(),
+		opId: text("op_id"),
+		version: integer("version").notNull(),
+	},
+	(table) => [
+		index("change_log_aggregate_idx").on(
+			table.aggregateType,
+			table.aggregateId
+		),
+	]
+);
 
 export const syncConflict = sqliteTable(
 	"sync_conflict",
