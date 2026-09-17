@@ -34,6 +34,7 @@ Documentação curada e versionada do Costura Pro. Todo doc novo em `docs/` entr
 | [0011](adr/0011-servico-do-so-e-acesso-local-no-navegador.md) | Servidor como serviço do sistema e acesso local pelo navegador |
 | [0012](adr/0012-dono-unico-criado-no-acesso-local.md) | Dono único criado no acesso local, com login defendido no servidor |
 | [0013](adr/0013-contrato-minimo-de-sincronizacao.md) | Contrato mínimo de sincronização por operação, cursor e epoch |
+| [0014](adr/0014-anonimizacao-redige-historico-de-sincronizacao.md) | Anonimização redige o histórico de sincronização |
 
 ## Agentes e harness
 
@@ -49,3 +50,4 @@ Quando uma área acumular conhecimento que não cabe numa rule, o `/entrega-fech
 | Documento | Leia quando |
 |---|---|
 | [Design system](areas/design-system.md) | Antes de criar ou mudar tela, componente, token ou navegação: tokens, componentes, testes que travam as regras e o passo a passo de uma tela nova |
+| [Agregados](areas/agregados.md) | Antes de criar ou mudar um agregado de negócio: tabela, store, snapshot, comandos nos dois caminhos, decisões por caminho, redação de dado pessoal e testes mínimos |

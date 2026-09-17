@@ -43,7 +43,7 @@ _Evitar_: envio automático, notificação ao cliente
 Retirada de um cadastro das telas do dia a dia sem apagar sua identidade nem seu histórico.
 
 **Anonimização**:
-Remoção irreversível dos dados pessoais de um cliente sem OS ou saldo aberto, preservando o histórico financeiro sem identificá-lo.
+Remoção irreversível dos dados pessoais de um cliente sem OS ou saldo aberto e de seus perfis, inclusive das cópias guardadas no histórico de sincronização, preservando o histórico financeiro sem identificá-lo.
 _Evitar_: exclusão
 
 ## Catálogo e preço

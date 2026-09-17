@@ -3,7 +3,7 @@
 | Campo | Valor |
 |---|---|
 | Para que serve | Guia para sessões de Claude Code (padrão), Codex e clientes genéricos: fontes, portas geradas, papéis, ciclo de entrega, evolução do harness, hooks, verificação e armadilhas |
-| Atualizado | 2026-09-16 |
+| Atualizado | 2026-09-17 |
 | Gerador e checagens | `scripts/harness.mjs` (`pnpm harness:sync`, `pnpm harness:check`), `scripts/docs-check.mjs` (`pnpm docs:check`) e `pnpm harness:test` |
 
 ## Sumário
@@ -154,7 +154,8 @@ Configurados em `.claude/settings.json`. Cada script em `.claude/hooks/` exporta
 |---|---|
 | Regra de negócio, estado ou cálculo | `CONTEXT.md`, [PRD §6 e §9](PRD.md), [SPEC §2 e §3](SPEC.md), ADRs 0002, 0003 e 0010, rule `.claude/rules/domain.md` |
 | Banco, migrations ou `DATABASE_FILE` | [ADR 0006](adr/0006-sqlite-nativo-bun.md), [SPEC §2](SPEC.md#2-persistência-valores-e-fronteiras-de-domínio), rule `.claude/rules/db.md` |
-| Sync, outbox, conflito ou epoch | [SPEC §4 e §5](SPEC.md#4-api-sincronização-e-conflito), ADRs 0001, 0003 e 0004 |
+| Sync, outbox, conflito ou epoch | [SPEC §4 e §5](SPEC.md#4-api-sincronização-e-conflito), ADRs 0001, 0003, 0004, 0013 e 0014 |
+| Agregado de negócio novo ou comando de agregado | [Agregados](areas/agregados.md), [SPEC §2 a §4](SPEC.md#2-persistência-valores-e-fronteiras-de-domínio), [ADR 0014](adr/0014-anonimizacao-redige-historico-de-sincronizacao.md), rules `.claude/rules/db.md` e `.claude/rules/server.md` |
 | Autenticação, cookies, origem ou acesso local | [SPEC §5](SPEC.md#5-segurança-e-armazenamento-local), ADRs [0001](adr/0001-origem-canonica-e-local-first.md) e [0011](adr/0011-servico-do-so-e-acesso-local-no-navegador.md), rule `.claude/rules/server.md` |
 | Documentos e PDF | [SPEC §6](SPEC.md#6-documentos-backup-restauração-e-atualização), [ADR 0008](adr/0008-documentos-emitidos-imutaveis.md) |
 | Código documental ou identidade | [ADR 0009](adr/0009-uuid-e-codigo-documental-por-dispositivo.md) |
@@ -237,6 +238,15 @@ Configurados em `.claude/settings.json`. Cada script em `.claude/hooks/` exporta
 | Aviso `no output files found for task @costura-pro/ui#check-types` no `pnpm check-types` | A tarefa genérica declara `dist/**` como saída, mas o pacote só roda `tsc --noEmit` | Override da tarefa do pacote com `outputs: []` no `turbo.json` |
 | Link com aparência de botão é anunciado como botão | `Button` do Base UI com `render` não nativo acrescenta `role="button"` | `ButtonLink` (`useRender` com as classes do botão) |
 | Teste de varredura verde com cor, elemento ou emoji novos | Regex presa a uma lista fechada ou a uma linha só | Padrões genéricos (tom numérico de qualquer paleta, JSX em várias linhas, `Emoji_Presentation` e sequências) e desafio de mutação a cada regra nova |
+| Contagem vinda de subconsulta sempre 0, sem erro | Subconsulta correlacionada em `sql` no `select` do Drizzle sai com colunas sem a tabela (`"client_id" = "id"`) | Alias e colunas qualificadas em SQL literal; conferir com `.toSQL()` (rule de banco) |
+| Dado pessoal volta a um aparelho depois de anonimizar | Snapshots do `change_log`, valores de `sync_conflict` e `op_hash` e `current` de `operation` guardam cópias fora da linha viva | Redação na mesma transação e trigger que só libera `data` de agregado em `redacted_aggregate` ([ADR 0014](adr/0014-anonimizacao-redige-historico-de-sincronizacao.md), [agregados](areas/agregados.md)) |
+| Leitor de tela lê "Nomeobrigatório" | Rótulo e marcador sem nó de texto entre eles; margem não entra no nome acessível | Espaço literal no `FieldLabel`; conferir nomes pela árvore de acessibilidade |
+| Texto em bloco numa célula de `DataList` alinhado à direita no desktop | `md:text-inherit` é cor no Tailwind 4, e o conteúdo ficava num `span` com `text-right` | `div` com `md:[text-align:inherit]` no `DataListCell` |
+| Campo ou alerta focado some atrás da barra inferior do celular | `MobileNav` sticky não entra na conta do scroll do foco | `max-md:scroll-pb-20` no `html` do `globals.css` |
+| Captura do browser-harness estoura 60 s no Chrome headless próprio | Aba anexada em segundo plano não renderiza | `activate_tab(current_tab())` no começo do roteiro (rule de web) |
+| Operação que chega pelo push depois de anonimizar guarda o telefone em hash invertível | A redação roda uma vez, e o push gravava o hash real das operações tardias e das resoluções de conflito | `op_hash` `redacted` no push para agregado redigido, `aggregateAnonymized` e criação sem pai; `sync.resolve` grava o agregado do conflito (rule de servidor) |
+| Valores anonimizados ainda aparecem com `strings` no arquivo do banco | Página reescrita deixa o conteúdo antigo em espaço livre, e o WAL guarda os quadros velhos | `secure_delete` na abertura e `wal_checkpoint(TRUNCATE)` depois de anonimizar, com teste nos bytes (rule de banco) |
+| Formulário de edição perde o que foi digitado ao voltar para a janela | Refetch por foco trocava a versão e o `key` do formulário remontava o componente | Congelar a versão aberta e trocar só por "Carregar versão atual" (rule de web) |
 
 ## 9. Registro de evolução
 
@@ -254,6 +264,7 @@ Configurados em `.claude/settings.json`. Cada script em `.claude/hooks/` exporta
 | 2026-09-16 | Doc de área `docs/areas/design-system.md` no índice; rule de web com componentes e tokens obrigatórios e armadilhas de `cn`, anel de foco, largura intrínseca, zoom do iOS, fontes offline, devtools e browser-harness; §8 com essas falhas e o `lefthook` fixo; regra de UI só com componentes e sem emoji no `AGENTS.md`, travada por teste | Pedido do dono e fechamento da entrega do design system |
 | 2026-09-16 | Rule de web com `Link` tipado, `data-slot` do gatilho de menu, consultas silenciosas, `queryClient.query`, `Checkbox` com `Field.Label`, username normalizado no login, foco ao trocar de passo e Chrome headless para o browser-harness; §8 com janela oculta, acento corrompido no roteiro, toast repetido, redirecionamento aberto e aviso do turbo; armadilhas de redirect testado pela rota no `reviewer` e de chave do `opId` e literal de estado no `contract` | Revisão e fechamento da entrega das telas do wizard e do shell |
 | 2026-09-16 | CI por caminho: `scripts/ci-scope.mjs` com teste decide a bateria pesada pelo intervalo do push; harness, docs e testes do harness rodam sempre direto no Node; §6 e §8 atualizadas; limite próprio para testes com muitos logins reais, achado no primeiro push da prova | Pedido do dono e fechamento da entrega de CI por caminho |
+| 2026-09-17 | Doc de área `docs/areas/agregados.md` no índice e na §7; rules de banco, servidor e web com subconsulta do Drizzle, trigger de redação, `secure_delete`, comando em dois caminhos, dado pessoal fora da linha viva, mensagens compartilhadas, nome acessível do rótulo, alinhamento do `DataListCell`, barra inferior e foco, formulário congelado e roteiros do browser-harness; §8 com essas falhas; lentes de dado pessoal e de literal compartilhado nos papéis `reviewer` e `contract` | Revisão e fechamento da entrega de clientes e perfis |
 
 ## 10. Sessão nova
 

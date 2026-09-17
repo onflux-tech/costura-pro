@@ -4,7 +4,7 @@
 |---|---|
 | Autoridade | O [PRD](PRD.md) define comportamento; [CONTEXT](../CONTEXT.md) define nomes; os [ADRs](adr/) justificam fronteiras difíceis. Esta SPEC define os contratos mínimos para implementar a v1 |
 | Estado | Contratos alvo da v1. O que já existe no código está na [§0](#0-estado-de-implementação); o restante é previsto e segue a ordem do [ROADMAP](ROADMAP.md) |
-| Última revisão | 2026-09-16 |
+| Última revisão | 2026-09-17 |
 
 Não é formato fiscal. Quando um contrato muda, atualize esta SPEC, a linha correspondente da §0 e, se a decisão for de mão única, o ADR.
 
@@ -24,7 +24,8 @@ Não é formato fiscal. Quando um contrato muda, atualize esta SPEC, a linha cor
 | Wizard inicial e sandbox | Parcial: estados, comandos, navegador de pastas e teste de gravação no servidor, telas retomáveis, redirecionamento ao passo pendente e checklist de continuidade em Hoje; sandbox prevista | `packages/api/src/installation/`, `apps/web/src/wizard/`, `apps/web/src/lib/installation-gates.ts`, `apps/web/src/routes/configuracao-inicial.tsx`, `apps/web/src/today/`, `apps/web/tests/installation-gates.test.ts` | F2 (wizard), F5 (sandbox) |
 | Acesso local, navegador de pastas e atalhos do instalador | Parcial: acesso local e navegador de pastas implementados; atalhos previstos | `apps/server/src/access.ts`, `packages/api/src/index.ts`, `packages/api/src/installation/backup-folder.ts`, `apps/web/src/wizard/folder-browser.tsx` | F2 (acesso local e pasta de backup), F7 (instalador e atalhos) |
 | Dispositivos, epoch, `push`, `pull`, `resolve` | Parcial: contrato mínimo implementado (dispositivos com segredo, código de ativação, operação por `opId`, log por cursor, conflito, quarentena, `rebase`); espelho completo previsto | `packages/api/src/devices/`, `packages/api/src/sync/`, `packages/api/src/operations.ts`, `apps/server/tests/devices.test.ts`, `sync.test.ts` | F2 (contrato mínimo), F6 (espelho completo) |
-| Agregados de atendimento, catálogo e estoque | Previsto | | F3 |
+| Cliente pagador e perfil de usuário da peça: cadastro, busca, arquivamento e anonimização, com comandos nos dois caminhos | Implementado, sem medidas e fotos | `packages/domain/src/client.ts`, `packages/db/src/schema/clients.ts`, migrations `0003` e `0004`, `packages/api/src/clients/`, `packages/api/src/aggregate-command.ts`, `apps/web/src/atendimento/`, `apps/web/src/routes/_app/atendimento/`, `apps/server/tests/clients.test.ts`, `clients-sync.test.ts`, [agregados](areas/agregados.md) | F3 |
+| Modelos de medidas, medições, peça recebida, catálogo, estoque e compras | Previsto | | F3 |
 | Orçamento, OS, documentos PDF, agenda e custódia | Previsto | | F4 |
 | OP, venda direta, finanças e relatórios | Previsto | | F5 |
 | Cofre offline, Dexie, outbox, conflitos e exportação | Previsto | | F6 |
@@ -75,13 +76,17 @@ Não usar addon de billing, SaaS ou fiscal. Harness de agentes, MCPs e skills es
 
 **Agregados e movimentos.** Agregados com `version` monotônica: Cliente e Perfil, Catálogos e versões de ficha, Orçamento e Revisão, OS e Subitem, OP, Venda e Devolução, Compromisso e Documento. Tabelas separadas de movimentos imutáveis guardam estoque (abertura, compra, reserva e liberação, consumo, retorno, transferência, inventário, produção, venda, devolução, perda), custos (estimativa, real, ajuste), recebíveis e parcelas, pagamentos e alocações, contas e transferências, despesas e obrigações e auditoria. Projeções de saldo podem ser mantidas na mesma transação para consulta rápida, mas movimentos e documentos emitidos nunca são editados ou apagados ([ADR 0003](adr/0003-movimentos-imutaveis-e-custo-provisorio.md)). Exclusão de cliente é arquivamento ou anonimização autorizada, nunca cascata destrutiva.
 
+**Cliente e perfil** ([DEC-72 a DEC-75](PRD.md#92-atendimento-e-agenda)). `client` guarda `kind` (`person` ou `organization`), `name` (1 a 120), `phone` e `secondary_phone` (só dígitos, 10 ou 11 com DDD de 11 a 99; `+55` na frente de número completo sai), `email` (até 254), `address` (até 200, uma linha), `notes` (até 2000), `archived_at`, `anonymized_at` e `search_text`. `search_text` é recalculado a cada escrita: nome, e-mail e telefones em NFD sem marcas, minúsculas e espaços colapsados; a busca quebra a consulta em tokens (trecho só de dígitos e `()-+.` vira só dígitos) e exige cada um por `LIKE` com `%`, `_` e `\` escapados. `client_profile` guarda `client_id`, `name`, `notes` e `archived_at`. Texto vazio vira `null`. Nenhum dos dois é apagado. O snapshot no `change_log` tem todos os campos com datas em ISO 8601, sem `search_text`. Anonimizar troca o nome por "Cliente anonimizado" ou "Perfil anonimizado", zera contatos e notas, arquiva e marca `anonymized_at`, e redige o histórico ([ADR 0014](adr/0014-anonimizacao-redige-historico-de-sincronizacao.md), `packages/api/src/redaction.ts`): `redacted_aggregate` append-only libera na trigger do `change_log` só a troca de `data` do agregado registrado; conflitos do agregado ficam fechados, sem valores e com motivo "Cliente anonimizado"; as operações do agregado, inclusive as resoluções de conflito, ficam com `op_hash` `redacted` e resultado de conflito com o snapshot anonimizado. O banco abre com `secure_delete` e a anonimização termina com `wal_checkpoint(TRUNCATE)`.
+
 **Estoque e custo.** Uma aquisição aumenta quantidade e valor de material por lote; frete e desconto são alocados proporcionalmente ao valor bruto dos itens, com resíduo conservado. Reserva diminui somente disponibilidade e é recalculada por revisão ou cancelamento. Consumo pode levar o físico a negativo; usa custo provisório baseado no último custo conhecido ou informado, cria pendência e, quando uma aquisição cobre o déficit, registra ajuste de custo referenciando o consumo original. Seleção de lote sugere o mais antigo, mas permite escolha e divisão explícitas. Produto acabado usa valor e quantidade por variante para média ponderada; venda congela o custo das unidades baixadas. Retorno vendável reverte esse custo, não a média atual. OP distribui o custo total real ou ajustado entre unidades boas; saídas parciais usam custo provisório e ajuste ao fechar.
 
 **Preço e margem.** Serviço guarda custo interno fixo separado do preço de venda e dos materiais. Preço sugerido é `costCents / (1 - targetMargin)` com meta em `[0, 1)`, arredondado para cima ao centavo para não ficar abaixo da meta. A implementação atual recebe a meta em pontos-base inteiros de 0 a 9999 (`suggestPrice(costCents, marginBasisPoints)`). Aprovação de orçamento congela custo e margem estimados; consumo, perda e despesa direta alteram a margem real por eventos posteriores. Terceirização real substitui a estimativa do mesmo componente, sem somar. Compra de material e produção de acabado elevam o estoque valorizado; o resultado reconhece custo no consumo da OS, na perda ou na venda do acabado, enquanto o caixa reconhece o pagamento da compra no momento financeiro.
 
 ## 3. Estados e comandos de negócio
 
-**Estado:** previsto (F3 a F5).
+**Estado:** cliente e perfil implementados; o resto previsto (F3 a F5).
+
+**Cliente e perfil:** ativo ⇄ arquivado a qualquer momento; anonimizado é final e implica arquivado. Arquivar o que já está arquivado, ou desarquivar o que já está ativo, devolve a versão atual sem escrever. Perfil de cliente anonimizado é tratado como anonimizado. Nenhum comando aceita agregado anonimizado. Sem OS nem recebível, nada bloqueia a anonimização; a recusa com trabalho ou saldo aberto chega com essas tabelas.
 
 **Orçamento:** rascunho → emitido → revisado ou vencido → aprovado ou recusado. Revisão parcial copia apenas itens aceitos e exige emissão e aprovação dessa nova versão. A aprovação exige data, canal e nota opcional e cria OS, subitens, snapshot de medidas, reservas e recebível numa transação idempotente.
 
@@ -108,11 +113,11 @@ type Operation = {
   opId: string; // UUID
   deviceId: string;
   epoch: string; // UUIDv4 da instalação
-  aggregateType: string; // "installation" | "device"
+  aggregateType: string; // "installation" | "device" | "client" | "profile"
   aggregateId: string;
-  baseVersion: number | null;
+  baseVersion: number | null; // null obrigatório na criação
   occurredAt: string; // ISO 8601 com fuso
-  command: string; // "installation.setAtelierName" | "device.rename"
+  command: string; // "installation.setAtelierName" | "device.rename" | "client.*" | "profile.*"
   payload: unknown;
   mediaHashes?: string[]; // previsto
 };
@@ -123,6 +128,8 @@ type QuarantineReason =
   | "unknownCommand"
   | "invalidPayload"
   | "aggregateNotFound"
+  | "aggregateExists"
+  | "aggregateAnonymized"
   | "invalidEnvelope";
 type PushResult = {
   accepted: { opId: string; newVersion: number }[];
@@ -142,11 +149,11 @@ type PullResult = {
 };
 ```
 
-**`sync.push({ operations })`**, de 1 a 100 itens por chamada; lista vazia ou maior responde 400 `BAD_REQUEST` sem processar nada. Exige sessão do dono, instalação `ready` e dispositivo aprovado pelos cabeçalhos `x-costura-device-id` e `x-costura-device-secret`. Cada item é validado sozinho: item fora do formato de `Operation` vira quarentena `invalidEnvelope` sem barrar os outros, gravada em `operation` quando traz `opId` UUID válido e só auditada, com `opId: null` na resposta, quando não traz. Cada operação roda numa transação curta, na ordem recebida, e decide nesta ordem: `opId` já gravado (mesmo SHA-256 do JSON canônico devolve o resultado gravado; conteúdo diferente vira `opIdReused` só na auditoria, sem tocar o original), `deviceId` diferente do autenticado, epoch diferente, comando ou tipo desconhecido, payload inválido, agregado inexistente e, por fim, versão-base diferente, que abre conflito com valores locais e atuais lado a lado; `baseVersion: null` nunca coincide com a versão atual e o conflito guarda o `null`. Aceita aplica, incrementa `version` e grava o snapshot no log de mudanças. Quarentena e conflito também gravam resultado e evento de auditoria; nada é descartado. Mudanças independentes não param por causa de um conflito. Comandos de fato (venda, pagamento, consumo) aceitarão concorrência e criarão exceção de saldo; edições de campos sobre versão-base diferente viram conflito, nunca última gravação vence às cegas. Retry de mídia usará hash de conteúdo.
+**`sync.push({ operations })`**, de 1 a 100 itens por chamada; lista vazia ou maior responde 400 `BAD_REQUEST` sem processar nada. Exige sessão do dono, instalação `ready` e dispositivo aprovado pelos cabeçalhos `x-costura-device-id` e `x-costura-device-secret`. Cada item é validado sozinho: item fora do formato de `Operation` vira quarentena `invalidEnvelope` sem barrar os outros, gravada em `operation` quando traz `opId` UUID válido e só auditada, com `opId: null` na resposta, quando não traz. Cada operação roda numa transação curta, na ordem recebida, e decide nesta ordem: `opId` já gravado (mesmo SHA-256 do JSON canônico devolve o resultado gravado; conteúdo diferente vira `opIdReused` só na auditoria, sem tocar o original), `deviceId` diferente do autenticado, epoch diferente, comando ou tipo desconhecido, payload inválido e então, conforme o tipo do comando no registro. Criação: `baseVersion` diferente de `null` ou `aggregateId` que não é UUID vira `invalidEnvelope`, id existente vira `aggregateExists`, pai inexistente vira `aggregateNotFound` e pai anonimizado vira `aggregateAnonymized`. Edição: agregado inexistente vira `aggregateNotFound`, anonimizado vira `aggregateAnonymized` e, por fim, versão-base diferente abre conflito com valores locais e atuais lado a lado; `baseVersion: null` nunca coincide com a versão atual e o conflito guarda o `null`. O conflito compara a versão do agregado inteiro, não campo a campo. O `op_hash` sai como `redacted` em vez do hash quando o agregado da operação já foi redigido, quando o desfecho é `aggregateAnonymized` ou quando uma criação cai em `aggregateNotFound` por pai inexistente; a repetição dessas operações responde `opIdReused`. Aceita aplica, incrementa `version` e grava o snapshot no log de mudanças. Quarentena e conflito também gravam resultado e evento de auditoria; nada é descartado. Mudanças independentes não param por causa de um conflito. Comandos de fato (venda, pagamento, consumo) aceitarão concorrência e criarão exceção de saldo; edições de campos sobre versão-base diferente viram conflito, nunca última gravação vence às cegas. Retry de mídia usará hash de conteúdo.
 
-**`sync.pull({ cursor, epoch, limit })`**: cursor em string decimal (`"0"` no início), até 500 mudanças por página com `hasMore`. `epoch` é `string | null`; `null` (primeiro sync do aparelho) ou epoch diferente do servidor devolve `rebase: true` e leitura desde o início. `serverVersion` é o `version` do `apps/server/package.json`. Hoje o log traz a instalação `{ id, atelierName, state, version }` e dispositivos `{ id, name, status, version, createdAt, approvedAt, revokedAt }`, sem segredos; os agregados entram a partir da F3 até espelhar clientes, catálogo, estoque, OS, OP, vendas, finanças e documentos.
+**`sync.pull({ cursor, epoch, limit })`**: cursor em string decimal (`"0"` no início), até 500 mudanças por página com `hasMore`. `epoch` é `string | null`; `null` (primeiro sync do aparelho) ou epoch diferente do servidor devolve `rebase: true` e leitura desde o início. `serverVersion` é o `version` do `apps/server/package.json`. Hoje o log traz a instalação `{ id, atelierName, state, version }`, dispositivos `{ id, name, status, version, createdAt, approvedAt, revokedAt }`, sem segredos, clientes `{ id, kind, name, phone, secondaryPhone, email, address, notes, archivedAt, anonymizedAt, createdAt, version }` e perfis `{ id, clientId, name, notes, archivedAt, createdAt, version }`; os demais agregados entram até espelhar catálogo, estoque, OS, OP, vendas, finanças e documentos.
 
-**`sync.resolve({ opId, conflictId, choice, values?, reason })`**: `keepLocal` aplica os valores locais sobre a versão atual, `keepServer` fecha sem mudar e `merge` valida e aplica `values`; motivo de 1 a 200 caracteres, idempotente por `opId`, uma única vez por conflito (`CONFLICT` depois) e auditado. Devolve `{ choice, conflictId, version }`. Aceita dispositivo aprovado ou acesso local com sessão, como `sync.pending()`, que devolve `{ conflicts, quarantined }`: conflitos abertos (com `baseVersion` possivelmente `null`) e quarentenas `{ opId, command, occurredAt, reason }` em ordem de chegada, incluindo as `opIdReused` lidas da auditoria. Sessão remota sem dispositivo recebe `UNAUTHORIZED` nas duas.
+**`sync.resolve({ opId, conflictId, choice, values?, reason })`**: `keepLocal` aplica os valores locais sobre a versão atual, `keepServer` fecha sem mudar e `merge` valida e aplica `values`; motivo de 1 a 200 caracteres, idempotente por `opId`, uma única vez por conflito (`CONFLICT` depois) e auditado; conflito inexistente responde `NOT_FOUND` antes de gravar nada, e a operação grava o tipo e o id do agregado do conflito. Devolve `{ choice, conflictId, version }`. Aceita dispositivo aprovado ou acesso local com sessão, como `sync.pending()`, que devolve `{ conflicts, quarantined }`: conflitos abertos (com `baseVersion` possivelmente `null`) e quarentenas `{ opId, command, occurredAt, reason }` em ordem de chegada, incluindo as `opIdReused` lidas da auditoria. Sessão remota sem dispositivo recebe `UNAUTHORIZED` nas duas.
 
 **Operações diretas.** Os comandos do wizard, da recuperação e dos dispositivos também gravam o resultado na tabela `operation` por `opId`, na mesma transação do efeito, com hash do conteúdo sem senha, código ou segredo; o tipo do handler só compila quando o resultado passa pela gravação. Chamadas simultâneas com o mesmo `opId` no processo entram numa fila, e a segunda recebe o resultado gravado. A repetição devolve o resultado gravado com os segredos anulados, e `opId` reutilizado com outro conteúdo responde `CONFLICT`. Respostas:
 
@@ -160,7 +167,24 @@ type PullResult = {
 | `installation.finish` | `{ state: "ready" }` | igual |
 | `devices.createActivationCode` | `{ code, expiresAt }` | `code: null` |
 | `devices.register` | `{ deviceId, deviceSecret, status }` | `deviceSecret: null` |
-| `devices.approve`, `devices.revoke` | `{ status, version }` | igual | Os testes exercitam o Hono autenticado sobre SQLite real, nunca banco simulado em memória.
+| `devices.approve`, `devices.revoke` | `{ status, version }` | igual |
+
+Os testes exercitam o Hono autenticado sobre SQLite real, nunca banco simulado em memória.
+
+**Cliente e perfil.** Cada comando é definido uma vez no registro do sync e exposto como procedure direta que grava a operação com `aggregate_type` e `aggregate_id` ([agregados](areas/agregados.md)). Todas exigem sessão do dono e instalação `ready`, em qualquer acesso, menos `clients.anonymize`, só no acesso local:
+
+| Procedure | Comando | Entrada | Resposta |
+|---|---|---|---|
+| `clients.list` | leitura | `{ query?, archived = false, offset = 0 }` | `{ items: { id, kind, name, phone, profileCount, archivedAt, anonymizedAt, updatedAt, version }[], nextOffset }`, 50 por página, ordem por `search_text`; `archived: true` traz só arquivados, anonimizados inclusive; `profileCount` conta perfis ativos |
+| `clients.get` | leitura | `{ clientId }` | `{ client: snapshot com updatedAt, profiles: snapshot[] }`, perfis arquivados inclusive, ordem por nome |
+| `clients.create` | `client.create` | `{ clientId, opId, kind, name, phone?, secondaryPhone?, email?, address?, notes? }` | `{ id, version }` |
+| `clients.update` | `client.update` | `{ clientId, baseVersion, opId, patch }` | `{ version }` |
+| `clients.archive`, `clients.unarchive` | `client.archive`, `client.unarchive` | `{ clientId, baseVersion, opId }` | `{ version }` |
+| `clients.anonymize` | `client.anonymize` (sem comando de sync) | `{ clientId, baseVersion, opId }` | `{ version }` |
+| `profiles.create` | `profile.create` | `{ profileId, clientId, opId, name, notes? }` | `{ id, version }` |
+| `profiles.update`, `profiles.archive`, `profiles.unarchive` | `profile.*` | `{ profileId, baseVersion, opId, patch? }` | `{ version }` |
+
+Erros: versão-base diferente responde `CONFLICT` `Versão desatualizada` com `data: { current, currentVersion }`; id existente, `CONFLICT` `Registro já existe`; inexistente, `NOT_FOUND` `Cliente não encontrado` ou `Perfil não encontrado`; cliente anonimizado (inclusive em comando de perfil), `PRECONDITION_FAILED` `Cliente anonimizado`; anonimizar fora do acesso local, `FORBIDDEN`. Os literais moram em `packages/api/src/command-messages.ts`, usados pelo servidor e por `apps/web/src/lib/client-command-error.ts`, que distingue versão velha e registro já gravado pela mensagem e anonimizado pelo código; na tela de novo cliente, `Registro já existe` do próprio id segue para a ficha.
 
 Dispositivo isolado por qualquer tempo faz rebase do snapshot completo sem apagar a outbox. Atualização do cliente migra Dexie e outbox antes do sync; operações incompatíveis vão para quarentena. Restauração incrementa o epoch e toda operação antiga é retida para reaplicação manual, nunca mesclada automaticamente ([ADR 0004](adr/0004-backup-epoch-e-cofre-por-dispositivo.md)).
 

@@ -190,9 +190,21 @@ Cada spike responde uma pergunta que muda o desenho antes de construir em cima d
 - Etiquetas e leitura por câmera, conforme o S3.
 - Busca global sobre clientes, catálogo e estoque.
 
+**Concluído:**
+- Clientes e perfis (2026-09-17), com o padrão de agregado descrito em [agregados](areas/agregados.md):
+  - cliente pagador com contatos em campos fixos, busca sem acento e por trecho de telefone, e perfis de usuário da peça com nome e notas ([DEC-72 a DEC-74](PRD.md#92-atendimento-e-agenda));
+  - arquivamento reversível de cliente e perfil e anonimização só no acesso local, que redige snapshots, conflitos e hash de operação ([DEC-75](PRD.md#92-atendimento-e-agenda), [ADR 0014](adr/0014-anonimizacao-redige-historico-de-sincronizacao.md));
+  - cada comando definido uma vez e exposto pela procedure direta e pelo `sync.push`, com criação no registro e as quarentenas `aggregateExists` e `aggregateAnonymized` ([DEC-76](PRD.md#96-plataforma-acesso-e-operação));
+  - telas em `/atendimento/clientes` (lista, novo, ficha e edição) com a sub-aba Clientes, e `Textarea`, `Dialog`, `AlertDialog` e `Monogram` no design system;
+  - verificado em navegador real no build de produção com banco novo: 1440, 768, 390 e 320 px sem rolagem horizontal, por toque e teclado (foco preso no diálogo, Esc devolve o foco, menu por Enter), conflito de edição entre janelas e acesso remoto simulado sem a opção de anonimizar.
+
+**Pendente:**
+- Modelos de medidas versionados, modelos iniciais (Q-02) e medições, sobre a ficha do cliente.
+- Peça recebida com fotos e a infraestrutura de mídia (RF-ATD-05, 07, RF-ACE-14).
+
 **Critério de saída:**
 - Parte de cadastro de estoque do CA-03 com teste de integração: variantes, local, lote, compra em embalagem, conversão e custo de aquisição com frete e desconto.
-- Arquivar e anonimizar cliente respeitando trabalho e saldo abertos.
+- Arquivar e anonimizar cliente, sem dado pessoal no histórico de sincronização depois de anonimizar (a recusa com trabalho ou saldo aberto fecha na F4).
 - Jornadas de cadastro verificadas em navegador real no desktop e em 320 px.
 
 ## F4: Comercial, documentos e agenda
@@ -212,11 +224,13 @@ Cada spike responde uma pergunta que muda o desenho antes de construir em cima d
 - Recebíveis, pagamentos e alocação.
 - Documentos PDF congelados (conforme o S1), comprovante de recepção e etiqueta de custódia.
 - Agenda com compromissos, prazos, capacidade diária e mensagem preparada.
+- Anonimização recusa cliente com OS ou saldo aberto; decidir com o dono como ela trata OS encerrada e documento emitido que trazem o nome do cliente, já que documento emitido é imutável ([ADR 0008](adr/0008-documentos-emitidos-imutaveis.md)) e a anonimização redige o histórico ([ADR 0014](adr/0014-anonimizacao-redige-historico-de-sincronizacao.md)).
 
 **Critério de saída:**
 - CA-02, CA-03 e CA-04 completos.
 - CA-06 no desktop com conexão.
 - Idempotência da aprovação provada por teste de repetição.
+- Anonimizar cliente com OS aberta ou recebível em aberto é recusado, provado por teste.
 
 ## F5: Produção interna, venda direta e finanças
 
