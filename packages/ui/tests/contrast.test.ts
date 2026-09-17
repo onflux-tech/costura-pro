@@ -60,6 +60,7 @@ const textPairs = [
 	["accent-foreground", "accent"],
 	["nav-foreground", "nav"],
 	["nav-muted", "nav"],
+	["nav-active", "nav"],
 	["nav-active-foreground", "nav-active"],
 	["nav-active", "secondary"],
 	["danger-foreground", "danger-soft"],

@@ -162,7 +162,7 @@ function TopNavAvatar({
 	return (
 		<button
 			className={cn(
-				"flex size-8 shrink-0 items-center justify-center rounded-full border border-nav-foreground/20 bg-secondary font-semibold text-nav-active text-xs",
+				"relative flex size-8 shrink-0 items-center justify-center rounded-full border border-nav-foreground/20 bg-secondary font-semibold text-nav-active text-xs after:absolute after:-inset-1.5",
 				focusOnNav,
 				className
 			)}
