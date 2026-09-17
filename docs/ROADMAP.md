@@ -88,11 +88,11 @@ Cada spike responde uma pergunta que muda o desenho antes de construir em cima d
   - cookie `costura-pro.session_token` sem `Secure` no loopback e com `Secure` no Host canônico;
   - verificado em navegador real (dev e produção, desktop e 320 px), no `tauri dev` e no executável de release do Tauri no Windows.
 - Bundle web sem aviso de chunk acima de 500 kB: devtools só em desenvolvimento e React num chunk próprio, com as rotas já divididas (2026-09-16).
+- CI por caminho (2026-09-16): `harness:check`, `docs:check` e `harness:test` rodam sempre, direto no Node e sem install; install, lint, tipos, testes e build só quando o intervalo do push (de `before` ao commit, ou da base do pull request) toca algo fora de `docs/**`, `*.md` e `.claude/rules/**`, com push forçado, `before` zerado, outro evento ou falha ao listar mudanças rodando tudo (`scripts/ci-scope.mjs`).
 - App Tauri removido do scaffold (Q-11, DEC-59): pasta do app, scripts e CLI do Tauri, teste do `frontendDist` (o contrato do proxy do Vite segue em `apps/server/tests/vite-proxy.test.ts`), armadilhas do HARNESS e da rule de web, papel `contract` e instruções de desenvolvimento do README (2026-09-16).
 
 **Pendente:**
 - **Build conferido numa máquina Ubuntu 24.04** além do CI (Q-10).
-- **CI por caminho:** push só de docs e markdown roda `harness:check`, `docs:check` e `harness:test`; lint, tipos, testes e build só quando o intervalo do push toca algo fora de `docs/**`, `*.md` e `.claude/rules/**`, e push forçado roda tudo.
 
 **Critério de saída:**
 - `pnpm test`, `pnpm check-types`, `pnpm check`, `pnpm build` e `pnpm harness:check` verdes no Windows e no Ubuntu.

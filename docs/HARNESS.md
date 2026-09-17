@@ -142,7 +142,10 @@ Configurados em `.claude/settings.json`. Cada script em `.claude/hooks/` exporta
 | Mudou schema | `pnpm db:generate`, revisar o SQL, `pnpm db:migrate` contra banco temporário |
 
 - **Lefthook no pre-commit:** biome e ultracite nos arquivos staged, `check --staged` do harness e `docs-check` em todo commit.
-- **CI (`.github/workflows/ci.yml`):** roda em push na `main` e em pull request, no Ubuntu 24.04 e no Windows, com install congelado, `harness:check`, `docs:check`, `harness:test`, `check`, `check-types`, `test` e `build`.
+- **CI (`.github/workflows/ci.yml`):** roda em push na `main` e em pull request, no Ubuntu 24.04 e no Windows.
+  - Sempre, direto no Node e antes de qualquer install: `node scripts/harness.mjs check`, `node scripts/docs-check.mjs` e os testes de `scripts` e `.claude/hooks` (os mesmos comandos de `harness:check`, `docs:check` e `harness:test`).
+  - Bateria pesada (install congelado, `check`, `check-types`, `test` e `build`) só quando `scripts/ci-scope.mjs` acha no intervalo do push, de `github.event.before` a `github.sha`, ou da base do pull request, algum arquivo fora de `docs/**`, `*.md` e `.claude/rules/**`.
+  - Push forçado, `before` zerado, outro evento, intervalo vazio ou falha do `git diff` rodam tudo; o checkout usa `fetch-depth: 0` para o `before` existir no clone.
 - Rode a suíte redirecionando a saída para arquivo e leia o arquivo; o guard bloqueia pipe para `tail` ou `head`.
 
 ## 7. Antes de mexer em X, leia Y
@@ -224,6 +227,9 @@ Configurados em `.claude/settings.json`. Cada script em `.claude/hooks/` exporta
 | Texto com acento some ou não é encontrado num roteiro do browser-harness | Caractere fora do ASCII chega corrompido na expressão JavaScript | Localizar por estrutura (`form label`, `data-slot`) em vez de texto com acento |
 | Edição em lote com `git grep` pula componentes novos | `git grep` só vê arquivos versionados | `grep -r` enquanto os arquivos ainda não estão no índice |
 | Tela só de desenvolvimento aparece no build e no precache da PWA | `beforeLoad` com `notFound()` protege a rota em tempo de execução, mas o chunk continua no bundle e no `globPatterns` | Import dinâmico sob `import.meta.env.DEV` (`apps/web/src/routes/catalogo.tsx`); conferir o `dist` por texto da tela |
+| Passo do CI que devia rodar sem dependências demora e instala tudo | O `pnpm run` do pnpm 11 instala as dependências antes do script quando não há `node_modules` | Passos leves chamam `node` direto; o `package.json` guarda os mesmos comandos para uso local |
+| CI roda a bateria completa num push só de docs | Checkout raso não tem o commit `before`, o `git diff` falha e o `scripts/ci-scope.mjs` cai no caminho seguro | `fetch-depth: 0` no checkout; o passo Scope escreve o motivo da decisão no log |
+| Push só de docs logo depois de um push com código deixa o código sem CI completo | `concurrency` com `cancel-in-progress` cancela a execução anterior da mesma ref | Esperar o CI do push com código terminar antes de enviar o próximo |
 | Link com aparência de botão é anunciado como botão | `Button` do Base UI com `render` não nativo acrescenta `role="button"` | `ButtonLink` (`useRender` com as classes do botão) |
 | Teste de varredura verde com cor, elemento ou emoji novos | Regex presa a uma lista fechada ou a uma linha só | Padrões genéricos (tom numérico de qualquer paleta, JSX em várias linhas, `Emoji_Presentation` e sequências) e desafio de mutação a cada regra nova |
 
@@ -241,6 +247,7 @@ Configurados em `.claude/settings.json`. Cada script em `.claude/hooks/` exporta
 | 2026-09-16 | Regra de nomes sem fase nem spec em código, testes, migrations e commits (`AGENTS.md`, passo de commit do `/entrega-fechar` e bloqueio no guard para nome de arquivo e mensagem de commit, com testes); armadilhas de rate limit local, ordenação de chaves do `fix`, promessas em testes oRPC, Drizzle sobre `bun:sqlite`, migrations custom e mensagens do Better Auth nas rules de servidor, banco, web e domínio e na §8; armadilhas do ledger na mesma transação, fila por `opId`, usuário órfão do Better Auth, reserva de login, log de erro de procedure, HMAC de código curto e global `Bun` no Biome, vindas da revisão, na rule de servidor, na §8 e nos papéis `reviewer` e `contract` | Pedido do dono e fechamento da entrega de servidor de acesso e sync |
 | 2026-09-16 | Armadilhas de Tauri e WebView2 removidas da §8 e da rule de web; papel `contract` sem desktop e com o proxy do Vite como exemplo de contrato; `src-tauri` fora do hook de format; armadilha do lockfile detalhada para remoção de dependência | Fechamento e revisão da entrega de remoção do app Tauri |
 | 2026-09-16 | Doc de área `docs/areas/design-system.md` no índice; rule de web com componentes e tokens obrigatórios e armadilhas de `cn`, anel de foco, largura intrínseca, zoom do iOS, fontes offline, devtools e browser-harness; §8 com essas falhas e o `lefthook` fixo; regra de UI só com componentes e sem emoji no `AGENTS.md`, travada por teste | Pedido do dono e fechamento da entrega do design system |
+| 2026-09-16 | CI por caminho: `scripts/ci-scope.mjs` com teste decide a bateria pesada pelo intervalo do push; harness, docs e testes do harness rodam sempre direto no Node; §6 e §8 atualizadas | Pedido do dono e fechamento da entrega de CI por caminho |
 
 ## 10. Sessão nova
 
