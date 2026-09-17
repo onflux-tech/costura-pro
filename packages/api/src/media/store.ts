@@ -84,6 +84,28 @@ const referencedHashes = sql`
 	SELECT json_extract(photo.value, '$.thumbnailHash')
 	FROM sync_conflict AS conflict, json_each(conflict.current_values, '$.photos') AS photo
 	WHERE conflict.status = 'open' AND conflict.aggregate_type = 'receivedItem'
+	UNION
+	SELECT json_extract(variant.photo, '$.photoHash')
+	FROM material_variant AS variant
+	UNION
+	SELECT json_extract(variant.photo, '$.thumbnailHash')
+	FROM material_variant AS variant
+	UNION
+	SELECT json_extract(conflict.local_values, '$.photo.photoHash')
+	FROM sync_conflict AS conflict
+	WHERE conflict.status = 'open' AND conflict.aggregate_type = 'materialVariant'
+	UNION
+	SELECT json_extract(conflict.local_values, '$.photo.thumbnailHash')
+	FROM sync_conflict AS conflict
+	WHERE conflict.status = 'open' AND conflict.aggregate_type = 'materialVariant'
+	UNION
+	SELECT json_extract(conflict.current_values, '$.photo.photoHash')
+	FROM sync_conflict AS conflict
+	WHERE conflict.status = 'open' AND conflict.aggregate_type = 'materialVariant'
+	UNION
+	SELECT json_extract(conflict.current_values, '$.photo.thumbnailHash')
+	FROM sync_conflict AS conflict
+	WHERE conflict.status = 'open' AND conflict.aggregate_type = 'materialVariant'
 `;
 
 export function isMediaReferenced(db: Querier, hash: string): boolean {

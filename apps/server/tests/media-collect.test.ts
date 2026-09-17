@@ -317,6 +317,108 @@ describe("media collection", () => {
 		expect([hasRow(server, hash), hasFile(server, hash)]).toEqual([true, true]);
 	});
 
+	test("keeps the photo of a material variant, archived included", async () => {
+		const clock = manualClock();
+		const { cookie, owner, server } = await ownerSetup({ now: clock.now });
+		const materialId = crypto.randomUUID();
+		const variantId = crypto.randomUUID();
+		await owner.materials.create({
+			materialId,
+			name: "Gorgurão",
+			opId: newOpId(),
+		});
+		const photo = await upload(server, cookie, "variante");
+		const thumbnail = await upload(server, cookie, "variante-miniatura");
+		await owner.materialVariants.create({
+			baseUnit: "m",
+			displayPrecision: 2,
+			materialId,
+			name: "Azul marinho",
+			opId: newOpId(),
+			photo: { photoHash: photo, thumbnailHash: thumbnail },
+			variantId,
+		});
+		clock.advance(25 * hour);
+		expect((await collect(server, clock.now())).rows).toBe(0);
+		expect([hasFile(server, photo), hasFile(server, thumbnail)]).toEqual([
+			true,
+			true,
+		]);
+		await owner.materialVariants.archive({
+			baseVersion: 1,
+			opId: newOpId(),
+			variantId,
+		});
+		clock.advance(25 * hour);
+		expect((await collect(server, clock.now())).rows).toBe(0);
+		expect([hasFile(server, photo), hasFile(server, thumbnail)]).toEqual([
+			true,
+			true,
+		]);
+	});
+
+	test("keeps a variant photo that exists only in an open conflict", async () => {
+		const setup: SyncSetup = await syncSetup(servers);
+		const { server } = setup;
+		const materialId = crypto.randomUUID();
+		const variantId = crypto.randomUUID();
+		await setup.local.materials.create({
+			materialId,
+			name: "Gorgurão",
+			opId: newOpId(),
+		});
+		await setup.local.materialVariants.create({
+			baseUnit: "m",
+			displayPrecision: 2,
+			materialId,
+			name: "Azul marinho",
+			opId: newOpId(),
+			variantId,
+		});
+		await setup.local.materialVariants.update({
+			baseVersion: 1,
+			opId: newOpId(),
+			patch: { name: "Azul royal" },
+			variantId,
+		});
+		const hash = await upload(
+			server,
+			setup.remoteCookie,
+			"variante-conflito",
+			true
+		);
+		const pushed = await setup.sync.sync.push({
+			operations: [
+				{
+					aggregateId: variantId,
+					aggregateType: "materialVariant",
+					baseVersion: 1,
+					command: "materialVariant.update",
+					deviceId: setup.device.id,
+					epoch: setup.epoch,
+					occurredAt: "2026-09-17T12:00:00.000Z",
+					opId: newOpId(),
+					payload: { photo: { photoHash: hash, thumbnailHash: hash } },
+				},
+			],
+		});
+		expect(pushed.conflicts).toHaveLength(1);
+		const later = new Date(Date.now() + 25 * hour);
+		await collect(server, later);
+		expect([hasRow(server, hash), hasFile(server, hash)]).toEqual([true, true]);
+		await setup.sync.sync.resolve({
+			choice: "keepServer",
+			conflictId: pushed.conflicts[0]?.conflictId ?? "",
+			opId: newOpId(),
+			reason: "Fica o do PC",
+		});
+		await collect(server, later);
+		expect([hasRow(server, hash), hasFile(server, hash)]).toEqual([
+			false,
+			false,
+		]);
+	});
+
 	test("collects thousands of referenced old photos without reading every item per photo", async () => {
 		const { owner, server } = await ownerSetup();
 		const clientId = crypto.randomUUID();
