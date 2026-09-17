@@ -36,3 +36,4 @@ paths:
 - O Biome não conhece o global `Bun`: teste usa `node:crypto`, `node:util` e `node:timers/promises` no lugar de `Bun.CryptoHasher`, `Bun.inspect` e `Bun.sleep`.
 - O `cloudflared` conecta pelo loopback: acesso local se decide pelo Host de loopback sem `cf-connecting-ip`, nunca pelo IP do socket.
 - Serviço do Windows não enxerga letra de unidade mapeada da sessão do usuário: navegador de pastas e backup aceitam caminho local ou UNC e sempre testam gravação e releitura.
+- Teste com muitos logins reais (hash de senha) passa perto dos 5 s padrão do `bun test` num runner lento: dê limite próprio no terceiro argumento do `test`, porque o estouro fecha o banco com requisições em curso e aparece como "Cannot use a closed database".
