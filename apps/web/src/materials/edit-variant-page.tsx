@@ -36,6 +36,105 @@ import {
 import { useVariantPhoto } from "./use-variant-photo";
 import { VariantForm } from "./variant-form";
 
+function VariantEditor({
+	materialId,
+	onReloadCurrent,
+	variant,
+}: {
+	materialId: string;
+	onReloadCurrent: () => Promise<void>;
+	variant: VariantView;
+}) {
+	const navigate = useNavigate();
+	const queryClient = useQueryClient();
+	const { opIdFor, reset } = useOpId();
+	const [failure, setFailure] = useState<ClientCommandFailure | null>(null);
+	const [archiving, setArchiving] = useState(false);
+	const photo = useVariantPhoto(variant.photo);
+	const variantId = variant.id;
+
+	const openMaterial = () =>
+		navigate({
+			params: { materialId },
+			to: "/catalogo-produtos/materiais/$materialId",
+		});
+
+	const reloadCurrent = async () => {
+		setFailure(null);
+		await onReloadCurrent();
+	};
+
+	const submit = async (fields: VariantFields) => {
+		setFailure(null);
+		const patch = changedVariant(variant, fields);
+		if (!patch) {
+			await openMaterial();
+			return;
+		}
+		try {
+			await api.materialVariants.update({
+				baseVersion: variant.version,
+				opId: opIdFor(`${variant.version}:${JSON.stringify(patch)}`),
+				patch,
+				variantId,
+			});
+		} catch (error) {
+			setFailure(await failedMaterialCommand(queryClient, error, "variante"));
+			return;
+		}
+		reset();
+		await refreshMaterials(queryClient);
+		await openMaterial();
+	};
+
+	const toggleArchive = async () => {
+		setArchiving(true);
+		setFailure(null);
+		const command = variant.archivedAt
+			? api.materialVariants.unarchive
+			: api.materialVariants.archive;
+		try {
+			await command({
+				baseVersion: variant.version,
+				opId: crypto.randomUUID(),
+				variantId,
+			});
+		} catch (error) {
+			setFailure(await failedMaterialCommand(queryClient, error, "variante"));
+			return;
+		} finally {
+			setArchiving(false);
+		}
+		await refreshMaterials(queryClient);
+		await reloadCurrent();
+	};
+	const archiveLabel = variant.archivedAt ? "Desarquivar" : "Arquivar";
+
+	return (
+		<div className="flex flex-col gap-4">
+			<div className="flex flex-wrap items-start justify-between gap-3">
+				<div className="flex flex-col gap-1">
+					<Heading className="max-md:sr-only">{variant.name}</Heading>
+					{variant.archivedAt ? <Badge tone="warning">arquivada</Badge> : null}
+				</div>
+				<Button disabled={archiving} onClick={toggleArchive} variant="outline">
+					{archiveLabel}
+				</Button>
+			</div>
+			<VariantForm
+				editingUnit={false}
+				failure={failure}
+				initialValues={variantFormValues(variant)}
+				onReloadCurrent={reloadCurrent}
+				onSubmit={submit}
+				photo={photo}
+				submitLabel="Salvar variante"
+				variantId={variantId}
+			/>
+		</div>
+	);
+}
+
 export function EditVariantPage({
 	materialId,
 	variantId,
@@ -43,13 +142,8 @@ export function EditVariantPage({
 	materialId: string;
 	variantId: string;
 }) {
-	const navigate = useNavigate();
-	const queryClient = useQueryClient();
-	const { opIdFor, reset } = useOpId();
 	const material = useQuery(materialQuery(materialId));
 	const [opened, setOpened] = useState<VariantView | null>(null);
-	const [failure, setFailure] = useState<ClientCommandFailure | null>(null);
-	const [archiving, setArchiving] = useState(false);
 	const live = material.data?.variants.find((item) => item.id === variantId);
 	useEffect(() => {
 		if (!opened && live) {
@@ -57,7 +151,6 @@ export function EditVariantPage({
 		}
 	}, [opened, live]);
 	const current = opened ?? live;
-	const photo = useVariantPhoto(current?.photo ?? null);
 	usePageHeader({
 		backHref: "/catalogo-produtos/materiais",
 		eyebrow: "Catálogo",
@@ -87,14 +180,7 @@ export function EditVariantPage({
 		);
 	}
 
-	const openMaterial = () =>
-		navigate({
-			params: { materialId },
-			to: "/catalogo-produtos/materiais/$materialId",
-		});
-
 	const reloadCurrent = async () => {
-		setFailure(null);
 		const fresh = await material.refetch();
 		const found = fresh.data?.variants.find((item) => item.id === variantId);
 		if (found) {
@@ -102,73 +188,12 @@ export function EditVariantPage({
 		}
 	};
 
-	const submit = async (fields: VariantFields) => {
-		setFailure(null);
-		const patch = changedVariant(current, fields);
-		if (!patch) {
-			await openMaterial();
-			return;
-		}
-		try {
-			await api.materialVariants.update({
-				baseVersion: current.version,
-				opId: opIdFor(`${current.version}:${JSON.stringify(patch)}`),
-				patch,
-				variantId,
-			});
-		} catch (error) {
-			setFailure(await failedMaterialCommand(queryClient, error, "variante"));
-			return;
-		}
-		reset();
-		await refreshMaterials(queryClient);
-		await openMaterial();
-	};
-
-	const toggleArchive = async () => {
-		setArchiving(true);
-		setFailure(null);
-		const command = current.archivedAt
-			? api.materialVariants.unarchive
-			: api.materialVariants.archive;
-		try {
-			await command({
-				baseVersion: current.version,
-				opId: crypto.randomUUID(),
-				variantId,
-			});
-		} catch (error) {
-			setFailure(await failedMaterialCommand(queryClient, error, "variante"));
-			return;
-		} finally {
-			setArchiving(false);
-		}
-		await refreshMaterials(queryClient);
-		await reloadCurrent();
-	};
-	const archiveLabel = current.archivedAt ? "Desarquivar" : "Arquivar";
-
 	return (
-		<div className="flex flex-col gap-4">
-			<div className="flex flex-wrap items-start justify-between gap-3">
-				<div className="flex flex-col gap-1">
-					<Heading className="max-md:sr-only">{current.name}</Heading>
-					{current.archivedAt ? <Badge tone="warning">arquivada</Badge> : null}
-				</div>
-				<Button disabled={archiving} onClick={toggleArchive} variant="outline">
-					{archiveLabel}
-				</Button>
-			</div>
-			<VariantForm
-				editingUnit={false}
-				failure={failure}
-				initialValues={variantFormValues(current)}
-				key={current.version}
-				onReloadCurrent={reloadCurrent}
-				onSubmit={submit}
-				photo={photo}
-				submitLabel="Salvar variante"
-			/>
-		</div>
+		<VariantEditor
+			key={current.version}
+			materialId={materialId}
+			onReloadCurrent={reloadCurrent}
+			variant={current}
+		/>
 	);
 }

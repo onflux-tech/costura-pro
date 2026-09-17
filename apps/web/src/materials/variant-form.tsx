@@ -1,4 +1,5 @@
 import { materialLimits } from "@costura-pro/domain/material";
+import { baseUnitByCode } from "@costura-pro/domain/unit";
 import {
 	Alert,
 	AlertActions,
@@ -24,6 +25,7 @@ import {
 import { Photo } from "@costura-pro/ui/components/photo";
 import { Select } from "@costura-pro/ui/components/select";
 import { Text } from "@costura-pro/ui/components/typography";
+import { useQuery } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
 
 import type { ClientCommandFailure } from "@/lib/client-command-error";
@@ -38,6 +40,7 @@ import {
 	variantFormErrors,
 } from "@/lib/materials";
 import { photoAccept } from "@/lib/received-items";
+import { orpc } from "@/utils/orpc";
 
 import type { VariantPhoto } from "./use-variant-photo";
 
@@ -92,6 +95,26 @@ function QuantityField({
 	);
 }
 
+function useRepeatedCode(code: string, variantId: string | undefined) {
+	const trimmed = code.trim();
+	const found = useQuery({
+		...orpc.materialVariants.byCode.queryOptions({
+			input: { code: trimmed },
+			meta: { silent: true },
+		}),
+		enabled: trimmed !== "",
+	});
+	const others = (found.data?.items ?? []).filter(
+		(item) => item.id !== variantId
+	);
+	const [first] = others;
+	if (!first) {
+		return null;
+	}
+	const rest = others.length > 1 ? ` e mais ${others.length - 1}` : "";
+	return `Este código já é de ${first.name}, em ${first.materialName}${rest}.`;
+}
+
 function IdentityPanel({
 	editingUnit,
 	errors,
@@ -99,9 +122,11 @@ function IdentityPanel({
 	register,
 	unit,
 	values,
-}: PanelProps & { editingUnit: boolean }) {
+	variantId,
+}: PanelProps & { editingUnit: boolean; variantId?: string }) {
 	const unitLabel =
 		unitOptions.find((item) => item.value === values.baseUnit)?.label ?? unit;
+	const repeated = useRepeatedCode(values.code, variantId);
 	return (
 		<Panel>
 			<PanelContent className="flex flex-col gap-4">
@@ -128,6 +153,11 @@ function IdentityPanel({
 						value={values.code}
 					/>
 					<FieldHint>O código do fornecedor ou da sua etiqueta.</FieldHint>
+					{repeated ? (
+						<Text size="xs" tone="warning">
+							{repeated}
+						</Text>
+					) : null}
 					{errors.code ? <FieldError match>{errors.code}</FieldError> : null}
 				</Field>
 				<Field>
@@ -272,6 +302,7 @@ export function VariantForm({
 	onSubmit,
 	photo,
 	submitLabel,
+	variantId,
 }: {
 	editingUnit: boolean;
 	failure: ClientCommandFailure | null;
@@ -280,6 +311,7 @@ export function VariantForm({
 	onSubmit: (fields: VariantFields) => Promise<void>;
 	photo: VariantPhoto;
 	submitLabel: string;
+	variantId?: string;
 }) {
 	const [values, setValues] = useState(initialValues);
 	const [errors, setErrors] = useState<FieldErrors>({});
@@ -294,7 +326,18 @@ export function VariantForm({
 		}
 	};
 	const onChange = (field: keyof VariantFormValues, value: string) =>
-		setValues((current) => ({ ...current, [field]: value }));
+		setValues((current) =>
+			field === "baseUnit"
+				? {
+						...current,
+						baseUnit: value as VariantFormValues["baseUnit"],
+						displayPrecision: String(
+							baseUnitByCode(value)?.defaultPrecision ??
+								Number(current.displayPrecision)
+						),
+					}
+				: { ...current, [field]: value }
+		);
 
 	useEffect(() => {
 		if (failure) {
@@ -330,7 +373,11 @@ export function VariantForm({
 				submit();
 			}}
 		>
-			<IdentityPanel {...panelProps} editingUnit={editingUnit} />
+			<IdentityPanel
+				{...panelProps}
+				editingUnit={editingUnit}
+				variantId={variantId}
+			/>
 			<Panel>
 				<PanelHeader>
 					<PanelTitle>Reposição</PanelTitle>
