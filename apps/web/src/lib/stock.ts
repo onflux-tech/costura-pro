@@ -1,0 +1,349 @@
+import { formatMoney, parseMoney } from "@costura-pro/domain/money";
+import {
+	displayPrecision,
+	formatQuantity,
+	parseQuantity,
+	quantityScale,
+} from "@costura-pro/domain/quantity";
+import { type StockMovementKind, stockLimits } from "@costura-pro/domain/stock";
+import type { BaseUnitCode } from "@costura-pro/domain/unit";
+
+import { unitAbbreviation } from "./materials";
+
+export type StockLocationView = {
+	archivedAt: string | null;
+	createdAt: string;
+	id: string;
+	name: string;
+	notes: string | null;
+	updatedAt: string;
+	version: number;
+};
+
+export type StockLotView = {
+	archivedAt: string | null;
+	createdAt: string;
+	id: string;
+	label: string;
+	notes: string | null;
+	updatedAt: string;
+	variantId: string;
+	version: number;
+};
+
+export type BalanceItemView = {
+	baseUnit: BaseUnitCode;
+	code: string | null;
+	displayPrecision: number;
+	materialId: string;
+	materialName: string;
+	quantityMicros: string;
+	referenceCostCents: string | null;
+	tracksLots: boolean;
+	valueCents: string;
+	variantId: string;
+	variantName: string;
+};
+
+export type BalancePointView = {
+	locationId: string;
+	locationName: string;
+	lotId: string | null;
+	lotLabel: string | null;
+	quantityMicros: string;
+	valueCents: string;
+};
+
+export type MovementView = {
+	id: string;
+	kind: StockMovementKind;
+	locationName: string;
+	lotLabel: string | null;
+	occurredOn: string;
+	quantityMicros: string;
+	reason: string | null;
+	reversedByMovementId: string | null;
+	reversesMovementId: string | null;
+	transferId: string | null;
+	valueCents: string;
+};
+
+export type Direction = "in" | "out";
+
+export type PlaceFormValues = {
+	name: string;
+	notes: string;
+};
+
+export type LotFormValues = {
+	label: string;
+	notes: string;
+};
+
+export type OpeningFormValues = {
+	locationId: string;
+	lotId: string | null;
+	occurredOn: string;
+	quantity: string;
+	value: string;
+};
+
+export type AdjustmentFormValues = {
+	direction: Direction;
+	locationId: string;
+	lotId: string | null;
+	occurredOn: string;
+	quantity: string;
+	reason: string;
+	value: string;
+};
+
+export type TransferFormValues = {
+	fromLocationId: string;
+	lotId: string | null;
+	occurredOn: string;
+	quantity: string;
+	reason: string;
+	toLocationId: string;
+};
+
+const isoDate = /^\d{4}-\d{2}-\d{2}$/;
+
+const kindLabels: Record<StockMovementKind, string> = {
+	adjustment: "Ajuste",
+	opening: "Saldo de abertura",
+	reversal: "Estorno",
+	transferIn: "Transferência (entrada)",
+	transferOut: "Transferência (saída)",
+};
+
+export function movementKindLabel(kind: StockMovementKind): string {
+	return kindLabels[kind];
+}
+
+export function openingValueCents(
+	referenceCostCents: string | null,
+	micros: bigint
+): bigint {
+	if (referenceCostCents === null) {
+		return 0n;
+	}
+	const total = BigInt(referenceCostCents) * micros;
+	return (total * 2n + quantityScale) / (quantityScale * 2n);
+}
+
+const emptyToNull = (value: string) => {
+	const trimmed = value.trim();
+	return trimmed === "" ? null : trimmed;
+};
+
+export function locationFormErrors(
+	values: PlaceFormValues
+): Partial<Record<"name" | "notes", string>> {
+	const name = values.name.trim();
+	return {
+		...(name === "" ? { name: "Informe o nome do local" } : {}),
+		...(name.length > stockLimits.locationName.max
+			? { name: `Use até ${stockLimits.locationName.max} caracteres` }
+			: {}),
+		...(values.notes.trim().length > stockLimits.notes
+			? { notes: `Use até ${stockLimits.notes} caracteres` }
+			: {}),
+	};
+}
+
+export function lotFormErrors(
+	values: LotFormValues
+): Partial<Record<"label" | "notes", string>> {
+	const label = values.label.trim();
+	return {
+		...(label === "" ? { label: "Informe o nome do lote" } : {}),
+		...(label.length > stockLimits.lotLabel.max
+			? { label: `Use até ${stockLimits.lotLabel.max} caracteres` }
+			: {}),
+		...(values.notes.trim().length > stockLimits.notes
+			? { notes: `Use até ${stockLimits.notes} caracteres` }
+			: {}),
+	};
+}
+
+function quantityMicros(text: string): bigint | null {
+	const trimmed = text.trim();
+	return trimmed === "" ? null : parseQuantity(trimmed, displayPrecision.max);
+}
+
+function quantityError(text: string): string | null {
+	const trimmed = text.trim();
+	if (trimmed === "") {
+		return "Informe uma quantidade maior que zero";
+	}
+	const micros = parseQuantity(trimmed, displayPrecision.max);
+	if (micros === null) {
+		return parseQuantity(trimmed, 0) === null && trimmed.includes(",")
+			? `Use no máximo ${displayPrecision.max} casas decimais`
+			: "Use só número, com vírgula";
+	}
+	return micros > 0n ? null : "Informe uma quantidade maior que zero";
+}
+
+function dateError(value: string): string | null {
+	return isoDate.test(value) ? null : "Data inválida";
+}
+
+export type OpeningField = "locationId" | "occurredOn" | "quantity" | "value";
+
+export function openingFormErrors(
+	values: OpeningFormValues
+): Partial<Record<OpeningField, string>> {
+	const quantity = quantityError(values.quantity);
+	const occurredOn = dateError(values.occurredOn);
+	const value =
+		values.value.trim() === "" || parseMoney(values.value) === null
+			? "Informe o valor do estoque que entra"
+			: null;
+	return {
+		...(values.locationId === "" ? { locationId: "Escolha o local" } : {}),
+		...(quantity ? { quantity } : {}),
+		...(occurredOn ? { occurredOn } : {}),
+		...(value ? { value } : {}),
+	};
+}
+
+export type AdjustmentField = OpeningField | "reason";
+
+export function adjustmentFormErrors(
+	values: AdjustmentFormValues
+): Partial<Record<AdjustmentField, string>> {
+	const quantity = quantityError(values.quantity);
+	const occurredOn = dateError(values.occurredOn);
+	const value =
+		values.direction === "in" &&
+		(values.value.trim() === "" || parseMoney(values.value) === null)
+			? "Informe o valor que entra"
+			: null;
+	return {
+		...(values.locationId === "" ? { locationId: "Escolha o local" } : {}),
+		...(quantity ? { quantity } : {}),
+		...(occurredOn ? { occurredOn } : {}),
+		...(values.reason.trim() === ""
+			? { reason: "Diga o motivo do ajuste" }
+			: {}),
+		...(values.reason.trim().length > stockLimits.reason.max
+			? { reason: `Use até ${stockLimits.reason.max} caracteres` }
+			: {}),
+		...(value ? { value } : {}),
+	};
+}
+
+export function adjustmentFields(values: AdjustmentFormValues): {
+	kind: "adjustment";
+	locationId: string;
+	lotId: string | null;
+	occurredOn: string;
+	quantityMicros: string;
+	reason: string;
+	valueCents?: string;
+} {
+	const micros = quantityMicros(values.quantity) ?? 0n;
+	const cents = parseMoney(values.value);
+	return {
+		kind: "adjustment",
+		locationId: values.locationId,
+		lotId: values.lotId,
+		occurredOn: values.occurredOn,
+		quantityMicros: (values.direction === "in" ? micros : -micros).toString(),
+		reason: values.reason.trim(),
+		...(values.direction === "in" && cents !== null
+			? { valueCents: cents.toString() }
+			: {}),
+	};
+}
+
+export function openingFields(values: OpeningFormValues): {
+	kind: "opening";
+	locationId: string;
+	lotId: string | null;
+	occurredOn: string;
+	quantityMicros: string;
+	reason: null;
+	valueCents: string;
+} {
+	return {
+		kind: "opening",
+		locationId: values.locationId,
+		lotId: values.lotId,
+		occurredOn: values.occurredOn,
+		quantityMicros: (quantityMicros(values.quantity) ?? 0n).toString(),
+		reason: null,
+		valueCents: (parseMoney(values.value) ?? 0n).toString(),
+	};
+}
+
+export type TransferField =
+	| "fromLocationId"
+	| "occurredOn"
+	| "quantity"
+	| "toLocationId";
+
+export function transferFormErrors(
+	values: TransferFormValues
+): Partial<Record<TransferField, string>> {
+	const quantity = quantityError(values.quantity);
+	const occurredOn = dateError(values.occurredOn);
+	const sameLocation =
+		values.toLocationId !== "" && values.toLocationId === values.fromLocationId;
+	return {
+		...(values.fromLocationId === ""
+			? { fromLocationId: "Escolha o local de origem" }
+			: {}),
+		...(values.toLocationId === ""
+			? { toLocationId: "Escolha o local de destino" }
+			: {}),
+		...(sameLocation
+			? { toLocationId: "Escolha um local diferente da origem" }
+			: {}),
+		...(quantity ? { quantity } : {}),
+		...(occurredOn ? { occurredOn } : {}),
+	};
+}
+
+export function transferFields(values: TransferFormValues): {
+	fromLocationId: string;
+	lotId: string | null;
+	occurredOn: string;
+	quantityMicros: string;
+	reason: string | null;
+	toLocationId: string;
+} {
+	return {
+		fromLocationId: values.fromLocationId,
+		lotId: values.lotId,
+		occurredOn: values.occurredOn,
+		quantityMicros: (quantityMicros(values.quantity) ?? 0n).toString(),
+		reason: emptyToNull(values.reason),
+		toLocationId: values.toLocationId,
+	};
+}
+
+export function balanceQuantity(
+	item: Pick<
+		BalanceItemView,
+		"baseUnit" | "displayPrecision" | "quantityMicros"
+	>
+): string {
+	return `${formatQuantity(BigInt(item.quantityMicros), item.displayPrecision)} ${unitAbbreviation(item.baseUnit)}`;
+}
+
+export function balanceValue(valueCents: string): string {
+	return `R$ ${formatMoney(BigInt(valueCents))}`;
+}
+
+export function movementQuantity(
+	micros: string,
+	unit: BaseUnitCode,
+	precision: number
+): string {
+	const value = BigInt(micros);
+	const sign = value < 0n ? "-" : "+";
+	return `${sign}${formatQuantity(value < 0n ? -value : value, precision)} ${unitAbbreviation(unit)}`;
+}

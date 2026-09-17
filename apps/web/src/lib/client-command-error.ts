@@ -10,6 +10,8 @@ export type ClientCommandFailure = {
 
 export type CommandSubject =
 	| "cliente"
+	| "local"
+	| "lote"
 	| "material"
 	| "medição"
 	| "modelo"
@@ -19,6 +21,8 @@ export type CommandSubject =
 
 const staleMessages: Record<CommandSubject, string> = {
 	cliente: "Este cliente mudou em outra janela ou aparelho.",
+	local: "Este local mudou em outra janela ou aparelho.",
+	lote: "Este lote mudou em outra janela ou aparelho.",
 	material: "Este material mudou em outra janela ou aparelho.",
 	medição: "Esta medição mudou em outra janela ou aparelho.",
 	modelo: "Este modelo mudou em outra janela ou aparelho.",

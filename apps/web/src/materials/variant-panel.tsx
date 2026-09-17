@@ -13,15 +13,16 @@ import { Mono, Text } from "@costura-pro/ui/components/typography";
 import { Link } from "@tanstack/react-router";
 import { LayersIcon } from "lucide-react";
 
-import { type VariantView, variantSummary } from "@/lib/materials";
+import { type VariantWithBalance, variantSummary } from "@/lib/materials";
 import { photoUrl } from "@/lib/media";
+import { balanceQuantity, balanceValue } from "@/lib/stock";
 
 function VariantRow({
 	materialId,
 	variant,
 }: {
 	materialId: string;
-	variant: VariantView;
+	variant: VariantWithBalance;
 }) {
 	return (
 		<DataListRow>
@@ -60,6 +61,18 @@ function VariantRow({
 					<Text size="xs" tone="muted">
 						{variantSummary(variant)}
 					</Text>
+					<ButtonLink
+						className="h-auto min-h-11 justify-start px-0 text-left md:min-h-0"
+						render={
+							<Link
+								search={{ busca: variant.code ?? variant.name }}
+								to="/estoque/saldos"
+							/>
+						}
+						variant="link"
+					>
+						{`Saldo ${balanceQuantity(variant)} · ${balanceValue(variant.valueCents)}`}
+					</ButtonLink>
 					{variant.archivedAt ? <Badge tone="warning">arquivada</Badge> : null}
 				</div>
 			</div>
@@ -72,7 +85,7 @@ export function VariantPanel({
 	variants,
 }: {
 	materialId: string;
-	variants: readonly VariantView[];
+	variants: readonly VariantWithBalance[];
 }) {
 	const active = variants.filter((variant) => variant.archivedAt === null);
 	return (

@@ -44,7 +44,13 @@ export type VariantView = {
 	photo: VariantPhotoView | null;
 	referenceCostCents: string | null;
 	targetQuantityMicros: string | null;
+	tracksLots: boolean;
 	version: number;
+};
+
+export type VariantWithBalance = VariantView & {
+	quantityMicros: string;
+	valueCents: string;
 };
 
 export type MaterialFormValues = {
@@ -69,6 +75,7 @@ export type VariantFormValues = {
 	packagingQuantity: string;
 	referenceCost: string;
 	targetQuantity: string;
+	tracksLots: string;
 };
 
 export type VariantFields = {
@@ -81,6 +88,7 @@ export type VariantFields = {
 	photo: VariantPhotoView | null;
 	referenceCostCents: string | null;
 	targetQuantityMicros: string | null;
+	tracksLots: boolean;
 };
 
 export type MaterialField = "category" | "name" | "notes";
@@ -197,6 +205,7 @@ export function variantFormValues(variant: VariantView): VariantFormValues {
 						BigInt(variant.targetQuantityMicros),
 						variant.displayPrecision
 					),
+		tracksLots: variant.tracksLots ? "sim" : "nao",
 	};
 }
 
@@ -214,6 +223,7 @@ export function emptyVariantValues(
 		packagingQuantity: "",
 		referenceCost: "",
 		targetQuantity: "",
+		tracksLots: "nao",
 	};
 }
 
@@ -293,6 +303,7 @@ export function variantFields(
 		photo,
 		referenceCostCents: cost === null ? null : cost.toString(),
 		targetQuantityMicros: quantity(values.targetQuantity),
+		tracksLots: values.tracksLots === "sim",
 	};
 }
 

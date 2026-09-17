@@ -1,0 +1,186 @@
+import { Badge } from "@costura-pro/ui/components/badge";
+import { Button } from "@costura-pro/ui/components/button";
+import {
+	DataList,
+	DataListCell,
+	DataListHeader,
+	DataListHeaderCell,
+	DataListRow,
+} from "@costura-pro/ui/components/data-list";
+import { Skeleton } from "@costura-pro/ui/components/skeleton";
+import { Heading, Text } from "@costura-pro/ui/components/typography";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useState } from "react";
+import { toast } from "sonner";
+
+import {
+	type BalanceItemView,
+	balanceValue,
+	movementKindLabel,
+	movementQuantity,
+} from "@/lib/stock";
+import { useOpId } from "@/lib/use-op-id";
+import { client as api } from "@/utils/orpc";
+
+import {
+	failedStockCommand,
+	refreshStock,
+	variantBalanceQuery,
+	variantMovementsQuery,
+} from "./stock-queries";
+
+export function VariantBalancePanel({ item }: { item: BalanceItemView }) {
+	const queryClient = useQueryClient();
+	const { opIdFor } = useOpId();
+	const balance = useQuery(variantBalanceQuery(item.variantId));
+	const movements = useQuery(variantMovementsQuery(item.variantId));
+	const [busy, setBusy] = useState<string | null>(null);
+
+	const reverse = async (movementId: string, isTransfer: boolean) => {
+		setBusy(movementId);
+		try {
+			await api.stockMovements.reverse({
+				...(isTransfer ? { counterpartId: crypto.randomUUID() } : {}),
+				movementId: crypto.randomUUID(),
+				occurredOn: new Date().toISOString().slice(0, 10),
+				opId: opIdFor(`estorno:${movementId}`),
+				reason: "Lançamento corrigido pelo dono",
+				reversesMovementId: movementId,
+			});
+			await refreshStock(queryClient);
+			toast.success("Movimento estornado.");
+		} catch (error) {
+			const failed = await failedStockCommand(queryClient, error, "variante");
+			toast.error(failed.message);
+		} finally {
+			setBusy(null);
+		}
+	};
+
+	const points = balance.data?.points ?? [];
+	const history = movements.data?.items ?? [];
+
+	return (
+		<div className="flex flex-col gap-4 border-divider border-t p-4">
+			<section className="flex flex-col gap-2">
+				<Heading level={3} size="title">
+					Onde está
+				</Heading>
+				{balance.isPending ? <Skeleton className="h-10" /> : null}
+				{points.length === 0 && balance.isSuccess ? (
+					<Text tone="subtle">Sem saldo em nenhum local.</Text>
+				) : null}
+				{points.length > 0 ? (
+					<DataList
+						aria-label="Saldo por local"
+						columns="minmax(0,1fr) 8rem 8rem"
+					>
+						<DataListHeader>
+							<DataListHeaderCell>Local</DataListHeaderCell>
+							<DataListHeaderCell align="end">Quantidade</DataListHeaderCell>
+							<DataListHeaderCell align="end">Valor</DataListHeaderCell>
+						</DataListHeader>
+						{points.map((point) => (
+							<DataListRow key={`${point.locationId}:${point.lotId ?? "-"}`}>
+								<DataListCell label="Local">
+									<div className="flex flex-wrap items-center gap-2">
+										<Text>{point.locationName}</Text>
+										{point.lotLabel ? (
+											<Badge tone="neutral">{point.lotLabel}</Badge>
+										) : null}
+									</div>
+								</DataListCell>
+								<DataListCell align="end" label="Quantidade">
+									<Text inline numeric>
+										{movementQuantity(
+											point.quantityMicros,
+											item.baseUnit,
+											item.displayPrecision
+										).replace("+", "")}
+									</Text>
+								</DataListCell>
+								<DataListCell align="end" label="Valor">
+									<Text inline numeric>
+										{balanceValue(point.valueCents)}
+									</Text>
+								</DataListCell>
+							</DataListRow>
+						))}
+					</DataList>
+				) : null}
+			</section>
+			<section className="flex flex-col gap-2">
+				<Heading level={3} size="title">
+					Histórico
+				</Heading>
+				{movements.isPending ? <Skeleton className="h-10" /> : null}
+				{history.length === 0 && movements.isSuccess ? (
+					<Text tone="subtle">Nenhum movimento ainda.</Text>
+				) : null}
+				{history.length > 0 ? (
+					<DataList
+						aria-label="Movimentos"
+						columns="minmax(0,1fr) 8rem 8rem 7rem"
+					>
+						<DataListHeader>
+							<DataListHeaderCell>Movimento</DataListHeaderCell>
+							<DataListHeaderCell align="end">Quantidade</DataListHeaderCell>
+							<DataListHeaderCell align="end">Valor</DataListHeaderCell>
+							<DataListHeaderCell align="end">Ações</DataListHeaderCell>
+						</DataListHeader>
+						{history.map((movement) => (
+							<DataListRow key={movement.id}>
+								<DataListCell label="Movimento">
+									<div className="flex flex-col gap-1">
+										<div className="flex flex-wrap items-center gap-2">
+											<Text weight="semibold">
+												{movementKindLabel(movement.kind)}
+											</Text>
+											{movement.reversedByMovementId ? (
+												<Badge tone="warning">estornado</Badge>
+											) : null}
+										</div>
+										<Text size="sm" tone="subtle">
+											{movement.occurredOn} · {movement.locationName}
+											{movement.lotLabel ? ` · ${movement.lotLabel}` : ""}
+											{movement.reason ? ` · ${movement.reason}` : ""}
+										</Text>
+									</div>
+								</DataListCell>
+								<DataListCell align="end" label="Quantidade">
+									<Text inline numeric>
+										{movementQuantity(
+											movement.quantityMicros,
+											item.baseUnit,
+											item.displayPrecision
+										)}
+									</Text>
+								</DataListCell>
+								<DataListCell align="end" label="Valor">
+									<Text inline numeric>
+										{balanceValue(movement.valueCents)}
+									</Text>
+								</DataListCell>
+								<DataListCell align="end" label="Ações">
+									{movement.reversedByMovementId ||
+									movement.kind === "reversal" ? null : (
+										<Button
+											disabled={busy === movement.id}
+											onClick={() =>
+												reverse(movement.id, movement.transferId !== null)
+											}
+											size="sm"
+											variant="ghost"
+										>
+											Estornar
+										</Button>
+									)}
+								</DataListCell>
+							</DataListRow>
+						))}
+					</DataList>
+				) : null}
+			</section>
+		</div>
+	);
+}

@@ -45,6 +45,7 @@ export type StockBalanceListItem = {
 	materialId: string;
 	materialName: string;
 	quantityMicros: string;
+	referenceCostCents: string | null;
 	tracksLots: boolean;
 	valueCents: string;
 	variantId: string;
@@ -91,6 +92,7 @@ export function listStockBalances(
 			materialId: material.id,
 			materialName: material.name,
 			quantityMicros: sql<string>`sum(${stockBalance.quantityMicros})`,
+			referenceCostCents: materialVariant.referenceCostCents,
 			searchText: materialVariant.searchText,
 			tracksLots: materialVariant.tracksLots,
 			valueCents: sql<string>`sum(${stockBalance.valueCents})`,
@@ -116,6 +118,7 @@ export function listStockBalances(
 		items: rows.slice(0, stockPageSize).map(({ searchText, ...row }) => ({
 			...row,
 			quantityMicros: String(row.quantityMicros),
+			referenceCostCents: row.referenceCostCents?.toString() ?? null,
 			valueCents: String(row.valueCents),
 		})),
 		nextOffset: rows.length > stockPageSize ? offset + stockPageSize : null,

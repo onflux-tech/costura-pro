@@ -8,6 +8,10 @@ import {
 } from "@costura-pro/ui/components/alert";
 import { Button } from "@costura-pro/ui/components/button";
 import {
+	ChoiceChip,
+	ChoiceChips,
+} from "@costura-pro/ui/components/choice-chips";
+import {
 	Field,
 	FieldError,
 	FieldHint,
@@ -179,6 +183,30 @@ function IdentityPanel({
 						{editingUnit
 							? "Escolhida uma vez: todo saldo, reserva e custo nascem nela."
 							: "A unidade base não muda depois da criação."}
+					</FieldHint>
+				</Field>
+				<Field>
+					<FieldLabel requirement="required">Controle por lote</FieldLabel>
+					{editingUnit ? (
+						<ChoiceChips
+							aria-label="Controle por lote"
+							onValueChange={(value) => onChange("tracksLots", value)}
+							value={values.tracksLots}
+						>
+							<ChoiceChip value="nao">Saldo único</ChoiceChip>
+							<ChoiceChip value="sim">Por lote</ChoiceChip>
+						</ChoiceChips>
+					) : (
+						<Text>
+							{values.tracksLots === "sim"
+								? "Saldo controlado por lote"
+								: "Saldo único, sem lote"}
+						</Text>
+					)}
+					<FieldHint>
+						{editingUnit
+							? "Rolo ou aquisição identificável, como a unidade base: escolhido uma vez."
+							: "O controle por lote não muda depois da criação."}
 					</FieldHint>
 				</Field>
 				<Field>

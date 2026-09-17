@@ -18,6 +18,10 @@ export const sectionTabs = {
 			label: "Modelos de medidas",
 		},
 	],
+	estoque: [
+		{ href: "/estoque/saldos", id: "saldos", label: "Saldos" },
+		{ href: "/estoque/locais", id: "locais", label: "Locais" },
+	],
 } as const satisfies Record<string, readonly LinkTarget[]>;
 
 export type SectionHref =

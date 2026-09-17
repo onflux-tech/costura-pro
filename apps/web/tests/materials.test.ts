@@ -38,6 +38,7 @@ const variant: VariantView = {
 	photo: { photoHash: "a".repeat(64), thumbnailHash: "b".repeat(64) },
 	referenceCostCents: "1250",
 	targetQuantityMicros: "10000000",
+	tracksLots: false,
 	version: 3,
 };
 
@@ -97,6 +98,7 @@ describe("variant form", () => {
 			packagingQuantity: "50,00",
 			referenceCost: "12,50",
 			targetQuantity: "10,00",
+			tracksLots: "nao",
 		});
 	});
 
@@ -142,6 +144,7 @@ describe("variant form", () => {
 			photo: variant.photo,
 			referenceCostCents: "1250",
 			targetQuantityMicros: "10000000",
+			tracksLots: false,
 		});
 		expect(
 			variantFields(
