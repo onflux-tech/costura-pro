@@ -21,6 +21,10 @@
       "dependsOn": ["^check-types"],
       "outputs": ["dist/**"]
     },
+    "@costura-pro/ui#check-types": {
+      "dependsOn": ["^check-types"],
+      "outputs": []
+    },
     "dev": {
       "cache": false,
       "persistent": true
