@@ -22,6 +22,10 @@
       "types": "./dist/src/installation-state.d.ts",
       "default": "./src/installation-state.ts"
     },
+    "./material": {
+      "types": "./dist/src/material.d.ts",
+      "default": "./src/material.ts"
+    },
     "./measurement": {
       "types": "./dist/src/measurement.d.ts",
       "default": "./src/measurement.ts"
@@ -30,9 +34,17 @@
       "types": "./dist/src/media.d.ts",
       "default": "./src/media.ts"
     },
+    "./money": {
+      "types": "./dist/src/money.d.ts",
+      "default": "./src/money.ts"
+    },
     "./pricing": {
       "types": "./dist/src/pricing.d.ts",
       "default": "./src/pricing.ts"
+    },
+    "./quantity": {
+      "types": "./dist/src/quantity.d.ts",
+      "default": "./src/quantity.ts"
     },
     "./received-item": {
       "types": "./dist/src/received-item.d.ts",
@@ -45,6 +57,10 @@
     "./sign-in-lockout": {
       "types": "./dist/src/sign-in-lockout.d.ts",
       "default": "./src/sign-in-lockout.ts"
+    },
+    "./unit": {
+      "types": "./dist/src/unit.d.ts",
+      "default": "./src/unit.ts"
     }
   },
   "scripts": {
