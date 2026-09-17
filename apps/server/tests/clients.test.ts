@@ -288,8 +288,8 @@ describe("client commands", () => {
 
 const personalData = [
 	"Alencar",
-	"99815",
-	"98888",
+	"81998154402",
+	"81988887777",
 	"maria.alencar",
 	"Prefere barra",
 	"Aurora",
@@ -470,9 +470,13 @@ describe("client anonymization", () => {
 			.map((file) => readFileSync(file).toString("latin1"))
 			.join(" ");
 		expect(
-			["Alencar", "99815", "98888", "maria.alencar", "Mede "].filter((piece) =>
-				bytes.includes(piece)
-			)
+			[
+				"Alencar",
+				"81998154402",
+				"81988887777",
+				"maria.alencar",
+				"Mede ",
+			].filter((piece) => bytes.includes(piece))
 		).toEqual([]);
 		expect(measuredValue.test(bytes)).toBe(false);
 		expect(

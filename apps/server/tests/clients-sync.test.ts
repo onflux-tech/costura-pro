@@ -254,8 +254,8 @@ describe("creation edge cases over sync", () => {
 
 const personalData = [
 	"Alencar",
-	"99815",
-	"98888",
+	"81998154402",
+	"81988887777",
 	"maria.alencar",
 	"Prefere barra",
 	"Barra alta",
