@@ -10,6 +10,10 @@
       "types": "./dist/src/canonical-json.d.ts",
       "default": "./src/canonical-json.ts"
     },
+    "./client": {
+      "types": "./dist/src/client.d.ts",
+      "default": "./src/client.ts"
+    },
     "./credentials": {
       "types": "./dist/src/credentials.d.ts",
       "default": "./src/credentials.ts"
