@@ -9,6 +9,11 @@ import { appendAudit } from "../audit";
 import { commandMessages } from "../command-messages";
 import type { Context } from "../context";
 import { readInstallation } from "../installation/store";
+import {
+	listMeasurementsOfProfiles,
+	measurementSnapshot,
+	updateMeasurement,
+} from "../measurements/store";
 import { runDirectCommand } from "../operations";
 import { redactHistory } from "../redaction";
 import {
@@ -102,12 +107,41 @@ export async function anonymizeClient(
 						stamp
 					);
 				}
+				const measurements = listMeasurementsOfProfiles(
+					tx,
+					profiles.map((profile) => profile.id)
+				);
+				for (const row of measurements) {
+					const anonymized = updateMeasurement(
+						tx,
+						row,
+						{
+							archivedAt: row.archivedAt ?? now,
+							fields: row.fields.map((field) => ({ ...field, valueMm: null })),
+							notes: null,
+						},
+						stamp
+					);
+					redactHistory(
+						tx,
+						{
+							current: measurementSnapshot(anonymized),
+							id: anonymized.id,
+							type: "measurement",
+						},
+						stamp
+					);
+				}
 				appendAudit(
 					tx,
 					now,
 					{
 						access: context.access,
-						details: { clientId: next.id, profiles: profiles.length },
+						details: {
+							clientId: next.id,
+							measurements: measurements.length,
+							profiles: profiles.length,
+						},
 						outcome: "succeeded",
 						type: "client.anonymized",
 					},

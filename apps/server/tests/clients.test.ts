@@ -294,23 +294,55 @@ const personalData = [
 	"Prefere barra",
 	"Aurora",
 	"Infantil",
+	"Mede com",
+	"Mede sem",
+	"Mede de",
+	"Tereza",
 ];
 
-const redactableTables = [
-	"client",
-	"client_profile",
-	"change_log",
-	"sync_conflict",
-	"operation",
-	"audit_event",
-];
+const measuredValue = /"valueMm":\d/;
 
 function dump(server: TestServer): string {
-	return redactableTables
-		.map((table) =>
-			JSON.stringify(server.native().query(`SELECT * FROM ${table}`).all())
+	const native = server.native();
+	return native
+		.query<{ name: string }, []>(
+			"SELECT name FROM sqlite_master WHERE type = 'table'"
+		)
+		.all()
+		.map(({ name }) =>
+			native
+				.query<Record<string, unknown>, []>(`SELECT * FROM "${name}"`)
+				.values()
+				.flat()
+				.map(String)
+				.join(" ")
 		)
 		.join("\n");
+}
+
+async function recordSaia(owner: Owner, profileId: string, notes: string) {
+	const { items } = await owner.measurementTemplates.list({});
+	const saia = items.find((item) => item.name === "Saia");
+	if (!saia) {
+		throw new Error("Modelo Saia ausente");
+	}
+	const measurementId = crypto.randomUUID();
+	await owner.measurements.create({
+		fields: saia.fields.map((field, index) => ({
+			fieldId: field.id,
+			label: field.label,
+			valueMm: 701 + index,
+		})),
+		measurementId,
+		notes,
+		opId: newOpId(),
+		profileId,
+		takenOn: "2026-09-02",
+		templateId: saia.id,
+		templateName: saia.name,
+		templateVersion: saia.version,
+	});
+	return measurementId;
 }
 
 describe("client anonymization", () => {
@@ -332,6 +364,29 @@ describe("client anonymization", () => {
 			notes: "Infantil",
 			opId: newOpId(),
 			profileId: crypto.randomUUID(),
+		});
+		const tereza = await setup.owner.profiles.create({
+			clientId: id,
+			name: "Tereza Alencar",
+			opId: newOpId(),
+			profileId: crypto.randomUUID(),
+		});
+		await recordSaia(setup.owner, profile.id, "Mede com salto");
+		const archived = await recordSaia(
+			setup.owner,
+			profile.id,
+			"Mede sem cinta"
+		);
+		await setup.owner.measurements.archive({
+			baseVersion: 1,
+			measurementId: archived,
+			opId: newOpId(),
+		});
+		await recordSaia(setup.owner, tereza.id, "Mede de sapatilha");
+		await setup.owner.profiles.archive({
+			baseVersion: 1,
+			opId: newOpId(),
+			profileId: tereza.id,
 		});
 		return { ...setup, id, profileId: profile.id, updateInput };
 	}
@@ -362,6 +417,7 @@ describe("client anonymization", () => {
 	test("leaves no personal data in any table", async () => {
 		const { id, owner, profileId, server } = await anonymizable();
 		expect(dump(server)).toContain("Alencar");
+		expect(measuredValue.test(dump(server))).toBe(true);
 		const opId = newOpId();
 		const result = await owner.clients.anonymize({
 			baseVersion: 2,
@@ -371,6 +427,7 @@ describe("client anonymization", () => {
 		expect(result.version).toBe(3);
 		const text = dump(server);
 		expect(personalData.filter((piece) => text.includes(piece))).toEqual([]);
+		expect(measuredValue.test(text)).toBe(false);
 		const read = await owner.clients.get({ clientId: id });
 		expect(read.client).toMatchObject({
 			address: null,
@@ -382,6 +439,7 @@ describe("client anonymization", () => {
 		expect(read.client.anonymizedAt).not.toBeNull();
 		expect(read.client.archivedAt).not.toBeNull();
 		expect(read.profiles.map((profile) => profile.name)).toEqual([
+			"Perfil anonimizado",
 			"Perfil anonimizado",
 		]);
 		const hashes = server
@@ -403,17 +461,18 @@ describe("client anonymization", () => {
 				)
 				.all()
 				.map((row) => JSON.parse(row.details))
-		).toEqual([{ clientId: id, profiles: 1 }]);
+		).toEqual([{ clientId: id, measurements: 3, profiles: 2 }]);
 		const bytes = ["atelier.db", "atelier.db-wal"]
 			.map((file) => join(server.directory, file))
 			.filter((file) => existsSync(file))
 			.map((file) => readFileSync(file).toString("latin1"))
 			.join(" ");
 		expect(
-			["Alencar", "99815", "98888", "maria.alencar"].filter((piece) =>
+			["Alencar", "99815", "98888", "maria.alencar", "Mede "].filter((piece) =>
 				bytes.includes(piece)
 			)
 		).toEqual([]);
+		expect(measuredValue.test(bytes)).toBe(false);
 		expect(
 			await owner.clients.anonymize({ baseVersion: 2, clientId: id, opId })
 		).toEqual(result);

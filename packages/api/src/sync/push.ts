@@ -13,10 +13,15 @@ import type { DeviceRow } from "../devices/store";
 import type { Executor } from "../executor";
 import { type InstallationRow, readInstallation } from "../installation/store";
 import { operationHash } from "../operations";
-import { isRedacted, redactedOpHash } from "../redaction";
+import {
+	isRedacted,
+	personalDataAggregates,
+	redactedOpHash,
+} from "../redaction";
 import { opIdSchema } from "../schemas";
 import {
 	type CreateDefinition,
+	commandNamed,
 	findCommand,
 	type LoadedAggregate,
 } from "./commands";
@@ -295,9 +300,15 @@ function withholdsHash(
 		return false;
 	}
 	return (
-		outcome.reason === "aggregateAnonymized" ||
-		(outcome.reason === "aggregateNotFound" &&
-			findCommand(op.command, op.aggregateType)?.kind === "create")
+		outcome.reason === "aggregateAnonymized" || isPersonalCommand(op.command)
+	);
+}
+
+function isPersonalCommand(command: string): boolean {
+	const definition = commandNamed(command);
+	return (
+		definition !== undefined &&
+		personalDataAggregates.has(definition.aggregateType)
 	);
 }
 
@@ -378,7 +389,8 @@ function pushInvalid(
 				opId,
 			},
 			note,
-			(tx) => quarantine(tx, arrival, note, "invalidEnvelope")
+			(tx) => quarantine(tx, arrival, note, "invalidEnvelope"),
+			() => isPersonalCommand(command)
 		),
 	};
 }

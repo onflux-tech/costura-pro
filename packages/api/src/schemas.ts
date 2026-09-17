@@ -25,3 +25,14 @@ export const atelierNameSchema = z
 	.max(atelierNameLength.max);
 
 export const deviceNameSchema = z.string().trim().min(1).max(60);
+
+const blankToNull = (value: string | null) =>
+	value === null || value === "" ? null : value;
+
+export const optionalText = (max: number) =>
+	z.string().trim().max(max).nullable().transform(blankToNull);
+
+export const hasChange = (patch: Record<string, unknown>) =>
+	Object.values(patch).some((value) => value !== undefined);
+
+export const emptyPayload = z.object({});

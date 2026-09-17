@@ -15,6 +15,7 @@ import {
 	readInstallation,
 	updateInstallation,
 } from "../installation/store";
+import { measurementCommands } from "../measurements/commands";
 import { atelierNameSchema, deviceNameSchema } from "../schemas";
 
 export type CommandExecutor = Executor & Pick<Database, "select">;
@@ -28,6 +29,7 @@ export type LoadedAggregate = {
 };
 
 export type CreateRejection = {
+	message?: string;
 	reason: "aggregateAnonymized" | "aggregateNotFound";
 };
 
@@ -108,6 +110,7 @@ const setAtelierName: UpdateDefinition = {
 
 export const syncCommands = {
 	...clientCommands,
+	...measurementCommands,
 	"device.rename": renameDevice,
 	"installation.setAtelierName": setAtelierName,
 } satisfies Record<string, CommandDefinition>;
@@ -121,15 +124,16 @@ type NamesOf<K extends CommandDefinition["kind"]> = {
 export type CreateCommandName = NamesOf<"create">;
 export type UpdateCommandName = NamesOf<"update">;
 
+export function commandNamed(command: string): CommandDefinition | undefined {
+	return Object.hasOwn(syncCommands, command)
+		? syncCommands[command as keyof Commands]
+		: undefined;
+}
+
 export function findCommand(
 	command: string,
 	aggregateType: string
 ): CommandDefinition | undefined {
-	const definition: CommandDefinition | undefined = Object.hasOwn(
-		syncCommands,
-		command
-	)
-		? syncCommands[command as keyof Commands]
-		: undefined;
+	const definition = commandNamed(command);
 	return definition?.aggregateType === aggregateType ? definition : undefined;
 }

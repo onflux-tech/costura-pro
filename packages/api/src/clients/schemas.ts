@@ -5,11 +5,7 @@ import {
 } from "@costura-pro/domain/client";
 import z from "zod";
 
-const blankToNull = (value: string | null) =>
-	value === null || value === "" ? null : value;
-
-const optionalText = (max: number) =>
-	z.string().trim().max(max).nullable().transform(blankToNull);
+import { hasChange, optionalText } from "../schemas";
 
 const phoneField = z
 	.string()
@@ -39,9 +35,6 @@ const nameField = z
 const kindField = z.enum(clientKinds);
 
 const notesField = optionalText(clientFieldLength.notes);
-
-const hasChange = (patch: Record<string, unknown>) =>
-	Object.values(patch).some((value) => value !== undefined);
 
 export const clientCreatePayload = z.object({
 	address: optionalText(clientFieldLength.address).default(null),
@@ -74,5 +67,3 @@ export const profileCreatePayload = z.object({
 export const profilePatchPayload = z
 	.object({ name: nameField.optional(), notes: notesField.optional() })
 	.refine(hasChange, "Nada para alterar");
-
-export const emptyPayload = z.object({});

@@ -261,16 +261,11 @@ const personalData = [
 	"Barra alta",
 	"Infantil",
 	"Helena",
+	"Mede ",
+	"Tereza",
 ];
 
-const redactableTables = [
-	"client",
-	"client_profile",
-	"change_log",
-	"sync_conflict",
-	"operation",
-	"audit_event",
-];
+const measuredValue = /"valueMm":\d/;
 
 function opHash(server: TestServer, opId: string) {
 	return server
@@ -282,12 +277,25 @@ function opHash(server: TestServer, opId: string) {
 }
 
 function leakedData(server: TestServer): string[] {
-	const text = redactableTables
-		.map((table) =>
-			JSON.stringify(server.native().query(`SELECT * FROM ${table}`).all())
+	const native = server.native();
+	const text = native
+		.query<{ name: string }, []>(
+			"SELECT name FROM sqlite_master WHERE type = 'table'"
+		)
+		.all()
+		.map(({ name }) =>
+			native
+				.query<Record<string, unknown>, []>(`SELECT * FROM "${name}"`)
+				.values()
+				.flat()
+				.map(String)
+				.join(" ")
 		)
 		.join(" ");
-	return personalData.filter((piece) => text.includes(piece));
+	return [
+		...personalData.filter((piece) => text.includes(piece)),
+		...(measuredValue.test(text) ? ["valueMm"] : []),
+	];
 }
 
 describe("anonymization over sync", () => {
@@ -449,5 +457,165 @@ describe("anonymization over sync", () => {
 			)
 			.all();
 		expect(lateHashes.filter((row) => row.op_hash !== "redacted")).toEqual([]);
+	});
+});
+
+describe("anonymization over sync with measurements", () => {
+	test("redacts measurements, their conflicts and every late measurement operation", async () => {
+		const setup = await syncSetup(servers);
+		const clientId = crypto.randomUUID();
+		const helena = crypto.randomUUID();
+		const tereza = crypto.randomUUID();
+		const { items } = await setup.local.measurementTemplates.list({});
+		const saia = items.find((item) => item.name === "Saia");
+		if (!saia) {
+			throw new Error("Modelo Saia ausente");
+		}
+		const measurement = (id: string, profileId: string, notes: string) =>
+			envelope(setup, {
+				aggregateId: id,
+				aggregateType: "measurement",
+				baseVersion: null,
+				command: "measurement.create",
+				payload: {
+					fields: saia.fields.map((field, index) => ({
+						fieldId: field.id,
+						label: field.label,
+						valueMm: 701 + index,
+					})),
+					notes,
+					profileId,
+					takenOn: "2026-09-02",
+					templateId: saia.id,
+					templateName: saia.name,
+					templateVersion: saia.version,
+				},
+			});
+		const onMeasurement = (
+			id: string,
+			command: string,
+			baseVersion: number,
+			payload: unknown
+		) =>
+			envelope(setup, {
+				aggregateId: id,
+				aggregateType: "measurement",
+				baseVersion,
+				command,
+				payload,
+			});
+		const onProfile = (id: string, command: string, payload: unknown) =>
+			envelope(setup, {
+				aggregateId: id,
+				aggregateType: "profile",
+				baseVersion: command === "profile.create" ? null : 1,
+				command,
+				payload,
+			});
+		const active = crypto.randomUUID();
+		const archived = crypto.randomUUID();
+		const ofArchivedProfile = crypto.randomUUID();
+		await setup.sync.sync.push({
+			operations: [
+				createClient(setup, clientId, maria),
+				onProfile(helena, "profile.create", {
+					clientId,
+					name: "Helena Alencar",
+				}),
+				onProfile(tereza, "profile.create", {
+					clientId,
+					name: "Tereza Alencar",
+				}),
+				onProfile(tereza, "profile.archive", {}),
+				measurement(active, helena, "Mede com salto"),
+				measurement(archived, helena, "Mede sem cinta"),
+				onMeasurement(archived, "measurement.archive", 1, {}),
+				measurement(ofArchivedProfile, tereza, "Mede de sapatilha"),
+				onMeasurement(active, "measurement.update", 1, {
+					notes: "Mede com salto alto",
+				}),
+				onMeasurement(ofArchivedProfile, "measurement.update", 1, {
+					notes: "Mede de sapatilha nova",
+				}),
+			],
+		});
+		const stale = await setup.sync.sync.push({
+			operations: [
+				onMeasurement(active, "measurement.update", 1, {
+					notes: "Mede com salto fino",
+				}),
+				onMeasurement(ofArchivedProfile, "measurement.update", 1, {
+					notes: "Mede de sapatilha velha",
+				}),
+			],
+		});
+		expect(stale.conflicts).toHaveLength(2);
+		await setup.local.sync.resolve({
+			choice: "merge",
+			conflictId: stale.conflicts[1]?.conflictId ?? "",
+			opId: newOpId(),
+			reason: "Sapatilha da Tereza Alencar",
+			values: { notes: "Mede de sapatilha rosa" },
+		});
+		expect(leakedData(setup.server)).not.toEqual([]);
+
+		await setup.local.clients.anonymize({
+			baseVersion: 1,
+			clientId,
+			opId: newOpId(),
+		});
+
+		expect(leakedData(setup.server)).toEqual([]);
+		const pulled = await setup.sync.sync.pull({
+			cursor: "0",
+			epoch: setup.epoch,
+		});
+		const pulledText = JSON.stringify(pulled.changes);
+		expect(measuredValue.test(pulledText)).toBe(false);
+		expect(pulledText.includes("Mede")).toBe(false);
+		const conflictCount = () =>
+			setup.server
+				.native()
+				.query<{ total: number }, []>(
+					"SELECT count(*) AS total FROM sync_conflict"
+				)
+				.get()?.total;
+		const conflictsBefore = conflictCount();
+		const orphan = crypto.randomUUID();
+		const later = await setup.sync.sync.push({
+			operations: [
+				onMeasurement(active, "measurement.update", 1, {
+					notes: "Mede com salto",
+				}),
+				onMeasurement(active, "measurement.update", 3, {
+					notes: "Mede com salto",
+				}),
+				onMeasurement(archived, "measurement.unarchive", 3, {}),
+				measurement(crypto.randomUUID(), helena, "Mede com salto"),
+				measurement(orphan, helena, "Mede com salto"),
+				onMeasurement(orphan, "measurement.update", 1, {
+					notes: "Mede com salto",
+				}),
+			],
+		});
+		expect(later.quarantined.map((item) => item.reason)).toEqual([
+			"aggregateAnonymized",
+			"aggregateAnonymized",
+			"aggregateAnonymized",
+			"aggregateAnonymized",
+			"aggregateAnonymized",
+			"aggregateNotFound",
+		]);
+		expect(conflictCount()).toBe(conflictsBefore);
+		expect(leakedData(setup.server)).toEqual([]);
+		expect(
+			setup.server
+				.native()
+				.query<{ op_hash: string }, []>(
+					"SELECT op_hash FROM operation WHERE aggregate_type = 'measurement' OR command LIKE 'measurement.%'"
+				)
+				.all()
+				.filter((row) => row.op_hash !== "redacted")
+		).toEqual([]);
 	});
 });

@@ -57,7 +57,9 @@ export function runCreateCommand(
 				});
 				if (typeof created !== "number") {
 					throw created.reason === "aggregateNotFound"
-						? new ORPCError("NOT_FOUND", { message: messages.notFound })
+						? new ORPCError("NOT_FOUND", {
+								message: created.message ?? messages.notFound,
+							})
 						: new ORPCError("PRECONDITION_FAILED", {
 								message: messages.anonymized,
 							});

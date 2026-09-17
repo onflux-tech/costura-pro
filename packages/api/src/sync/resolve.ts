@@ -11,6 +11,7 @@ import type { ChangeStamp } from "../devices/store";
 import type { Executor } from "../executor";
 import { readInstallation } from "../installation/store";
 import { runDirectCommand } from "../operations";
+import { redactedOpHash } from "../redaction";
 import { opIdSchema } from "../schemas";
 import { findCommand, type LoadedAggregate } from "./commands";
 import type { OperationOutcome, QuarantineNote } from "./push";
@@ -176,21 +177,25 @@ export function pendingSync(context: Pick<Context, "db">) {
 		.select({
 			command: operation.command,
 			occurredAt: operation.occurredAt,
+			opHash: operation.opHash,
 			opId: operation.opId,
 			receivedAt: operation.receivedAt,
 			result: operation.result,
 		})
 		.from(operation)
 		.where(eq(operation.status, "quarantined"))
-		.all()
-		.map((row) => ({
-			command: row.command,
-			occurredAt: row.occurredAt?.toISOString() ?? null,
-			opId: row.opId,
-			reason: (row.result as Extract<OperationOutcome, { kind: "quarantined" }>)
-				.reason,
-			receivedAt: row.receivedAt,
-		}));
+		.all();
+	const redactedQuarantines = new Set(
+		stored.filter((row) => row.opHash === redactedOpHash).map((row) => row.opId)
+	);
+	const storedItems = stored.map((row) => ({
+		command: row.command,
+		occurredAt: row.occurredAt?.toISOString() ?? null,
+		opId: row.opId,
+		reason: (row.result as Extract<OperationOutcome, { kind: "quarantined" }>)
+			.reason,
+		receivedAt: row.receivedAt,
+	}));
 	const reused = context.db
 		.select({ details: auditEvent.details, receivedAt: auditEvent.occurredAt })
 		.from(auditEvent)
@@ -210,8 +215,9 @@ export function pendingSync(context: Pick<Context, "db">) {
 				reason: "opIdReused" as const,
 				receivedAt,
 			};
-		});
-	const quarantined = [...stored, ...reused]
+		})
+		.filter((item) => !redactedQuarantines.has(item.opId));
+	const quarantined = [...storedItems, ...reused]
 		.sort((a, b) => a.receivedAt.getTime() - b.receivedAt.getTime())
 		.map(({ receivedAt: _receivedAt, ...item }) => item);
 	return { conflicts, quarantined };

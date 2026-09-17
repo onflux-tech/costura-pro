@@ -13,6 +13,12 @@ import type { Executor } from "./executor";
 
 export const redactedOpHash = "redacted";
 
+export const personalDataAggregates: ReadonlySet<AggregateType> = new Set([
+	"client",
+	"measurement",
+	"profile",
+]);
+
 export const redactionReason = commandMessages.clientAnonymized;
 
 export type RedactionStamp = { epoch: string; now: Date; opId: string };
