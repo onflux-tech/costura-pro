@@ -14,10 +14,21 @@ export function parseMoney(input: string): bigint | null {
 	return cents > maxExactInteger ? null : cents;
 }
 
+function partsOf(cents: bigint): [string, string, string] {
+	const absolute = cents < 0n ? -cents : cents;
+	return [
+		cents < 0n ? "-" : "",
+		(absolute / 100n).toString(),
+		(absolute % 100n).toString().padStart(2, "0"),
+	];
+}
+
 export function formatMoney(cents: bigint): string {
-	return `${(cents / 100n).toString().replace(thousands, ".")},${(cents % 100n).toString().padStart(2, "0")}`;
+	const [sign, whole, fraction] = partsOf(cents);
+	return `${sign}${whole.replace(thousands, ".")},${fraction}`;
 }
 
 export function formatMoneyInput(cents: bigint): string {
-	return `${cents / 100n},${(cents % 100n).toString().padStart(2, "0")}`;
+	const [sign, whole, fraction] = partsOf(cents);
+	return `${sign}${whole},${fraction}`;
 }

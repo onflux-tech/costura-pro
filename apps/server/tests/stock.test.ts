@@ -879,6 +879,35 @@ describe("stock balances", () => {
 		expect(filtered.items[0]).toMatchObject({ quantityMicros: "5000000" });
 	});
 
+	test("lists an active variant that has no movement yet", async () => {
+		const { owner } = await ownerSetup();
+		const { variantId } = await createVariant(owner);
+		const { items } = await owner.stockBalances.list({});
+		expect(items).toHaveLength(1);
+		expect(items[0]).toMatchObject({
+			quantityMicros: "0",
+			referenceCostCents: "1250",
+			valueCents: "0",
+			variantId,
+		});
+	});
+
+	test("omits an archived variant and filters an empty one out by location", async () => {
+		const { owner } = await ownerSetup();
+		const { locationId } = await stockedVariant(owner);
+		const empty = await createVariant(owner, { code: "GR-VD" });
+		expect((await owner.stockBalances.list({})).items).toHaveLength(2);
+		expect((await owner.stockBalances.list({ locationId })).items).toHaveLength(
+			1
+		);
+		await owner.materialVariants.archive({
+			baseVersion: 1,
+			opId: newOpId(),
+			variantId: empty.variantId,
+		});
+		expect((await owner.stockBalances.list({})).items).toHaveLength(1);
+	});
+
 	test("finds a variant by material name and by variant code", async () => {
 		const { owner } = await ownerSetup();
 		await stockedVariant(owner);

@@ -19,9 +19,10 @@ function fractionOf(micros: bigint, precision: number): string {
 }
 
 function decimalOf(micros: bigint, precision: number): [string, string] {
+	const absolute = micros < 0n ? -micros : micros;
 	return [
-		(micros / quantityScale).toString(),
-		fractionOf(micros, Math.min(Math.max(precision, 0), 6)),
+		`${micros < 0n ? "-" : ""}${absolute / quantityScale}`,
+		fractionOf(absolute, Math.min(Math.max(precision, 0), 6)),
 	];
 }
 

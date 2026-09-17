@@ -338,12 +338,20 @@ export function balanceValue(valueCents: string): string {
 	return `R$ ${formatMoney(BigInt(valueCents))}`;
 }
 
+export function pointQuantity(
+	micros: string,
+	unit: BaseUnitCode,
+	precision: number
+): string {
+	return `${formatQuantity(BigInt(micros), precision)} ${unitAbbreviation(unit)}`;
+}
+
 export function movementQuantity(
 	micros: string,
 	unit: BaseUnitCode,
 	precision: number
 ): string {
 	const value = BigInt(micros);
-	const sign = value < 0n ? "-" : "+";
-	return `${sign}${formatQuantity(value < 0n ? -value : value, precision)} ${unitAbbreviation(unit)}`;
+	const sign = value < 0n ? "" : "+";
+	return `${sign}${pointQuantity(micros, unit, precision)}`;
 }

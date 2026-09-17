@@ -4,10 +4,13 @@ import {
 	type AdjustmentFormValues,
 	adjustmentFields,
 	adjustmentFormErrors,
+	balanceValue,
 	locationFormErrors,
 	lotFormErrors,
 	movementKindLabel,
+	movementQuantity,
 	openingValueCents,
+	pointQuantity,
 	type TransferFormValues,
 	transferFormErrors,
 } from "../src/lib/stock";
@@ -143,5 +146,14 @@ describe("movementKindLabel", () => {
 		expect(movementKindLabel("transferOut")).toBe("Transferência (saída)");
 		expect(movementKindLabel("transferIn")).toBe("Transferência (entrada)");
 		expect(movementKindLabel("reversal")).toBe("Estorno");
+	});
+});
+
+describe("balanceValue and movementQuantity", () => {
+	test("keep the sign readable on a negative movement", () => {
+		expect(balanceValue("-1250")).toBe("R$ -12,50");
+		expect(movementQuantity("-1000000", "m", 2)).toBe("-1,00 m");
+		expect(movementQuantity("1000000", "m", 2)).toBe("+1,00 m");
+		expect(pointQuantity("-1000000", "m", 2)).toBe("-1,00 m");
 	});
 });

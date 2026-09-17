@@ -49,3 +49,10 @@ test("formatQuantityInput drops the grouping", () => {
 test("maxExactInteger is two to the fifty third minus one", () => {
 	expect(maxExactInteger).toBe(9_007_199_254_740_991n);
 });
+
+test("formatQuantity keeps the sign in front of a negative balance", () => {
+	expect(formatQuantity(-1_500_000n, 2)).toBe("-1,50");
+	expect(formatQuantity(-500_000n, 2)).toBe("-0,50");
+	expect(formatQuantity(-2_000_000n, 0)).toBe("-2");
+	expect(formatQuantityInput(-1_500_000n, 2)).toBe("-1,50");
+});

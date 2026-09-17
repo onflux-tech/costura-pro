@@ -18,6 +18,7 @@ import {
 	balanceValue,
 	movementKindLabel,
 	movementQuantity,
+	pointQuantity,
 } from "@/lib/stock";
 import { useOpId } from "@/lib/use-op-id";
 import { client as api } from "@/utils/orpc";
@@ -92,11 +93,11 @@ export function VariantBalancePanel({ item }: { item: BalanceItemView }) {
 								</DataListCell>
 								<DataListCell align="end" label="Quantidade">
 									<Text inline numeric>
-										{movementQuantity(
+										{pointQuantity(
 											point.quantityMicros,
 											item.baseUnit,
 											item.displayPrecision
-										).replace("+", "")}
+										)}
 									</Text>
 								</DataListCell>
 								<DataListCell align="end" label="Valor">

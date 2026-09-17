@@ -73,10 +73,12 @@ export function listStockBalances(
 	db: Reader,
 	{ locationId, offset, query }: z.output<typeof stockBalanceListInput>
 ): { items: StockBalanceListItem[]; nextOffset: number | null } {
+	const byLocation =
+		locationId === undefined
+			? undefined
+			: eq(stockBalance.locationId, locationId);
 	const filters = [
-		...(locationId === undefined
-			? []
-			: [eq(stockBalance.locationId, locationId)]),
+		isNull(materialVariant.archivedAt),
 		...searchTokens(query ?? "").map((token) =>
 			or(
 				sql`${material.searchText} LIKE ${containing(token)} ESCAPE '\\'`,
@@ -84,32 +86,41 @@ export function listStockBalances(
 			)
 		),
 	];
-	const rows = db
+	const summed = db
 		.select({
 			baseUnit: materialVariant.baseUnit,
 			code: materialVariant.code,
 			displayPrecision: materialVariant.displayPrecision,
 			materialId: material.id,
 			materialName: material.name,
-			quantityMicros: sql<string>`sum(${stockBalance.quantityMicros})`,
+			quantityMicros: sql<string>`coalesce(sum(${stockBalance.quantityMicros}), 0)`,
 			referenceCostCents: materialVariant.referenceCostCents,
 			searchText: materialVariant.searchText,
 			tracksLots: materialVariant.tracksLots,
-			valueCents: sql<string>`sum(${stockBalance.valueCents})`,
+			valueCents: sql<string>`coalesce(sum(${stockBalance.valueCents}), 0)`,
 			variantId: materialVariant.id,
 			variantName: materialVariant.name,
 		})
-		.from(stockBalance)
-		.innerJoin(materialVariant, eq(materialVariant.id, stockBalance.variantId))
+		.from(materialVariant)
 		.innerJoin(material, eq(material.id, materialVariant.materialId))
-		.where(and(...filters))
-		.groupBy(materialVariant.id)
-		.having(
-			or(
-				ne(sql`sum(${stockBalance.quantityMicros})`, 0),
-				ne(sql`sum(${stockBalance.valueCents})`, 0)
-			)
+		.leftJoin(
+			stockBalance,
+			byLocation
+				? and(eq(stockBalance.variantId, materialVariant.id), byLocation)
+				: eq(stockBalance.variantId, materialVariant.id)
 		)
+		.where(and(...filters))
+		.groupBy(materialVariant.id);
+	const rows = (
+		byLocation
+			? summed.having(
+					or(
+						ne(sql`coalesce(sum(${stockBalance.quantityMicros}), 0)`, 0),
+						ne(sql`coalesce(sum(${stockBalance.valueCents}), 0)`, 0)
+					)
+				)
+			: summed
+	)
 		.orderBy(asc(materialVariant.searchText), asc(materialVariant.id))
 		.limit(stockPageSize + 1)
 		.offset(offset)

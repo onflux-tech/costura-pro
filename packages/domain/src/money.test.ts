@@ -30,3 +30,12 @@ test("formatMoneyInput drops the grouping", () => {
 	expect(formatMoneyInput(123_456n)).toBe("1234,56");
 	expect(formatMoneyInput(1200n)).toBe("12,00");
 });
+
+test("formatMoney keeps the sign in front of a negative amount", () => {
+	expect(formatMoney(-1250n)).toBe("-12,50");
+	expect(formatMoney(-2500n)).toBe("-25,00");
+	expect(formatMoney(-5n)).toBe("-0,05");
+	expect(formatMoney(-123_456_789n)).toBe("-1.234.567,89");
+	expect(formatMoneyInput(-1250n)).toBe("-12,50");
+	expect(formatMoneyInput(-5n)).toBe("-0,05");
+});

@@ -156,7 +156,7 @@ export function BalanceListPage() {
 						<Text tone="subtle">
 							{busca || local
 								? "Ajuste a busca ou o filtro de local."
-								: "Crie um local e lance o saldo de abertura pela ficha do material."}
+								: "Cadastre uma variante de material e ela aparece aqui para receber o saldo de abertura."}
 						</Text>
 						<ButtonLink render={<Link to="/catalogo-produtos/materiais" />}>
 							Ir para materiais
