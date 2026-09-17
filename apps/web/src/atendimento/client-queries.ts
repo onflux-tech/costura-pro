@@ -20,6 +20,7 @@ export async function refreshClients(queryClient: QueryClient) {
 	await Promise.all([
 		queryClient.invalidateQueries({ queryKey: orpc.clients.key() }),
 		queryClient.invalidateQueries({ queryKey: orpc.measurements.key() }),
+		queryClient.invalidateQueries({ queryKey: orpc.receivedItems.key() }),
 	]);
 }
 

@@ -2,6 +2,7 @@ import { expect, test } from "bun:test";
 import { ORPCError } from "@orpc/client";
 
 import { commandErrorMessage, sessionEnded } from "../src/lib/command-error";
+import { PhotoCaptureError } from "../src/lib/photo-capture-error";
 
 test("só UNAUTHORIZED do servidor encerra a sessão na tela", () => {
 	expect(sessionEnded(new ORPCError("UNAUTHORIZED"))).toBe(true);
@@ -49,4 +50,9 @@ test("códigos conhecidos e desconhecidos", () => {
 	expect(commandErrorMessage(new TypeError("Failed to fetch"))).toBe(
 		"Não foi possível falar com o servidor. Tente de novo."
 	);
+});
+
+test("upload recusado por sessão também encerra a sessão", () => {
+	expect(sessionEnded(new PhotoCaptureError("upload", 401))).toBe(true);
+	expect(sessionEnded(new PhotoCaptureError("upload", 503))).toBe(false);
 });

@@ -1,5 +1,7 @@
 import { ORPCError } from "@orpc/client";
 
+import { PhotoCaptureError } from "./photo-capture-error";
+
 const messages: Partial<Record<string, string>> = {
 	CONFLICT: "A instalação mudou. Confira e envie de novo.",
 	FORBIDDEN: "Disponível só no acesso local do PC.",
@@ -9,7 +11,10 @@ const messages: Partial<Record<string, string>> = {
 };
 
 export function sessionEnded(error: unknown): boolean {
-	return error instanceof ORPCError && error.code === "UNAUTHORIZED";
+	return (
+		(error instanceof ORPCError && error.code === "UNAUTHORIZED") ||
+		(error instanceof PhotoCaptureError && error.status === 401)
+	);
 }
 
 function hasIssues(data: unknown) {

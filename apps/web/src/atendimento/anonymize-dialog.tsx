@@ -71,9 +71,10 @@ export function AnonymizeDialog({
 			<AlertDialogContent>
 				<AlertDialogTitle>Anonimizar {client.name}?</AlertDialogTitle>
 				<AlertDialogDescription>
-					Nome, telefones, e-mail, endereço, notas, nomes dos perfis e os
-					valores e notas das medições serão apagados de todos os registros. Não
-					dá para desfazer.
+					Nome, telefones, e-mail, endereço, notas, nomes dos perfis, os valores
+					e notas das medições e a descrição, os acessórios, as observações e as
+					fotos das peças recebidas serão apagados de todos os registros. Não dá
+					para desfazer.
 				</AlertDialogDescription>
 				<Checkbox
 					checked={understood}

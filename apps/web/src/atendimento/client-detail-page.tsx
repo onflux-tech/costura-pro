@@ -34,6 +34,8 @@ import { AnonymizeDialog } from "./anonymize-dialog";
 import { clientDetailQuery } from "./client-queries";
 import { MeasurementPanel } from "./measurement-panel";
 import { ProfilePanel } from "./profile-panel";
+import { ReceivedItemPanel } from "./received-item-panel";
+import { receivedItemsQuery } from "./received-item-queries";
 import { useClientAction } from "./use-client-action";
 
 type ContactFields = {
@@ -62,6 +64,7 @@ export function ClientDetailPage({
 }) {
 	const detail = useQuery(clientDetailQuery(clientId));
 	const measurements = useQuery(clientMeasurementsQuery(clientId));
+	const receivedItems = useQuery(receivedItemsQuery(clientId));
 	const status = useQuery(statusQuery);
 	const action = useClientAction();
 	const [anonymizing, setAnonymizing] = useState(false);
@@ -134,6 +137,16 @@ export function ClientDetailPage({
 								render={
 									<Link
 										params={{ clienteId: clientId }}
+										to="/atendimento/clientes/$clienteId/pecas/nova"
+									/>
+								}
+							>
+								Receber peça
+							</ButtonLink>
+							<ButtonLink
+								render={
+									<Link
+										params={{ clienteId: clientId }}
 										to="/atendimento/clientes/$clienteId/editar"
 									/>
 								}
@@ -175,7 +188,14 @@ export function ClientDetailPage({
 					)}
 				</PanelContent>
 			</Panel>
-			<div className="grid grid-cols-[minmax(0,1fr)] gap-4 md:grid-cols-[18rem_minmax(0,1fr)] md:items-start">
+			<div className="grid grid-cols-[minmax(0,1fr)] gap-4 md:grid-cols-[18rem_minmax(0,1fr)] md:items-start xl:grid-cols-[18rem_minmax(0,1fr)_18rem]">
+				<ReceivedItemPanel
+					className="md:col-span-2 xl:col-span-1 xl:col-start-3 xl:row-start-1"
+					clientId={clientId}
+					items={receivedItems.data?.items}
+					loadFailed={receivedItems.isError}
+					onRetry={() => receivedItems.refetch()}
+				/>
 				<ProfilePanel
 					clientId={clientId}
 					profiles={profiles}
