@@ -24,43 +24,69 @@ jobs:
       VARLOCK_TELEMETRY_DISABLED: "true"
     steps:
       - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+
+      - name: Scope
+        id: scope
+        shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BEFORE_SHA: ${{ github.event.before }}
+          FORCED: ${{ github.event.forced }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.sha }}
+        run: node scripts/ci-scope.mjs
+
+      - name: Harness
+        run: node scripts/harness.mjs check
+
+      - name: Docs
+        run: node scripts/docs-check.mjs
+
+      - name: Harness, hooks and docs tests
+        run: node --test "scripts/*.test.mjs" ".claude/hooks/*.test.mjs"
 
       # O contexto runner não existe no env do job; o caminho do banco vem por GITHUB_ENV.
       - name: Database path
+        if: steps.scope.outputs.full == 'true'
         shell: bash
         run: echo "DATABASE_FILE=$RUNNER_TEMP/costura-pro-ci.db" >> "$GITHUB_ENV"
 
       - uses: pnpm/action-setup@v6
+        if: steps.scope.outputs.full == 'true'
 
       - uses: actions/setup-node@v7
+        if: steps.scope.outputs.full == 'true'
         with:
           node-version: 24
           cache: pnpm
 
       - uses: oven-sh/setup-bun@v2
+        if: steps.scope.outputs.full == 'true'
         with:
           bun-version: 1.4.2
 
       - name: Install
+        if: steps.scope.outputs.full == 'true'
         run: pnpm install --frozen-lockfile
 
-      - name: Harness
-        run: pnpm harness:check
-
-      - name: Docs
-        run: pnpm docs:check
-
-      - name: Harness, hooks and docs tests
-        run: pnpm harness:test
-
       - name: Lint and format
+        if: steps.scope.outputs.full == 'true'
         run: pnpm check
 
       - name: Types
+        if: steps.scope.outputs.full == 'true'
         run: pnpm check-types
 
       - name: Tests
+        if: steps.scope.outputs.full == 'true'
         run: pnpm test
 
       - name: Build
+        if: steps.scope.outputs.full == 'true'
         run: pnpm build
