@@ -50,6 +50,13 @@
       "when": 1789649827275,
       "tag": "0006_received_items_media",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "6",
+      "when": 1789673702191,
+      "tag": "0007_materials_variants",
+      "breakpoints": true
     }
   ]
 }
