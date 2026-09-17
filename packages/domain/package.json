@@ -26,9 +26,17 @@
       "types": "./dist/src/measurement.d.ts",
       "default": "./src/measurement.ts"
     },
+    "./media": {
+      "types": "./dist/src/media.d.ts",
+      "default": "./src/media.ts"
+    },
     "./pricing": {
       "types": "./dist/src/pricing.d.ts",
       "default": "./src/pricing.ts"
+    },
+    "./received-item": {
+      "types": "./dist/src/received-item.d.ts",
+      "default": "./src/received-item.ts"
     },
     "./reservation": {
       "types": "./dist/src/reservation.d.ts",
