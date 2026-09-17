@@ -21,4 +21,7 @@ Não altere arquivos, banco, Git ou serviços; não rode testes ou navegador. En
 - Literal de estado repetido em duas camadas (quais passos existem antes do dono) é contrato; prefira a função do domínio (`isBeforeOwner`) usada pelos dois lados a um teste que compare cópias.
 - Mensagem de erro comparada pela web é contrato: servidor e web importam o mesmo módulo (`packages/api/src/command-messages.ts`), e teste da web que monta o próprio `ORPCError` com texto copiado não liga as camadas.
 - Domínio de id é contrato entre caminhos: se as procedures diretas e as rotas da web exigem UUID, o push precisa recusar criação com id fora desse formato.
+- Limite de payload da API (campos ativos de um modelo) é contrato com a tela: o editor precisa travar e explicar o mesmo teto, senão o dono recebe só "Confira os campos".
+- Schema de patch validado de novo no `keepLocal` precisa aceitar a própria saída (`null` de texto vazio); confira com um conflito de patch que limpa um campo.
+- Filtro que esconde repetições em `sync.pending` só vale para quarentena com hash redigido: com hash real, toda repetição com `opIdReused` é conteúdo diferente e precisa aparecer.
 '''
