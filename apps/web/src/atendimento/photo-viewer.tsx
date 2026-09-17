@@ -11,12 +11,9 @@ import {
 import { Photo } from "@costura-pro/ui/components/photo";
 import { ChevronLeftIcon, ChevronRightIcon } from "lucide-react";
 import type { RefObject } from "react";
+import { photoUrl } from "@/lib/media";
 
-import {
-	photoAlt,
-	photoUrl,
-	type ReceivedItemPhotoView,
-} from "@/lib/received-items";
+import { photoAlt, type ReceivedItemPhotoView } from "@/lib/received-items";
 
 export type ViewerPhoto = ReceivedItemPhotoView & {
 	downloadable?: boolean;

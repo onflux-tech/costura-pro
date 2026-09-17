@@ -302,10 +302,6 @@ export function uploadFailure(status: number | null): {
 		: { message: "Não foi possível enviar a foto.", retry: true };
 }
 
-export function photoUrl(hash: string, download = false): string {
-	return download ? `/api/media/${hash}?download=1` : `/api/media/${hash}`;
-}
-
 export function photoAlt(
 	index: number,
 	total: number,

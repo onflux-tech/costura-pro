@@ -8,6 +8,11 @@ export const sectionTabs = {
 	],
 	catalogo: [
 		{
+			href: "/catalogo-produtos/materiais",
+			id: "materiais",
+			label: "Materiais",
+		},
+		{
 			href: "/catalogo-produtos/modelos-de-medidas",
 			id: "modelos-de-medidas",
 			label: "Modelos de medidas",

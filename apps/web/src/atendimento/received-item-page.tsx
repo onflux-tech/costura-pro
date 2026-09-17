@@ -25,7 +25,8 @@ import { useRef, useState } from "react";
 
 import { clientCommandFailure } from "@/lib/client-command-error";
 import { blockingError, formatDay, localDay } from "@/lib/measurements";
-import { conditionLabels, photoAlt, photoUrl } from "@/lib/received-items";
+import { photoUrl } from "@/lib/media";
+import { conditionLabels, photoAlt } from "@/lib/received-items";
 import { usePageHeader } from "@/shell/page-header";
 import { client as api } from "@/utils/orpc";
 

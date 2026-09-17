@@ -15,11 +15,11 @@ import { Link } from "@tanstack/react-router";
 import { PackageIcon } from "lucide-react";
 import { useState } from "react";
 
+import { photoUrl } from "@/lib/media";
 import {
 	custodyGroups,
 	custodyLine,
 	itemSummary,
-	photoUrl,
 	type ReceivedItemView,
 } from "@/lib/received-items";
 

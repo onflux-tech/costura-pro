@@ -10,17 +10,21 @@ export type ClientCommandFailure = {
 
 export type CommandSubject =
 	| "cliente"
+	| "material"
 	| "medição"
 	| "modelo"
 	| "peça"
-	| "perfil";
+	| "perfil"
+	| "variante";
 
 const staleMessages: Record<CommandSubject, string> = {
 	cliente: "Este cliente mudou em outra janela ou aparelho.",
+	material: "Este material mudou em outra janela ou aparelho.",
 	medição: "Esta medição mudou em outra janela ou aparelho.",
 	modelo: "Este modelo mudou em outra janela ou aparelho.",
 	perfil: "Este perfil mudou em outra janela ou aparelho.",
 	peça: "Esta peça mudou em outra janela ou aparelho.",
+	variante: "Esta variante mudou em outra janela ou aparelho.",
 };
 
 export function clientCommandFailure(

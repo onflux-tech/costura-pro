@@ -2,6 +2,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { sessionEnded } from "@/lib/command-error";
+import { photoUrl } from "@/lib/media";
 import {
 	type PreparedPhoto,
 	preparePhoto,
@@ -11,7 +12,6 @@ import { captureFailure } from "@/lib/photo-capture-error";
 import {
 	acceptedFiles,
 	excessNotice,
-	photoUrl,
 	type ReceivedItemPhotoView,
 	repeatedNotice,
 	withoutRepeatedPhotos,
