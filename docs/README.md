@@ -36,6 +36,7 @@ Documentação curada e versionada do Costura Pro. Todo doc novo em `docs/` entr
 | [0013](adr/0013-contrato-minimo-de-sincronizacao.md) | Contrato mínimo de sincronização por operação, cursor e epoch |
 | [0014](adr/0014-anonimizacao-redige-historico-de-sincronizacao.md) | Anonimização redige o histórico de sincronização |
 | [0015](adr/0015-medidas-em-milimetros-e-medicao-autocontida.md) | Medidas em milímetros inteiros e medição autocontida |
+| [0016](adr/0016-midia-enderecada-por-conteudo.md) | Mídia endereçada por conteúdo, com rota própria e apagamento sem promessa forense |
 
 ## Agentes e harness
 
@@ -52,3 +53,4 @@ Quando uma área acumular conhecimento que não cabe numa rule, o `/entrega-fech
 |---|---|
 | [Design system](areas/design-system.md) | Antes de criar ou mudar tela, componente, token ou navegação: tokens, componentes, testes que travam as regras e o passo a passo de uma tela nova |
 | [Agregados](areas/agregados.md) | Antes de criar ou mudar um agregado de negócio: tabela, store, snapshot, comandos nos dois caminhos, decisões por caminho, redação de dado pessoal e testes mínimos |
+| [Mídia](areas/midia.md) | Antes de mexer em foto, upload, arquivo em disco, coleta ou remoção de mídia: parâmetros de captura, rotas, gravação atômica, coleta, anonimização e armadilhas |

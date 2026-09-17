@@ -23,8 +23,16 @@ _Evitar_: ficha de medidas, medida atual
 Cópia das medidas aprovadas para um subitem de OS. Atualizar o perfil não altera o snapshot.
 
 **Peça recebida**:
-Bem do cliente sob custódia do ateliê para ajuste ou reparo. Não é estoque nem faturamento.
+Bem do cliente pagador sob custódia do ateliê para ajuste ou reparo, com estado na recepção (bom, com avaria ou desgastada), quantidade em unidades e data de devolução quando volta ao cliente. Não é estoque nem faturamento.
 _Evitar_: produto em estoque
+
+**Foto de condição**:
+Foto de uma peça recebida, otimizada no aparelho, com miniatura e legenda opcional, que registra o estado em que a peça chegou.
+_Evitar_: anexo
+
+**Mídia**:
+Arquivo de imagem guardado pelo servidor e identificado pelo SHA-256 do próprio conteúdo; o registro que usa a foto guarda só esse hash.
+_Evitar_: upload, anexo
 
 **Comprovante de recepção**:
 Documento não fiscal que descreve as peças recebidas, seu estado e a data de entrada.
@@ -47,7 +55,7 @@ _Evitar_: envio automático, notificação ao cliente
 Retirada de um cadastro das telas do dia a dia sem apagar sua identidade nem seu histórico.
 
 **Anonimização**:
-Remoção irreversível dos dados pessoais de um cliente sem OS ou saldo aberto, de seus perfis e dos valores e notas das medições, inclusive das cópias guardadas no histórico de sincronização, preservando o histórico financeiro sem identificá-lo.
+Remoção irreversível dos dados pessoais de um cliente sem OS ou saldo aberto, de seus perfis, dos valores e notas das medições e da descrição, dos acessórios, das observações e das fotos das peças recebidas, inclusive das cópias guardadas no histórico de sincronização e dos arquivos de mídia, preservando o histórico financeiro sem identificá-lo.
 _Evitar_: exclusão
 
 ## Catálogo e preço

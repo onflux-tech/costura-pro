@@ -1,10 +1,10 @@
 # Agregados
 
-**Files:** `packages/api/src/sync/commands.ts`, `packages/api/src/update-command.ts`, `packages/api/src/aggregate-command.ts`, `packages/api/src/command-messages.ts`, `packages/api/src/redaction.ts`, `packages/api/src/operations.ts`, `packages/api/src/change-log.ts`, `packages/api/src/sync/push.ts`, `packages/api/src/sync/resolve.ts`, `packages/api/src/clients/`, `packages/api/src/measurements/`, `packages/db/src/schema/clients.ts`, `packages/db/src/schema/measurements.ts`, `packages/db/src/migrations/0004_change_log_redaction.sql`, `apps/server/src/app.ts`, `apps/server/tests/clients.test.ts`, `apps/server/tests/clients-sync.test.ts`, `apps/server/tests/measurements.test.ts`, `apps/server/tests/measurements-sync.test.ts`
+**Files:** `packages/api/src/sync/commands.ts`, `packages/api/src/update-command.ts`, `packages/api/src/aggregate-command.ts`, `packages/api/src/command-messages.ts`, `packages/api/src/redaction.ts`, `packages/api/src/operations.ts`, `packages/api/src/change-log.ts`, `packages/api/src/sync/push.ts`, `packages/api/src/sync/resolve.ts`, `packages/api/src/clients/`, `packages/api/src/measurements/`, `packages/api/src/received-items/`, `packages/api/src/clients/anonymize.ts`, `packages/db/src/schema/clients.ts`, `packages/db/src/schema/measurements.ts`, `packages/db/src/schema/received-items.ts`, `packages/db/src/migrations/0004_change_log_redaction.sql`, `apps/server/src/app.ts`, `apps/server/tests/clients.test.ts`, `apps/server/tests/clients-sync.test.ts`, `apps/server/tests/measurements.test.ts`, `apps/server/tests/measurements-sync.test.ts`, `apps/server/tests/received-items.test.ts`, `apps/server/tests/received-items-sync.test.ts`, `apps/server/tests/received-items-anonymization.test.ts`
 
 ## Overview
 
-Todo agregado de negócio nasce pronto para o sync ([ROADMAP, premissas](../ROADMAP.md#premissas)): UUID gerado no dispositivo ([ADR 0009](../adr/0009-uuid-e-codigo-documental-por-dispositivo.md)), `version` e comandos idempotentes por `opId` que conferem a versão-base. Cada comando é definido uma única vez e chega ao servidor por dois caminhos com a mesma regra: a procedure oRPC tipada, usada pela web online, e o `sync.push`, usado pela outbox ([DEC-76](../PRD.md#96-plataforma-acesso-e-operação), [ADR 0013](../adr/0013-contrato-minimo-de-sincronizacao.md)). Cliente e perfil de usuário da peça foram os primeiros; modelo de medidas e medição seguiram o mesmo padrão ([ADR 0015](../adr/0015-medidas-em-milimetros-e-medicao-autocontida.md)).
+Todo agregado de negócio nasce pronto para o sync ([ROADMAP, premissas](../ROADMAP.md#premissas)): UUID gerado no dispositivo ([ADR 0009](../adr/0009-uuid-e-codigo-documental-por-dispositivo.md)), `version` e comandos idempotentes por `opId` que conferem a versão-base. Cada comando é definido uma única vez e chega ao servidor por dois caminhos com a mesma regra: a procedure oRPC tipada, usada pela web online, e o `sync.push`, usado pela outbox ([DEC-76](../PRD.md#96-plataforma-acesso-e-operação), [ADR 0013](../adr/0013-contrato-minimo-de-sincronizacao.md)). Cliente e perfil de usuário da peça foram os primeiros; modelo de medidas e medição seguiram o mesmo padrão ([ADR 0015](../adr/0015-medidas-em-milimetros-e-medicao-autocontida.md)), e depois a peça recebida, cujas fotos são hashes de [mídia](midia.md) no próprio payload ([ADR 0016](../adr/0016-midia-enderecada-por-conteudo.md)).
 
 ## Peças de um agregado
 
@@ -38,7 +38,7 @@ Quando a regra dependeria de consultar o banco para validar o payload (um campo 
 
 ## Redação de dado pessoal
 
-Agregado com dado pessoal entra em `personalDataAggregates` (`packages/api/src/redaction.ts`: `client`, `profile` e `measurement`) e participa da anonimização ([ADR 0014](../adr/0014-anonimizacao-redige-historico-de-sincronizacao.md)) chamando `redactHistory` na transação, depois de gravar a versão anonimizada:
+Agregado com dado pessoal entra em `personalDataAggregates` (`packages/api/src/redaction.ts`: `client`, `profile`, `measurement` e `receivedItem`) e participa da anonimização ([ADR 0014](../adr/0014-anonimizacao-redige-historico-de-sincronizacao.md)) chamando `redactHistory` na transação, depois de gravar a versão anonimizada:
 
 | Onde o dado fica | O que a redação faz |
 |---|---|
@@ -51,7 +51,7 @@ Agregado com dado pessoal entra em `personalDataAggregates` (`packages/api/src/r
 | Pendências | `sync.pending` não repete como `opIdReused` a operação que já está em quarentena na `operation` com hash redigido (com hash real, a repetição listada é conteúdo diferente e continua aparecendo) |
 | Arquivo do banco | `secure_delete` ligado na abertura e `truncateWal` depois da anonimização, com teste que procura os valores nos bytes do `.db` e do `-wal` |
 
-Agregado filho com dado pessoal (medições dos perfis) é anonimizado na mesma transação do cliente, arquivados inclusive, e redigido com o próprio tipo.
+Agregado filho com dado pessoal (medições dos perfis, peças recebidas do cliente) é anonimizado na mesma transação do cliente, arquivados inclusive, e redigido com o próprio tipo. Quando o agregado referencia arquivos de mídia, a anonimização junta os hashes antes de redigir (linha viva, `change_log` e todos os conflitos), apaga as linhas de `media_file` sem outra referência dentro da transação, antes do `truncateWal`, e remove os arquivos depois do commit, com os hashes guardados numa variável do handler e nunca no resultado gravado da operação ([mídia](midia.md)). A função de anonimização recebe `mediaRoot` do contexto. Agregado novo que guarda hash de foto entra no conjunto `referencedHashes` de `packages/api/src/media/store.ts` (linha viva e conflitos abertos do próprio tipo, nos valores locais e atuais); fora dele, a coleta apaga a foto confirmada depois de 24 h.
 
 ## Testes mínimos de um agregado novo
 

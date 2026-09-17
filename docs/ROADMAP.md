@@ -203,9 +203,15 @@ Cada spike responde uma pergunta que muda o desenho antes de construir em cima d
   - modelos em Catálogo > Modelos de medidas, com editor que salva uma versão e campos só desativados ([DEC-80](PRD.md#92-atendimento-e-agenda)); ficha com perfis e medidas lado a lado, registrar, corrigir e histórico com diferença para a medição anterior ([DEC-81](PRD.md#92-atendimento-e-agenda));
   - anonimização zera valores e notas das medições e redige o histórico delas; toda quarentena de comando com dado pessoal guarda o hash redigido ([DEC-82](PRD.md#96-plataforma-acesso-e-operação));
   - verificado em navegador real no build de produção com banco novo: 1440, 768, 390 e 320 px sem rolagem horizontal, editor por teclado com foco seguindo o campo movido, conflito entre janelas no editor e na correção, resposta perdida seguida de nova tentativa sem duplicar, toque a 390 px e anonimização.
+- Peça recebida com fotos e infraestrutura de mídia (2026-09-17), descritas em [mídia](areas/midia.md) e [agregados](areas/agregados.md):
+  - peça recebida filha do cliente com estado, quantidade inteira, acessórios, observações, devolução prevista, devolução registrada e desfeita, correção e arquivamento, pelos dois caminhos ([DEC-83 a DEC-89](PRD.md#92-atendimento-e-agenda));
+  - até 12 fotos de condição otimizadas no aparelho em WebP, ou JPEG onde o navegador não gera WebP, com 2048 px, miniatura de 512 px e legenda, enviadas por `PUT /api/media/<hash>` e gravadas de forma atômica ao lado do banco ([DEC-90, DEC-91](PRD.md#96-plataforma-acesso-e-operação), [ADR 0016](adr/0016-midia-enderecada-por-conteudo.md));
+  - coleta de mídia sem referência com carência de 24 h, e anonimização que redige as peças e remove linhas e arquivos de mídia do cliente ([DEC-92](PRD.md#96-plataforma-acesso-e-operação));
+  - painel "Peças em custódia" na ficha, páginas de receber, ver e corrigir, visualizador com Baixar e `Photo`, `PhotoTile` e `FilePickerButton` no design system;
+  - verificado em navegador real no build de produção com banco novo: fotos grandes reais gravadas em WebP, reserva JPEG, HEIC, limite de 12, foto repetida, falha de envio com nova tentativa, resposta perdida sem duplicar, refetch com falha sem perder o formulário, visualizador por teclado, devolução, conflito entre janelas, 320 a 1440 px, toque em Câmera e Galeria e anonimização com as fotos respondendo 404 e os arquivos fora do disco.
 
 **Pendente:**
-- Peça recebida com fotos e a infraestrutura de mídia (RF-ATD-05, 07, RF-ACE-14).
+- Catálogo de serviços, materiais e produtos com variantes, estoque, compras, contas financeiras, etiquetas com leitura por câmera (S3) e busca global.
 
 **Critério de saída:**
 - Parte de cadastro de estoque do CA-03 com teste de integração: variantes, local, lote, compra em embalagem, conversão e custo de aquisição com frete e desconto.
