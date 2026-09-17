@@ -38,6 +38,7 @@ Documentação curada e versionada do Costura Pro. Todo doc novo em `docs/` entr
 | [0015](adr/0015-medidas-em-milimetros-e-medicao-autocontida.md) | Medidas em milímetros inteiros e medição autocontida |
 | [0016](adr/0016-midia-enderecada-por-conteudo.md) | Mídia endereçada por conteúdo, com rota própria e apagamento sem promessa forense |
 | [0017](adr/0017-dinheiro-e-quantidade-em-coluna-inteira.md) | Dinheiro e quantidade em coluna inteira do SQLite e inteiro em string no JSON |
+| [0018](adr/0018-movimento-append-only-com-projecao-de-saldo.md) | Movimento de estoque append-only com projeção de saldo na mesma transação |
 
 ## Agentes e harness
 
@@ -56,3 +57,4 @@ Quando uma área acumular conhecimento que não cabe numa rule, o `/entrega-fech
 | [Agregados](areas/agregados.md) | Antes de criar ou mudar um agregado de negócio: tabela, store, snapshot, comandos nos dois caminhos, decisões por caminho, redação de dado pessoal e testes mínimos |
 | [Mídia](areas/midia.md) | Antes de mexer em foto, upload, arquivo em disco, coleta ou remoção de mídia: parâmetros de captura, rotas, gravação atômica, coleta, anonimização e armadilhas |
 | [Catálogo de materiais](areas/catalogo.md) | Antes de mexer em material, variante, unidade base, dinheiro ou quantidade: como o valor inteiro atravessa as camadas, campos dos dois agregados, foto da variante e armadilhas |
+| [Estoque](areas/estoque.md) | Antes de mexer em local, lote, movimento ou saldo: agregados e projeção, tipos de movimento, valor de saída pela média, lote por variante, estorno e armadilhas |

@@ -4,7 +4,7 @@
 
 ## Overview
 
-Todo agregado de negócio nasce pronto para o sync ([ROADMAP, premissas](../ROADMAP.md#premissas)): UUID gerado no dispositivo ([ADR 0009](../adr/0009-uuid-e-codigo-documental-por-dispositivo.md)), `version` e comandos idempotentes por `opId` que conferem a versão-base. Cada comando é definido uma única vez e chega ao servidor por dois caminhos com a mesma regra: a procedure oRPC tipada, usada pela web online, e o `sync.push`, usado pela outbox ([DEC-76](../PRD.md#96-plataforma-acesso-e-operação), [ADR 0013](../adr/0013-contrato-minimo-de-sincronizacao.md)). Cliente e perfil de usuário da peça foram os primeiros; modelo de medidas e medição seguiram o mesmo padrão ([ADR 0015](../adr/0015-medidas-em-milimetros-e-medicao-autocontida.md)), e depois a peça recebida, cujas fotos são hashes de [mídia](midia.md) no próprio payload ([ADR 0016](../adr/0016-midia-enderecada-por-conteudo.md)). O material base e a variante de material foram os primeiros com dinheiro e quantidade, e fixaram como valor inteiro atravessa as camadas ([catálogo de materiais](catalogo.md), [ADR 0017](../adr/0017-dinheiro-e-quantidade-em-coluna-inteira.md)); são também os primeiros agregados sem dado pessoal, então `anonymized` deles é sempre `false` e nada neles é redigido.
+Todo agregado de negócio nasce pronto para o sync ([ROADMAP, premissas](../ROADMAP.md#premissas)): UUID gerado no dispositivo ([ADR 0009](../adr/0009-uuid-e-codigo-documental-por-dispositivo.md)), `version` e comandos idempotentes por `opId` que conferem a versão-base. Cada comando é definido uma única vez e chega ao servidor por dois caminhos com a mesma regra: a procedure oRPC tipada, usada pela web online, e o `sync.push`, usado pela outbox ([DEC-76](../PRD.md#96-plataforma-acesso-e-operação), [ADR 0013](../adr/0013-contrato-minimo-de-sincronizacao.md)). Cliente e perfil de usuário da peça foram os primeiros; modelo de medidas e medição seguiram o mesmo padrão ([ADR 0015](../adr/0015-medidas-em-milimetros-e-medicao-autocontida.md)), e depois a peça recebida, cujas fotos são hashes de [mídia](midia.md) no próprio payload ([ADR 0016](../adr/0016-midia-enderecada-por-conteudo.md)). O material base e a variante de material foram os primeiros com dinheiro e quantidade, e fixaram como valor inteiro atravessa as camadas ([catálogo de materiais](catalogo.md), [ADR 0017](../adr/0017-dinheiro-e-quantidade-em-coluna-inteira.md)); são também os primeiros agregados sem dado pessoal, então `anonymized` deles é sempre `false` e nada neles é redigido. O local de estoque e o lote seguiram o mesmo molde; o movimento de estoque foi o primeiro agregado **append-only**, que só tem criação ([estoque](estoque.md), [ADR 0018](../adr/0018-movimento-append-only-com-projecao-de-saldo.md)).
 
 ## Peças de um agregado
 
@@ -18,6 +18,14 @@ Todo agregado de negócio nasce pronto para o sync ([ROADMAP, premissas](../ROAD
 | Procedures | `packages/api/src/<area>/router.ts` | `runCreateCommand` e `runUpdateCommand` com o nome do comando tipado (`CreateCommandName`, `UpdateCommandName`) e as mensagens de não encontrado e anonimizado, tiradas de `commandMessages`, que a web também importa |
 | Tipo do agregado | `packages/api/src/change-log.ts` | Novo valor em `AggregateType` |
 | Dados iniciais | Função `ensure<Area>` chamada no `createApp` (`apps/server/src/app.ts`) | Opcional. Cria o conteúdo inicial numa transação só quando a tabela está vazia, com snapshot no `change_log` e `opId` nulo. O boot passa a exigir a migration da tabela |
+
+## Agregado append-only e projeção
+
+Agregado cujo registro é um fato consumado (movimento de estoque, e depois movimento financeiro) não tem `updateCommands`, nem `updated_at`, nem `archived_at`: nasce com `version` 1, entra só em `CreateCommandName`, e uma trigger na migration recusa `UPDATE` e `DELETE`. Correção é um fato novo que referencia o antigo, e não uma edição.
+
+Projeção derivada desse agregado (o saldo) **não** é agregado: fica fora de `AggregateType` e do `change_log`, é escrita por um único caminho na mesma transação do insert, e o dispositivo que sincroniza a recalcula a partir dos fatos que recebe no pull. O teste da área compara a soma dos fatos com a projeção, porque é essa igualdade que a projeção promete.
+
+Recusa que precisa consultar o banco cabe no `create` de um `CreateDefinition`, que devolve `CreateRejection`; `updateCommands` não tem esse caminho. `CreateRejection` aceita `aggregateNotFound`, `aggregateAnonymized` e `aggregateExists`, e essa última é o que a procedure direta traduz em `CONFLICT` e o push grava como quarentena do mesmo nome.
 
 ## Decisão por caminho
 

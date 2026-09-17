@@ -70,3 +70,6 @@ paths:
 - Sentinela de filtro não divide espaço de nomes com dado do dono: categoria é texto livre, então a lista usa `*`, `-` e prefixo `c:` no seletor e dois parâmetros na URL (`categoria`, `semCategoria`).
 - Consulta ligada direto ao campo digitado (aviso de código repetido) dispara um pedido por tecla: espere 400 ms num estado próprio, como a busca da lista.
 - No browser-harness, clique em coordenada abaixo da dobra não faz nada e não levanta erro: chame `DOM.scrollIntoViewIfNeeded` antes de ler a caixa do nó, senão o roteiro "passa" sem ter clicado. `Input.insertText` também escreve a partir do caret, então limpe o campo antes de preencher de novo.
+- Lista que parte da tabela de saldo só mostra o que já tem movimento, então a variante nova não aparece para receber o primeiro lançamento: a lista de saldos parte de `material_variant` com `LEFT JOIN`, e o filtro por local é que corta as zeradas.
+- `formatMoney` e `formatQuantity` só passaram a tratar sinal quando o estoque trouxe valor negativo; tela nova que exibe valor com sinal confere o negativo, senão sai `R$ -12,-50`.
+

@@ -207,10 +207,24 @@ Texto curto que agrupa materiais base na lista e no filtro, escolhido entre suge
 Fator que transforma a embalagem comprada, como rolo, cone ou pacote, na unidade base. A variante guarda a embalagem padrão (rótulo e quanto ela tem na unidade base) e a compra copia esse fator, podendo sobrescrever.
 
 **Local de estoque**:
-Armário, prateleira ou área com saldo físico próprio.
+Armário, prateleira ou área com saldo físico próprio. Lista plana, sem hierarquia.
+
+**Movimento de estoque**:
+Registro imutável de uma variação de saldo num ponto, com quantidade e valor assinados. Nasce por saldo de abertura, ajuste, transferência ou estorno, e nunca é editado nem apagado.
+_Evitar_: lançamento, entrada e saída
+
+**Ponto de saldo**:
+Combinação de variante de material, local e, quando a variante controla lote, lote. É a unidade em que o saldo é somado e de onde sai o custo médio de uma saída.
+
+**Transferência**:
+Movimentação entre dois locais, gravada como um par de movimentos ligados: a saída na origem e a entrada no destino, com a mesma quantidade e o mesmo valor.
+
+**Estorno de movimento**:
+Movimento contrário que referencia um movimento lançado por engano e o marca como estornado. Cada movimento aceita um só; estornar uma perna de transferência estorna a outra junto.
+_Evitar_: cancelamento, exclusão
 
 **Lote**:
-Rolo ou aquisição identificável de uma variante de material, com quantidade e custo de entrada próprios. Uso opcional por variante.
+Rolo ou aquisição identificável de uma variante de material, com quantidade própria e custo de entrada derivado dos movimentos que entraram nele. O uso é opcional por variante, declarado na criação da variante e imutável depois dela.
 
 **Saldo de abertura**:
 Quantidade ou valor existente no dia da instalação, registrado como movimento auditado que não é compra nem faturamento.

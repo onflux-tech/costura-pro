@@ -216,8 +216,15 @@ Cada spike responde uma pergunta que muda o desenho antes de construir em cima d
   - telas em Catálogo > Materiais (lista com busca que acha por variante e código, filtro por categoria, ficha com painel de variantes, criação e edição de material e de variante), com `NumberField`, `Select` e `SuggestionField` no design system;
   - verificado em navegador real no build de produção com banco novo: material e duas variantes com unidades e precisões diferentes, foto enviada e relida, aviso de código repetido, conflito entre janelas com "Carregar versão atual", 320, 390, 768 e 1440 px sem rolagem horizontal, toque a 390 px e teclado no seletor.
 
+- Local de estoque, lote, movimento imutável e saldo (2026-09-17), descritos em [estoque](areas/estoque.md):
+  - local plano e configurável, lote opcional por variante declarado na criação e imutável como a unidade base, e movimento append-only com quantidade e valor assinados ([DEC-99 a DEC-103](PRD.md#93-catálogo-estoque-e-produção), [ADR 0018](adr/0018-movimento-append-only-com-projecao-de-saldo.md));
+  - saldo numa projeção por variante, local e lote, escrita na mesma transação do movimento, com teste que compara a soma dos movimentos com a projeção;
+  - saldo de abertura com quantidade e valor (custo de referência só como sugestão da tela), ajuste rápido com motivo, transferência em duas linhas ligadas e estorno que referencia o original, um por movimento, estornando as duas pernas de uma transferência;
+  - telas em Estoque > Saldos e Locais, com lançamento em diálogo pela linha da variante, detalhe por local e lote, histórico com estorno, e saldo por variante na ficha do material;
+  - verificado em navegador real no build de produção com banco novo: local criado pela tela, abertura com o custo sugerido (5 m a R$ 12,50 = R$ 62,50), ajuste que tira a média, transferência que conserva o total, estorno que devolve as duas pernas, variante por lote exigindo o lote, 1440, 768, 390 e 320 px sem rolagem horizontal, e teclado com foco preso no diálogo e Esc fechando.
+
 **Pendente:**
-- Catálogo de serviços e produtos com variantes e ficha técnica, estoque, compras, contas financeiras, etiquetas com leitura por câmera (S3) e busca global.
+- Sessão de inventário (RF-EST-13, parte de sessão), catálogo de serviços e produtos com variantes e ficha técnica, compras, contas financeiras, etiquetas com leitura por câmera (S3) e busca global.
 
 **Critério de saída:**
 - Parte de cadastro de estoque do CA-03 com teste de integração: variantes, local, lote, compra em embalagem, conversão e custo de aquisição com frete e desconto.
