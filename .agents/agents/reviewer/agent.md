@@ -15,3 +15,4 @@ Reporte achados por severidade com caminho, linha, cenário de falha e requisito
 - Guarda global (Host, Origin, autenticação) precisa de teste negativo em cada prefixo que protege (`/api/auth`, `/rpc`, SPA); teste só num prefixo deixa passar a guarda restrita a ele.
 - Idempotência por `opId` só vale com o registro na mesma transação do efeito e com trava para chamadas simultâneas do mesmo `opId`; peça o teste com as duas chamadas disparadas juntas.
 - Contador de tentativas atualizado só depois de uma chamada assíncrona (Better Auth, rede) deixa passar tentativas paralelas; peça o teste com mais tentativas simultâneas que o limite.
+- Função pura testada não prova que a rota ou a tela a usa: trocar a chamada do `safeRedirect` por `search.redirect` no `beforeLoad` passava em todos os testes. Peça que o alvo inteiro do redirecionamento saia de uma função testada (`loginRedirect`, `appRedirect`, `wizardRedirect`) e que a rota só repasse o resultado.

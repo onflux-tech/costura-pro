@@ -27,8 +27,15 @@ paths:
 - Guarda de rota em tempo de execução não tira código do bundle: tela só de desenvolvimento (como o catálogo) entra por import dinâmico sob `import.meta.env.DEV`, senão vai para o build e para o precache da PWA.
 - `Button` do Base UI com `render={<Link />}` vira `<a role="button">`: navegação com cara de botão usa `ButtonLink`.
 - A barra inferior usa `env(safe-area-inset-bottom)`, que só vale com `viewport-fit=cover` no `index.html`; confira no iPhone com a PWA instalada.
-- Verificação com browser-harness roda em contexto isolado (`Target.createBrowserContext`): o autofill do perfil do dono mistura credenciais salvas no formulário.
+- Verificação com browser-harness roda isolada do perfil do dono, cujo autofill mistura credenciais salvas no formulário. O caminho que funciona sempre é um Chrome headless próprio (`chrome.exe --headless=new --remote-debugging-port=9333 --user-data-dir=<scratchpad>`) com `BU_NAME` e `BU_CDP_URL`: a janela de um contexto isolado no Chrome do dono fica `document.visibilityState === "hidden"` quando encoberta e o Chrome deixa de responder a clique e toque (timeout de 5 s no harness).
 - Com a aba em segundo plano, animações e `requestAnimationFrame` do Base UI atrasam foco e fechamento de menu no browser-harness: use `activate_tab` antes de testar teclado.
 - Em desenvolvimento, o botão flutuante dos devtools do React Query cobre o "Mais" da barra inferior: esconda o overlay antes de clicar.
 - No iPhone, Safari e ícone instalado guardam dados separados: teste sempre na instância instalada.
-- Mensagens de erro do Better Auth chegam em inglês: a tela traduz pelo status (401 e 429 no login) em vez de exibir `error.message`.
+- Mensagens de erro do Better Auth chegam em inglês: a tela traduz pelo status com `signInErrorMessage` (401 e 422 viram credencial inválida, 429 pede espera e qualquer outro status, inclusive falha de rede, vira mensagem genérica) e nunca exibe `error.message`.
+- O `to` do `Link` do TanStack Router só aceita caminho conhecido pelo tipo: destino vindo de dado (`destinations.ts`) usa `to="/$destino"` com `params`, e Hoje usa `to="/"` (`apps/web/src/shell/router-link.tsx`).
+- `DropdownMenuTrigger` com `render` sobrescreve o `data-slot` do componente renderizado (o avatar vira `dropdown-menu-trigger`): roteiro de browser-harness localiza gatilho por `aria-label`.
+- Consulta de guarda de rota (`installation.status`, `installation.details`, sessão) e de estado da conexão leva `meta: { silent: true }`; sem isso o toast global aparece a cada falha e a cada 30 s com o servidor fora do ar. Falha na sessão lança erro (`sessionFromResult`) para a rota mostrar a tela de erro, e não o login.
+- `queryClient.fetchQuery` está depreciado no TanStack Query 5.102: use `queryClient.query`.
+- O Biome (`noLabelWithoutControl`) não reconhece `Checkbox.Root` do Base UI dentro de `label`: o `Checkbox` do `packages/ui` usa `Field.Root` com `Field.Label`, o padrão da documentação do Base UI.
+- O login do Better Auth só converte o username para minúsculas, sem tirar espaços: o formulário envia `normalizeUsername(valor)`, igual à criação da conta.
+- Comando que muda o passo do wizard devolve o foco ao `Heading` do passo seguinte (`StepHeading` com `tabIndex={-1}`); sem isso o foco cai no `body` quando o botão some.
