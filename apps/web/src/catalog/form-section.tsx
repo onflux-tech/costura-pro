@@ -20,6 +20,7 @@ import {
 	PanelMeta,
 	PanelTitle,
 } from "@costura-pro/ui/components/panel";
+import { Textarea } from "@costura-pro/ui/components/textarea";
 
 import { CatalogSection } from "./catalog-section";
 
@@ -57,6 +58,16 @@ export function FormSection() {
 								<ChoiceChip value="desgaste">Desgastada</ChoiceChip>
 							</ChoiceChips>
 						</Fieldset>
+						<Field>
+							<FieldLabel requirement="optional">Observações</FieldLabel>
+							<Textarea defaultValue="Forro descosturado na lateral esquerda." />
+							<FieldHint>Só você vê.</FieldHint>
+						</Field>
+						<Field invalid>
+							<FieldLabel>Notas do cliente</FieldLabel>
+							<Textarea aria-invalid defaultValue={"x".repeat(12)} />
+							<FieldError match>Use até 2000 caracteres</FieldError>
+						</Field>
 						<Button size="touch">Receber e emitir comprovante</Button>
 					</PanelContent>
 				</Panel>

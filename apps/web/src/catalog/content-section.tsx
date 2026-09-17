@@ -12,6 +12,7 @@ import { Mono } from "@costura-pro/ui/components/typography";
 import { PlusIcon } from "lucide-react";
 
 import { CatalogSection } from "./catalog-section";
+import { DialogSamples } from "./dialog-samples";
 
 export function ContentSection() {
 	return (
@@ -33,6 +34,7 @@ export function ContentSection() {
 			<div className="grid gap-2 md:max-w-sm">
 				<Button size="touch">Receber e emitir comprovante</Button>
 			</div>
+			<DialogSamples />
 			<div className="flex flex-wrap items-center gap-2">
 				<Badge tone="danger">Prazo vencido</Badge>
 				<Badge tone="warning">Reconciliação pendente</Badge>
