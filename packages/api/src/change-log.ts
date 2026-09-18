@@ -17,6 +17,7 @@ export type AggregateType =
 	| "purchase"
 	| "purchaseReversal"
 	| "receivedItem"
+	| "service"
 	| "stockLocation"
 	| "stockLot"
 	| "stockMovement"

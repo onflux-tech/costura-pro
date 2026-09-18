@@ -21,6 +21,7 @@ import { measurementCommands } from "../measurements/commands";
 import { purchaseCommands } from "../purchases/commands";
 import { receivedItemCommands } from "../received-items/commands";
 import { atelierNameSchema, deviceNameSchema } from "../schemas";
+import { serviceCommands } from "../services/commands";
 import { stockCommands } from "../stock/commands";
 
 export type CommandExecutor = Executor & Pick<Database, "select">;
@@ -120,6 +121,7 @@ export const syncCommands = {
 	...measurementCommands,
 	...purchaseCommands,
 	...receivedItemCommands,
+	...serviceCommands,
 	...stockCommands,
 	"device.rename": renameDevice,
 	"installation.setAtelierName": setAtelierName,

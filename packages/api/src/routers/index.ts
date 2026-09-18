@@ -20,6 +20,7 @@ import {
 } from "../purchases/router";
 import { receivedItemsRouter } from "../received-items/router";
 import { recoveryRouter } from "../recovery/router";
+import { pricingRouter, servicesRouter } from "../services/router";
 import {
 	stockBalancesRouter,
 	stockLocationsRouter,
@@ -40,6 +41,7 @@ export const appRouter = {
 	measurements: measurementsRouter,
 	measurementTemplates: measurementTemplatesRouter,
 	obligations: obligationsRouter,
+	pricing: pricingRouter,
 	privateData: readyProcedure.handler(({ context }) => ({
 		message: "This is private",
 		user: context.session?.user,
@@ -48,6 +50,7 @@ export const appRouter = {
 	purchases: purchasesRouter,
 	receivedItems: receivedItemsRouter,
 	recovery: recoveryRouter,
+	services: servicesRouter,
 	stockBalances: stockBalancesRouter,
 	stockLocations: stockLocationsRouter,
 	stockLots: stockLotsRouter,

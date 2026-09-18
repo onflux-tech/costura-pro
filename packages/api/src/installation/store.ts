@@ -15,11 +15,12 @@ export type InstallationSnapshot = {
 	atelierName: string | null;
 	id: string;
 	state: InstallationState;
+	targetMarginBasisPoints: number;
 	version: number;
 };
 
 export type InstallationPatch = Partial<
-	Pick<InstallationRow, "atelierName" | "state">
+	Pick<InstallationRow, "atelierName" | "state" | "targetMarginBasisPoints">
 >;
 
 export function ensureInstallation(db: Database, now: Date): void {
@@ -127,6 +128,7 @@ export function installationSnapshot(
 		atelierName: row.atelierName,
 		id: row.id,
 		state: row.state,
+		targetMarginBasisPoints: row.targetMarginBasisPoints,
 		version: row.version,
 	};
 }
