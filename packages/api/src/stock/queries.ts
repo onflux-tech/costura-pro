@@ -32,6 +32,8 @@ import {
 
 export const stockPageSize = 50;
 
+export const movementPageSize = 200;
+
 export const stockBalanceListInput = z.object({
 	locationId: z.uuid().optional(),
 	offset: z.number().int().nonnegative().default(0),
@@ -93,11 +95,11 @@ export function listStockBalances(
 			displayPrecision: materialVariant.displayPrecision,
 			materialId: material.id,
 			materialName: material.name,
-			quantityMicros: sql<string>`coalesce(sum(${stockBalance.quantityMicros}), 0)`,
+			quantityMicros: sql<string>`cast(coalesce(sum(${stockBalance.quantityMicros}), 0) as text)`,
 			referenceCostCents: materialVariant.referenceCostCents,
 			searchText: materialVariant.searchText,
 			tracksLots: materialVariant.tracksLots,
-			valueCents: sql<string>`coalesce(sum(${stockBalance.valueCents}), 0)`,
+			valueCents: sql<string>`cast(coalesce(sum(${stockBalance.valueCents}), 0) as text)`,
 			variantId: materialVariant.id,
 			variantName: materialVariant.name,
 		})
@@ -128,9 +130,9 @@ export function listStockBalances(
 	return {
 		items: rows.slice(0, stockPageSize).map(({ searchText, ...row }) => ({
 			...row,
-			quantityMicros: String(row.quantityMicros),
+			quantityMicros: row.quantityMicros,
 			referenceCostCents: row.referenceCostCents?.toString() ?? null,
-			valueCents: String(row.valueCents),
+			valueCents: row.valueCents,
 		})),
 		nextOffset: rows.length > stockPageSize ? offset + stockPageSize : null,
 	};
@@ -196,6 +198,7 @@ export function listStockMovements(
 			.innerJoin(stockLocation, eq(stockLocation.id, stockMovement.locationId))
 			.leftJoin(stockLot, eq(stockLot.id, stockMovement.lotId))
 			.where(eq(stockMovement.variantId, variantId))
+			.limit(movementPageSize)
 			.orderBy(
 				desc(stockMovement.occurredOn),
 				desc(stockMovement.createdAt),
@@ -266,8 +269,8 @@ export function variantBalanceTotals(
 	return new Map(
 		db
 			.select({
-				quantityMicros: sql<string>`sum(${stockBalance.quantityMicros})`,
-				valueCents: sql<string>`sum(${stockBalance.valueCents})`,
+				quantityMicros: sql<string>`cast(sum(${stockBalance.quantityMicros}) as text)`,
+				valueCents: sql<string>`cast(sum(${stockBalance.valueCents}) as text)`,
 				variantId: stockBalance.variantId,
 			})
 			.from(stockBalance)
@@ -280,10 +283,7 @@ export function variantBalanceTotals(
 			.all()
 			.map((row) => [
 				row.variantId,
-				{
-					quantityMicros: String(row.quantityMicros),
-					valueCents: String(row.valueCents),
-				},
+				{ quantityMicros: row.quantityMicros, valueCents: row.valueCents },
 			])
 	);
 }

@@ -53,6 +53,15 @@ export function clientCommandFailure(
 	) {
 		return { kind: "exists", message: "Este cadastro já tinha sido salvo." };
 	}
+	if (
+		error.code === "CONFLICT" &&
+		error.message === commandMessages.stockMovementReversed
+	) {
+		return {
+			kind: "exists",
+			message: "Este movimento já foi estornado.",
+		};
+	}
 	if (error.code === "PRECONDITION_FAILED") {
 		return { kind: "anonymized", message: "Este cliente foi anonimizado." };
 	}

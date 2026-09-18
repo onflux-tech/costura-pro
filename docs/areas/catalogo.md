@@ -26,7 +26,7 @@ A lista fechada vive em `packages/domain/src/unit.ts` (metro, centímetro, metro
 | Agregado | Campos próprios |
 |---|---|
 | `material` | `name`, `category` (texto de 1 a 40 com sugestões, resolve a Q-02 sem agregado), `notes`, `search_text` |
-| `material_variant` | `material_id`, `name`, `code` (livre, sem unicidade), `base_unit`, `display_precision`, `reference_cost_cents`, `min_quantity_micros`, `target_quantity_micros`, `packaging_label` e `packaging_quantity_micros` (par completo ou os dois nulos), `photo` (hash e miniatura), `search_text` |
+| `material_variant` | `material_id`, `name`, `code` (livre, sem unicidade), `base_unit`, `display_precision`, `reference_cost_cents`, `min_quantity_micros`, `target_quantity_micros`, `packaging_label` e `packaging_quantity_micros` (par completo ou os dois nulos), `tracks_lots` (controle por lote, imutável), `photo` (hash e miniatura), `search_text` |
 
 Nenhum dos dois tem dado pessoal, então ficam fora de `personalDataAggregates` e o `anonymized` dos comandos é sempre `false`.
 
@@ -45,6 +45,7 @@ Uma foto por variante, pela mesma infraestrutura de [mídia](midia.md): a tela e
 | Foto some ao editar a variante | Hook da foto inicializado antes da consulta resolver, com `useState` que não reinicializa | A tela de edição só monta o editor com o registro carregado, com `key` na versão |
 | Coleta apaga a foto da variante | Agregado novo fora de `referencedHashes` | Os quatro caminhos JSON no conjunto, com teste de coleta |
 | Unidade da variante muda e reinterpreta o histórico | Patch que aceita `baseUnit` | O schema de patch não tem o campo; um payload com ele vira `invalidPayload` no push |
+| Controle por lote muda e parte o saldo da variante | Patch que aceita `tracks_lots` | Mesmo desenho da unidade base: fora do patch, conferido no push ([estoque](estoque.md)) |
 | Um pedido por tecla no aviso de código repetido | Consulta ligada direto ao valor do campo | `useRepeatedCode` espera 400 ms antes de consultar |
 | Foto gravada some depois de uma falha de envio | O hook zerava a foto confirmada ao escolher a nova, e o salvamento seguia liberado com `photo: null` | Guardar a última confirmada, bloquear o salvamento enquanto houver foto pendente ou falhada e oferecer "Descartar a foto nova" |
 | Formulário perde o preenchimento ao arquivar | Arquivar troca a versão e remonta o editor | Arquivar desativado enquanto houver mudança não salva |

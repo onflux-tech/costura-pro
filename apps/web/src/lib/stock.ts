@@ -45,29 +45,6 @@ export type BalanceItemView = {
 	variantName: string;
 };
 
-export type BalancePointView = {
-	locationId: string;
-	locationName: string;
-	lotId: string | null;
-	lotLabel: string | null;
-	quantityMicros: string;
-	valueCents: string;
-};
-
-export type MovementView = {
-	id: string;
-	kind: StockMovementKind;
-	locationName: string;
-	lotLabel: string | null;
-	occurredOn: string;
-	quantityMicros: string;
-	reason: string | null;
-	reversedByMovementId: string | null;
-	reversesMovementId: string | null;
-	transferId: string | null;
-	valueCents: string;
-};
-
 export type Direction = "in" | "out";
 
 export type PlaceFormValues = {

@@ -10,9 +10,9 @@ import {
 import { Skeleton } from "@costura-pro/ui/components/skeleton";
 import { Heading, Text } from "@costura-pro/ui/components/typography";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { toast } from "sonner";
-
+import { localDay } from "@/lib/measurements";
 import {
 	type BalanceItemView,
 	balanceValue,
@@ -30,20 +30,36 @@ import {
 	variantMovementsQuery,
 } from "./stock-queries";
 
+type ReversalIds = { counterpartId: string; movementId: string };
+
 export function VariantBalancePanel({ item }: { item: BalanceItemView }) {
 	const queryClient = useQueryClient();
 	const { opIdFor } = useOpId();
 	const balance = useQuery(variantBalanceQuery(item.variantId));
 	const movements = useQuery(variantMovementsQuery(item.variantId));
 	const [busy, setBusy] = useState<string | null>(null);
+	const drafts = useRef(new Map<string, ReversalIds>());
+	const reversalIds = (movementId: string): ReversalIds => {
+		const kept = drafts.current.get(movementId);
+		if (kept) {
+			return kept;
+		}
+		const fresh = {
+			counterpartId: crypto.randomUUID(),
+			movementId: crypto.randomUUID(),
+		};
+		drafts.current.set(movementId, fresh);
+		return fresh;
+	};
 
 	const reverse = async (movementId: string, isTransfer: boolean) => {
+		const ids = reversalIds(movementId);
 		setBusy(movementId);
 		try {
 			await api.stockMovements.reverse({
-				...(isTransfer ? { counterpartId: crypto.randomUUID() } : {}),
-				movementId: crypto.randomUUID(),
-				occurredOn: new Date().toISOString().slice(0, 10),
+				...(isTransfer ? { counterpartId: ids.counterpartId } : {}),
+				movementId: ids.movementId,
+				occurredOn: localDay(new Date()),
 				opId: opIdFor(`estorno:${movementId}`),
 				reason: "Lançamento corrigido pelo dono",
 				reversesMovementId: movementId,

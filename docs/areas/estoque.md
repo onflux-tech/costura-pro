@@ -48,7 +48,9 @@ Estornar uma perna de transferência estorna a contraparte na mesma operação, 
 
 ## Telas
 
-Estoque tem as sub-abas Saldos e Locais. A lista de saldos traz **uma linha por variante ativa**, inclusive as que ainda não têm movimento, porque é dela que sai o lançamento do saldo de abertura; com filtro de local, só aparecem as que têm saldo naquele local. Abrir a linha revela os pontos e o histórico. Abertura, ajuste e transferência saem do menu de ações da linha, em diálogo. A ficha do material mostra o saldo de cada variante, só leitura, com link para Estoque.
+Estoque tem as sub-abas Saldos e Locais, e `/estoque` redireciona para Saldos (sem o redirect, o destino do menu cai no estado vazio do `$destino`). A lista de saldos traz **uma linha por variante ativa**, inclusive as que ainda não têm movimento, porque é dela que sai o lançamento do saldo de abertura; com filtro de local, só aparecem as que têm saldo naquele local. Abrir a linha revela os pontos e o histórico, limitado às últimas 200 linhas.
+
+O menu de ações da linha abre abertura, ajuste e transferência em diálogo, e **Lotes** nas variantes que controlam lote: é por ali que o lote nasce, e sem essa tela a variante por lote não recebe movimento nenhum. A data de todo lançamento vem de `localDay`, o mesmo fuso do resto do app, e o estorno guarda os ids sorteados por movimento alvo, para que uma nova tentativa depois de falha repita o mesmo `opId` com o mesmo conteúdo. A ficha do material mostra o saldo de cada variante, só leitura, com link para Estoque.
 
 ## Armadilhas
 
@@ -61,3 +63,8 @@ Estoque tem as sub-abas Saldos e Locais. A lista de saldos traz **uma linha por 
 | Duas linhas de saldo para o mesmo ponto sem lote | Chave primária composta com coluna anulável: no SQLite os nulos não colidem | `id` textual derivado por `balancePointId` |
 | `ESCAPE expression must be a single character` na busca | O literal do `ESCAPE` ficou com dois caracteres depois de uma reescrita automática do arquivo | No template do Drizzle o escape é `'\\'`, que vale um caractere; conferir o SQL com `.toSQL()` |
 | Projeção divergente da soma dos movimentos | Insert de movimento fora de `insertStockMovement` | Um único caminho de escrita, com teste que compara a soma por ponto com a projeção |
+| Variante "por lote" fica sem conseguir receber saldo | O comando de lote existe e a tela não | Menu de ações com Lotes; comando novo sem tela é lacuna de produto, não só de código |
+| Destino do menu abre "área ainda não disponível" com as abas por cima | Falta a rota de índice que redireciona para a primeira aba | `routes/_app/<destino>/index.tsx` com `redirect`, como em `catalogo-produtos` |
+| Nova tentativa de estorno responde que o cadastro foi enviado com outros dados | Ids sorteados a cada clique sob uma chave de `opId` estável | Guardar os ids por movimento alvo, como o diálogo faz com `useState` |
+| Data do movimento cai no dia seguinte à noite | `toISOString()` é UTC | `localDay` (`apps/web/src/lib/measurements.ts`), o mesmo do resto do app |
+| Soma de saldo volta como número do JavaScript | `sum()` em `sql` cru não passa pelo tipo da coluna | `cast(... as text)` na consulta, e o valor segue como string até a tela |

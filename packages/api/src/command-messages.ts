@@ -12,4 +12,5 @@ export const commandMessages = {
 	stockLocationNotFound: "Local não encontrado",
 	stockLotNotFound: "Lote não encontrado",
 	stockMovementNotFound: "Movimento não encontrado",
+	stockMovementReversed: "Movimento já estornado",
 } as const;

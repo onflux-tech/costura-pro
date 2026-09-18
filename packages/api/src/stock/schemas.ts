@@ -3,9 +3,9 @@ import z from "zod";
 
 import {
 	hasChange,
+	moneyCentsSchema,
 	optionalText,
 	quantityMicrosSchema,
-	signedMoneyCentsSchema,
 	signedQuantityMicrosSchema,
 } from "../schemas";
 
@@ -78,7 +78,7 @@ const openingPayload = z.object({
 	kind: z.literal("opening"),
 	quantityMicros: positiveQuantity,
 	reason: notesField.default(null),
-	valueCents: signedMoneyCentsSchema,
+	valueCents: moneyCentsSchema,
 });
 
 const adjustmentPayload = z
@@ -87,7 +87,7 @@ const adjustmentPayload = z
 		kind: z.literal("adjustment"),
 		quantityMicros: nonZeroQuantity,
 		reason: reasonField,
-		valueCents: signedMoneyCentsSchema.optional(),
+		valueCents: moneyCentsSchema.optional(),
 	})
 	.refine(
 		(values) =>

@@ -1,15 +1,18 @@
 import { afterEach, describe, expect, test } from "bun:test";
+import { commandMessages } from "@costura-pro/api/command-messages";
 import { stockMovementKindValues } from "@costura-pro/db/schema/stock";
 import { stockMovementKinds } from "@costura-pro/domain/stock";
 
 import {
 	completeWizard,
+	inSequence,
 	manualClock,
 	newOpId,
 	rpc,
 	type ServerOptions,
 	startTestServer,
 	type TestServer,
+	times,
 } from "./support";
 
 const servers: TestServer[] = [];
@@ -990,5 +993,227 @@ describe("stock balances", () => {
 			locationName: "Armário 1",
 			lotLabel: null,
 		});
+	});
+});
+
+describe("stock review gaps", () => {
+	test("refuses a lot that belongs to another variant that also tracks lots", async () => {
+		const { owner } = await ownerSetup();
+		const first = await createVariant(owner, { tracksLots: true });
+		const second = await createVariant(owner, {
+			code: "GR-VD",
+			tracksLots: true,
+		});
+		const { id: locationId } = await createLocation(owner);
+		const foreign = await owner.stockLots.create({
+			label: "Rolo do outro",
+			lotId: crypto.randomUUID(),
+			notes: null,
+			opId: newOpId(),
+			variantId: second.variantId,
+		});
+		await expect(
+			owner.stockMovements.create(
+				openingInput(first.variantId, locationId, { lotId: foreign.id })
+			)
+		).rejects.toMatchObject({
+			code: "NOT_FOUND",
+			message: "Lote não encontrado",
+		});
+	});
+
+	test("refuses a transfer whose inbound id already exists", async () => {
+		const { owner } = await ownerSetup();
+		const { locationId, variantId } = await stockedVariant(owner);
+		const destination = await createLocation(owner, { name: "Prateleira B" });
+		const taken = await owner.stockMovements.create(
+			openingInput(variantId, locationId, { quantityMicros: "1000000" })
+		);
+		await expect(
+			owner.stockMovements.transfer({
+				fromLocationId: locationId,
+				inboundId: taken.id,
+				lotId: null,
+				movementId: crypto.randomUUID(),
+				occurredOn: "2026-09-17",
+				opId: newOpId(),
+				quantityMicros: "1000000",
+				reason: null,
+				toLocationId: destination.id,
+				variantId,
+			})
+		).rejects.toMatchObject({ code: "CONFLICT" });
+	});
+
+	test("refuses a reversal whose counterpart id already exists", async () => {
+		const { owner } = await ownerSetup();
+		const { locationId, variantId } = await stockedVariant(owner);
+		const destination = await createLocation(owner, { name: "Prateleira B" });
+		const transfer = await owner.stockMovements.transfer({
+			fromLocationId: locationId,
+			inboundId: crypto.randomUUID(),
+			lotId: null,
+			movementId: crypto.randomUUID(),
+			occurredOn: "2026-09-17",
+			opId: newOpId(),
+			quantityMicros: "1000000",
+			reason: null,
+			toLocationId: destination.id,
+			variantId,
+		});
+		await expect(
+			owner.stockMovements.reverse({
+				counterpartId: transfer.id,
+				movementId: crypto.randomUUID(),
+				occurredOn: "2026-09-18",
+				opId: newOpId(),
+				reason: "Errado",
+				reversesMovementId: transfer.id,
+			})
+		).rejects.toMatchObject({ code: "CONFLICT" });
+	});
+
+	test("names the second reversal so the screen can explain it", async () => {
+		const { owner } = await ownerSetup();
+		const { variantId } = await createVariant(owner);
+		const { id: locationId } = await createLocation(owner);
+		const opening = await owner.stockMovements.create(
+			openingInput(variantId, locationId)
+		);
+		const reversal = {
+			occurredOn: "2026-09-18",
+			reason: "Lançado errado",
+			reversesMovementId: opening.id,
+		};
+		await owner.stockMovements.reverse({
+			...reversal,
+			movementId: crypto.randomUUID(),
+			opId: newOpId(),
+		});
+		await expect(
+			owner.stockMovements.reverse({
+				...reversal,
+				movementId: crypto.randomUUID(),
+				opId: newOpId(),
+			})
+		).rejects.toMatchObject({
+			code: "CONFLICT",
+			message: commandMessages.stockMovementReversed,
+		});
+	});
+
+	test("refuses a negative value on an entry", async () => {
+		const { owner } = await ownerSetup();
+		const { locationId, variantId } = await stockedVariant(owner);
+		const loose = owner.stockMovements.create as unknown as (
+			input: Record<string, unknown>
+		) => Promise<{ id: string; version: number }>;
+		await expect(
+			loose(openingInput(variantId, locationId, { valueCents: "-100" }))
+		).rejects.toMatchObject({ code: "BAD_REQUEST" });
+		await expect(
+			loose({
+				kind: "adjustment",
+				locationId,
+				lotId: null,
+				movementId: crypto.randomUUID(),
+				occurredOn: "2026-09-17",
+				opId: newOpId(),
+				quantityMicros: "1000000",
+				reason: "Achado",
+				valueCents: "-100",
+				variantId,
+			})
+		).rejects.toMatchObject({ code: "BAD_REQUEST" });
+	});
+
+	test("leaves the projection untouched when the movement is refused", async () => {
+		const { owner, server } = await ownerSetup();
+		const { locationId, variantId } = await stockedVariant(owner);
+		const points = () =>
+			server
+				.native()
+				.query<{ total: number }, []>(
+					"SELECT count(*) AS total FROM stock_balance"
+				)
+				.get()?.total;
+		const before = points();
+		await expect(
+			owner.stockMovements.create(
+				openingInput(variantId, crypto.randomUUID(), {
+					quantityMicros: "9000000",
+				})
+			)
+		).rejects.toMatchObject({ code: "NOT_FOUND" });
+		expect(points()).toBe(before);
+		const balance = await owner.stockBalances.get({ variantId });
+		expect(balance.points[0]).toMatchObject({
+			locationId,
+			quantityMicros: "5000000",
+		});
+	});
+
+	test("marks only the reversed movement in the history", async () => {
+		const { owner } = await ownerSetup();
+		const { locationId, variantId } = await stockedVariant(owner);
+		const second = await owner.stockMovements.create(
+			openingInput(variantId, locationId, { quantityMicros: "1000000" })
+		);
+		await owner.stockMovements.reverse({
+			movementId: crypto.randomUUID(),
+			occurredOn: "2026-09-18",
+			opId: newOpId(),
+			reason: "Lançado errado",
+			reversesMovementId: second.id,
+		});
+		const { items } = await owner.stockMovements.list({ variantId });
+		const marked = items.filter((item) => item.reversedByMovementId !== null);
+		expect(marked).toHaveLength(1);
+		expect(marked[0]?.id).toBe(second.id);
+	});
+
+	test("breaks the order tie by id when date and instant are equal", async () => {
+		const { owner } = await ownerSetup({ now: manualClock().now });
+		const { variantId } = await createVariant(owner);
+		const { id: locationId } = await createLocation(owner);
+		const ids = [
+			"00000000-0000-4000-8000-00000000000a",
+			"00000000-0000-4000-8000-00000000000b",
+		];
+		await inSequence(ids, (movementId) =>
+			owner.stockMovements.create(
+				openingInput(variantId, locationId, { movementId })
+			)
+		);
+		const { items } = await owner.stockMovements.list({ variantId });
+		expect(items.map((item) => item.id)).toEqual([...ids].reverse());
+	});
+
+	test("paginates the balance list beyond one page", async () => {
+		const { owner } = await ownerSetup();
+		const material = await owner.materials.create({
+			category: "Tecido",
+			materialId: crypto.randomUUID(),
+			name: "Gorgurão",
+			notes: null,
+			opId: newOpId(),
+		});
+		await inSequence(times(51), (index) =>
+			owner.materialVariants.create({
+				baseUnit: "m",
+				code: `GR-${String(index).padStart(3, "0")}`,
+				displayPrecision: 2,
+				materialId: material.id,
+				name: `Variante ${String(index).padStart(3, "0")}`,
+				opId: newOpId(),
+				variantId: crypto.randomUUID(),
+			})
+		);
+		const first = await owner.stockBalances.list({});
+		expect(first.items).toHaveLength(50);
+		expect(first.nextOffset).toBe(50);
+		const second = await owner.stockBalances.list({ offset: 50 });
+		expect(second.items).toHaveLength(1);
+		expect(second.nextOffset).toBeNull();
 	});
 });

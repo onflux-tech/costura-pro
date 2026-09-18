@@ -438,3 +438,64 @@ describe("stock sync", () => {
 		});
 	});
 });
+
+describe("stock sync repetition", () => {
+	test("repeats a transfer and a reversal by opId without duplicating a leg", async () => {
+		const setup = await syncSetup(servers);
+		const { locationId, variantId } = await stockedVariant(setup);
+		const destination = await setup.local.stockLocations.create({
+			locationId: crypto.randomUUID(),
+			name: "Prateleira B",
+			notes: null,
+			opId: newOpId(),
+		});
+		await setup.sync.sync.push({
+			operations: [
+				operation(
+					setup,
+					"stockMovement",
+					"stockMovement.create",
+					openingPayload(variantId, locationId)
+				),
+			],
+		});
+		const transfer = operation(
+			setup,
+			"stockMovement",
+			"stockMovement.transfer",
+			{
+				fromLocationId: locationId,
+				inboundId: crypto.randomUUID(),
+				lotId: null,
+				occurredOn: "2026-09-17",
+				quantityMicros: "2000000",
+				toLocationId: destination.id,
+				variantId,
+			}
+		);
+		const firstTransfer = await setup.sync.sync.push({
+			operations: [transfer],
+		});
+		const againTransfer = await setup.sync.sync.push({
+			operations: [transfer],
+		});
+		expect(againTransfer.accepted).toEqual(firstTransfer.accepted);
+		const reverse = operation(setup, "stockMovement", "stockMovement.reverse", {
+			counterpartId: crypto.randomUUID(),
+			occurredOn: "2026-09-18",
+			reason: "Transferi errado",
+			reversesMovementId: transfer.aggregateId,
+		});
+		const firstReverse = await setup.sync.sync.push({ operations: [reverse] });
+		const againReverse = await setup.sync.sync.push({ operations: [reverse] });
+		expect(againReverse.accepted).toEqual(firstReverse.accepted);
+		const { items } = await setup.local.stockMovements.list({ variantId });
+		expect(items).toHaveLength(5);
+		const { points } = await setup.local.stockBalances.get({ variantId });
+		expect(points).toHaveLength(1);
+		expect(points[0]).toMatchObject({
+			locationId,
+			quantityMicros: "5000000",
+		});
+	});
+});

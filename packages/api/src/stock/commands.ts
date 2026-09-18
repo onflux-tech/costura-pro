@@ -238,7 +238,10 @@ const reverseMovement: CreateDefinition = {
 			return notFound(commandMessages.stockMovementNotFound);
 		}
 		if (readReversalOf(db, original.id)) {
-			return { message: "Movimento já estornado", reason: "aggregateExists" };
+			return {
+				message: commandMessages.stockMovementReversed,
+				reason: "aggregateExists",
+			};
 		}
 		const counterpart =
 			original.transferId === null
@@ -248,7 +251,10 @@ const reverseMovement: CreateDefinition = {
 			return notFound(commandMessages.stockMovementNotFound);
 		}
 		if (counterpart && readReversalOf(db, counterpart.id)) {
-			return { message: "Movimento já estornado", reason: "aggregateExists" };
+			return {
+				message: commandMessages.stockMovementReversed,
+				reason: "aggregateExists",
+			};
 		}
 		if (fields.counterpartId && readStockMovement(db, fields.counterpartId)) {
 			return { reason: "aggregateExists" };

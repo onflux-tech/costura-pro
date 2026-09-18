@@ -133,6 +133,18 @@ describe("variant form", () => {
 		});
 	});
 
+	test("keeps lot tracking out of the variant patch", () => {
+		expect(
+			changedVariant(variant, variantFields(values(), variant.photo))
+		).toBe(null);
+		expect(
+			changedVariant(
+				{ ...variant, tracksLots: true },
+				variantFields(values({ tracksLots: "nao" }), variant.photo)
+			)
+		).toBe(null);
+	});
+
 	test("writes integers as strings and clears optional values", () => {
 		expect(variantFields(values(), variant.photo)).toEqual({
 			baseUnit: "m",

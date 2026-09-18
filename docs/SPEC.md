@@ -285,12 +285,12 @@ Erros: os de cliente valem aqui, com `NOT_FOUND` `Cliente não encontrado` na cr
 | `materials.create` | `material.create` | `{ materialId, opId, name, category?, notes? }` | `{ id, version }` |
 | `materials.update` | `material.update` | `{ materialId, baseVersion, opId, patch }` | `{ version }` |
 | `materials.archive`, `materials.unarchive` | `material.*` | `{ materialId, baseVersion, opId }` | `{ version }` |
-| `materialVariants.create` | `materialVariant.create` | `{ variantId, materialId, opId, name, baseUnit, displayPrecision, code?, referenceCostCents?, minQuantityMicros?, targetQuantityMicros?, packaging?, photo? }` | `{ id, version }` |
-| `materialVariants.update` | `materialVariant.update` | `{ variantId, baseVersion, opId, patch }`, com qualquer campo da criação menos `materialId` e `baseUnit` | `{ version }` |
+| `materialVariants.create` | `materialVariant.create` | `{ variantId, materialId, opId, name, baseUnit, displayPrecision, tracksLots?, code?, referenceCostCents?, minQuantityMicros?, targetQuantityMicros?, packaging?, photo? }` | `{ id, version }` |
+| `materialVariants.update` | `materialVariant.update` | `{ variantId, baseVersion, opId, patch }`, com qualquer campo da criação menos `materialId`, `baseUnit` e `tracksLots` | `{ version }` |
 | `materialVariants.archive`, `unarchive` | `materialVariant.*` | `{ variantId, baseVersion, opId }` | `{ version }` |
 | `materialVariants.byCode` | leitura | `{ code }` | `{ items: { id, materialId, materialName, name, code }[] }`, até 10, comparação sem caixa, para o aviso de código repetido e depois para a leitura por câmera |
 
-Erros: os de sempre, com `NOT_FOUND` `Material não encontrado` e `Variante não encontrada`; não há `PRECONDITION_FAILED` de anonimização. No push, material inexistente na criação da variante vira `aggregateNotFound`, e unidade fora da lista, precisão fora de 0 a 6, valor acima do teto, embalagem pela metade ou patch que só traz `baseUnit` viram `invalidPayload`.
+Erros: os de sempre, com `NOT_FOUND` `Material não encontrado` e `Variante não encontrada`; não há `PRECONDITION_FAILED` de anonimização. No push, material inexistente na criação da variante vira `aggregateNotFound`, e unidade fora da lista, precisão fora de 0 a 6, valor acima do teto, embalagem pela metade ou patch que só traz `baseUnit` ou `tracksLots` viram `invalidPayload`.
 
 **Local de estoque, lote e movimento.** Mesmo registro e mesmas procedures diretas dos outros agregados ([agregados](areas/agregados.md), [estoque](areas/estoque.md)), todas com sessão do dono e instalação `ready`, em qualquer acesso:
 

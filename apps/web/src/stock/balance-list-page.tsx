@@ -33,6 +33,7 @@ import {
 import { usePageHeader } from "@/shell/page-header";
 import { orpc } from "@/utils/orpc";
 
+import { LotDialog } from "./lot-dialog";
 import { type MovementAction, MovementDialog } from "./movement-dialog";
 import { stockLocationsQuery } from "./stock-queries";
 import { VariantBalancePanel } from "./variant-balance-panel";
@@ -49,6 +50,7 @@ export function BalanceListPage() {
 	const [action, setAction] = useState<MovementAction>("opening");
 	const [target, setTarget] = useState<BalanceItemView | null>(null);
 	const [dialogOpen, setDialogOpen] = useState(false);
+	const [lotsOpen, setLotsOpen] = useState(false);
 	const locations = useQuery(stockLocationsQuery());
 	usePageHeader({ eyebrow: "Estoque", heading: "Saldos" });
 
@@ -233,6 +235,16 @@ export function BalanceListPage() {
 											<DropdownMenuItem onClick={() => start(item, "transfer")}>
 												Transferir
 											</DropdownMenuItem>
+											{item.tracksLots ? (
+												<DropdownMenuItem
+													onClick={() => {
+														setTarget(item);
+														setLotsOpen(true);
+													}}
+												>
+													Lotes
+												</DropdownMenuItem>
+											) : null}
 										</DropdownMenuContent>
 									</DropdownMenu>
 								</DataListCell>
@@ -252,6 +264,14 @@ export function BalanceListPage() {
 				>
 					Carregar mais
 				</Button>
+			) : null}
+			{target ? (
+				<LotDialog
+					onOpenChange={setLotsOpen}
+					open={lotsOpen}
+					variantId={target.variantId}
+					variantName={target.variantName}
+				/>
 			) : null}
 			{target ? (
 				<MovementDialog

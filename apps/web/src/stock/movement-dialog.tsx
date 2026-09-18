@@ -31,6 +31,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 
 import { unitAbbreviation } from "@/lib/materials";
+import { localDay } from "@/lib/measurements";
 import {
 	type AdjustmentFormValues,
 	adjustmentFields,
@@ -96,10 +97,6 @@ export function MovementDialog({
 			</DialogContent>
 		</Dialog>
 	);
-}
-
-function today(): string {
-	return new Date().toISOString().slice(0, 10);
 }
 
 function locationItems(locations: readonly StockLocationView[]) {
@@ -217,7 +214,7 @@ function MovementForm({
 	const [quantity, setQuantity] = useState("");
 	const [value, setValue] = useState("");
 	const [reason, setReason] = useState("");
-	const [occurredOn, setOccurredOn] = useState(today);
+	const [occurredOn, setOccurredOn] = useState(() => localDay(new Date()));
 	const [errors, setErrors] = useState<Record<string, string>>({});
 	const [failure, setFailure] = useState<string | null>(null);
 	const [submitting, setSubmitting] = useState(false);
