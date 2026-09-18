@@ -10,6 +10,7 @@ describe("stockMovementKinds", () => {
 			"transferOut",
 			"transferIn",
 			"reversal",
+			"purchase",
 		]);
 	});
 });

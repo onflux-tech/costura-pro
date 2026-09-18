@@ -18,6 +18,10 @@
       "types": "./dist/src/credentials.d.ts",
       "default": "./src/credentials.ts"
     },
+    "./finance": {
+      "types": "./dist/src/finance.d.ts",
+      "default": "./src/finance.ts"
+    },
     "./installation-state": {
       "types": "./dist/src/installation-state.d.ts",
       "default": "./src/installation-state.ts"
@@ -42,6 +46,10 @@
       "types": "./dist/src/pricing.d.ts",
       "default": "./src/pricing.ts"
     },
+    "./purchase": {
+      "types": "./dist/src/purchase.d.ts",
+      "default": "./src/purchase.ts"
+    },
     "./quantity": {
       "types": "./dist/src/quantity.d.ts",
       "default": "./src/quantity.ts"
@@ -61,6 +69,10 @@
     "./stock": {
       "types": "./dist/src/stock.d.ts",
       "default": "./src/stock.ts"
+    },
+    "./supplier": {
+      "types": "./dist/src/supplier.d.ts",
+      "default": "./src/supplier.ts"
     },
     "./unit": {
       "types": "./dist/src/unit.d.ts",

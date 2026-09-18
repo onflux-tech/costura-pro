@@ -4,6 +4,7 @@ export const stockMovementKinds = [
 	"transferOut",
 	"transferIn",
 	"reversal",
+	"purchase",
 ] as const;
 
 export type StockMovementKind = (typeof stockMovementKinds)[number];
