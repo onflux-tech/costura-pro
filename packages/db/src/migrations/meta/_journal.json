@@ -85,6 +85,13 @@
       "when": 1789700429792,
       "tag": "0011_purchase_finance_append_only",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "6",
+      "when": 1789734640604,
+      "tag": "0012_services_target_margin",
+      "breakpoints": true
     }
   ]
 }

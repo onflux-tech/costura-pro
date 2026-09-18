@@ -7,5 +7,6 @@ export * from "./measurements";
 export * from "./media";
 export * from "./purchases";
 export * from "./received-items";
+export * from "./services";
 export * from "./stock";
 export * from "./sync";

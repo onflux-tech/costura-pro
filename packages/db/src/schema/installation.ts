@@ -32,6 +32,9 @@ export const installation = sqliteTable(
 		ownerUserId: text("owner_user_id").references(() => user.id),
 		singleton: integer("singleton").notNull().unique(),
 		state: text("state", { enum: installationStateValues }).notNull(),
+		targetMarginBasisPoints: integer("target_margin_basis_points")
+			.notNull()
+			.default(4000),
 		updatedAt: integer("updated_at", { mode: "timestamp_ms" }).notNull(),
 		version: integer("version").notNull(),
 	},
