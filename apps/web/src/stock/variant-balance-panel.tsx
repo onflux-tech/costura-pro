@@ -1,5 +1,6 @@
 import { Badge } from "@costura-pro/ui/components/badge";
 import { Button } from "@costura-pro/ui/components/button";
+import { ButtonLink } from "@costura-pro/ui/components/button-link";
 import {
 	DataList,
 	DataListCell,
@@ -10,9 +11,10 @@ import {
 import { Skeleton } from "@costura-pro/ui/components/skeleton";
 import { Heading, Text } from "@costura-pro/ui/components/typography";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { Link } from "@tanstack/react-router";
 import { useRef, useState } from "react";
 import { toast } from "sonner";
-import { localDay } from "@/lib/measurements";
+import { formatDay, localDay } from "@/lib/measurements";
 import {
 	type BalanceItemView,
 	balanceValue,
@@ -54,13 +56,14 @@ export function VariantBalancePanel({ item }: { item: BalanceItemView }) {
 
 	const reverse = async (movementId: string, isTransfer: boolean) => {
 		const ids = reversalIds(movementId);
+		const occurredOn = localDay(new Date());
 		setBusy(movementId);
 		try {
 			await api.stockMovements.reverse({
 				...(isTransfer ? { counterpartId: ids.counterpartId } : {}),
 				movementId: ids.movementId,
-				occurredOn: localDay(new Date()),
-				opId: opIdFor(`estorno:${movementId}`),
+				occurredOn,
+				opId: opIdFor(`estorno:${movementId}:${occurredOn}`),
 				reason: "Lançamento corrigido pelo dono",
 				reversesMovementId: movementId,
 			});
@@ -78,7 +81,7 @@ export function VariantBalancePanel({ item }: { item: BalanceItemView }) {
 	const history = movements.data?.items ?? [];
 
 	return (
-		<div className="flex flex-col gap-4 border-divider border-t p-4">
+		<div className="flex flex-col gap-4 border-divider border-t p-4 md:col-span-full">
 			<section className="flex flex-col gap-2">
 				<Heading level={3} size="title">
 					Onde está
@@ -158,7 +161,7 @@ export function VariantBalancePanel({ item }: { item: BalanceItemView }) {
 											) : null}
 										</div>
 										<Text size="sm" tone="subtle">
-											{movement.occurredOn} · {movement.locationName}
+											{formatDay(movement.occurredOn)} · {movement.locationName}
 											{movement.lotLabel ? ` · ${movement.lotLabel}` : ""}
 											{movement.reason ? ` · ${movement.reason}` : ""}
 										</Text>
@@ -179,19 +182,13 @@ export function VariantBalancePanel({ item }: { item: BalanceItemView }) {
 									</Text>
 								</DataListCell>
 								<DataListCell align="end" label="Ações">
-									{movement.reversedByMovementId ||
-									movement.kind === "reversal" ? null : (
-										<Button
-											disabled={busy === movement.id}
-											onClick={() =>
-												reverse(movement.id, movement.transferId !== null)
-											}
-											size="sm"
-											variant="ghost"
-										>
-											Estornar
-										</Button>
-									)}
+									<MovementAction
+										busy={busy === movement.id}
+										movement={movement}
+										onReverse={() =>
+											reverse(movement.id, movement.transferId !== null)
+										}
+									/>
 								</DataListCell>
 							</DataListRow>
 						))}
@@ -199,5 +196,44 @@ export function VariantBalancePanel({ item }: { item: BalanceItemView }) {
 				) : null}
 			</section>
 		</div>
+	);
+}
+
+function MovementAction({
+	busy,
+	movement,
+	onReverse,
+}: {
+	busy: boolean;
+	movement: {
+		kind: string;
+		purchaseId: string | null;
+		reversedByMovementId: string | null;
+	};
+	onReverse: () => void;
+}) {
+	if (movement.purchaseId) {
+		return (
+			<ButtonLink
+				render={
+					<Link
+						params={{ compraId: movement.purchaseId }}
+						to="/compras/recebidas/$compraId"
+					/>
+				}
+				size="sm"
+				variant="ghost"
+			>
+				Ver compra
+			</ButtonLink>
+		);
+	}
+	if (movement.reversedByMovementId || movement.kind === "reversal") {
+		return null;
+	}
+	return (
+		<Button disabled={busy} onClick={onReverse} size="sm" variant="ghost">
+			Estornar
+		</Button>
 	);
 }

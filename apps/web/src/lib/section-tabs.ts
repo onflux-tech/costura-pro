@@ -18,9 +18,21 @@ export const sectionTabs = {
 			label: "Modelos de medidas",
 		},
 	],
+	compras: [
+		{ href: "/compras/recebidas", id: "recebidas", label: "Compras" },
+		{
+			href: "/compras/fornecedores",
+			id: "fornecedores",
+			label: "Fornecedores",
+		},
+	],
 	estoque: [
 		{ href: "/estoque/saldos", id: "saldos", label: "Saldos" },
 		{ href: "/estoque/locais", id: "locais", label: "Locais" },
+	],
+	financas: [
+		{ href: "/financas/contas", id: "contas", label: "Contas" },
+		{ href: "/financas/a-pagar", id: "a-pagar", label: "A pagar" },
 	],
 } as const satisfies Record<string, readonly LinkTarget[]>;
 

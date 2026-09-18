@@ -25,6 +25,7 @@ import { getRouteApi, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 
 import { clientCommandFailure } from "@/lib/client-command-error";
+import { useDrafts } from "@/lib/drafts";
 import {
 	type BalanceItemView,
 	balanceQuantity,
@@ -52,6 +53,7 @@ export function BalanceListPage() {
 	const [dialogOpen, setDialogOpen] = useState(false);
 	const [lotsOpen, setLotsOpen] = useState(false);
 	const locations = useQuery(stockLocationsQuery());
+	const { draftFor, forget } = useDrafts();
 	usePageHeader({ eyebrow: "Estoque", heading: "Saldos" });
 
 	useEffect(() => {
@@ -276,6 +278,8 @@ export function BalanceListPage() {
 			{target ? (
 				<MovementDialog
 					action={action}
+					draft={draftFor(`${target.variantId}:${action}`)}
+					onDone={() => forget(`${target.variantId}:${action}`)}
 					onOpenChange={setDialogOpen}
 					open={dialogOpen}
 					referenceCostCents={target.referenceCostCents}

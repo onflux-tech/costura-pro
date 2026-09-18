@@ -17,6 +17,7 @@ import {
 	FieldHint,
 	FieldLabel,
 } from "@costura-pro/ui/components/field";
+import { Fieldset, FieldsetLegend } from "@costura-pro/ui/components/fieldset";
 import { FilePickerButton } from "@costura-pro/ui/components/file-picker-button";
 import { Input } from "@costura-pro/ui/components/input";
 import { NumberField } from "@costura-pro/ui/components/number-field";
@@ -185,30 +186,34 @@ function IdentityPanel({
 							: "A unidade base não muda depois da criação."}
 					</FieldHint>
 				</Field>
-				<Field>
-					<FieldLabel requirement="required">Controle por lote</FieldLabel>
-					{editingUnit ? (
+				{editingUnit ? (
+					<Fieldset>
+						<FieldsetLegend>Controle por lote</FieldsetLegend>
 						<ChoiceChips
-							aria-label="Controle por lote"
 							onValueChange={(value) => onChange("tracksLots", value)}
 							value={values.tracksLots}
 						>
 							<ChoiceChip value="nao">Saldo único</ChoiceChip>
 							<ChoiceChip value="sim">Por lote</ChoiceChip>
 						</ChoiceChips>
-					) : (
+						<Text size="sm" tone="subtle">
+							Rolo ou aquisição identificável, como a unidade base: escolhido
+							uma vez.
+						</Text>
+					</Fieldset>
+				) : (
+					<Field>
+						<FieldLabel requirement="required">Controle por lote</FieldLabel>
 						<Text>
 							{values.tracksLots === "sim"
 								? "Saldo controlado por lote"
 								: "Saldo único, sem lote"}
 						</Text>
-					)}
-					<FieldHint>
-						{editingUnit
-							? "Rolo ou aquisição identificável, como a unidade base: escolhido uma vez."
-							: "O controle por lote não muda depois da criação."}
-					</FieldHint>
-				</Field>
+						<FieldHint>
+							O controle por lote não muda depois da criação.
+						</FieldHint>
+					</Field>
+				)}
 				<Field>
 					<FieldLabel requirement="required">Casas decimais</FieldLabel>
 					<Select

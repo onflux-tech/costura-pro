@@ -89,6 +89,7 @@ const isoDate = /^\d{4}-\d{2}-\d{2}$/;
 const kindLabels: Record<StockMovementKind, string> = {
 	adjustment: "Ajuste",
 	opening: "Saldo de abertura",
+	purchase: "Compra",
 	reversal: "Estorno",
 	transferIn: "Transferência (entrada)",
 	transferOut: "Transferência (saída)",
@@ -109,7 +110,7 @@ export function openingValueCents(
 	return (total * 2n + quantityScale) / (quantityScale * 2n);
 }
 
-const emptyToNull = (value: string) => {
+export const emptyToNull = (value: string) => {
 	const trimmed = value.trim();
 	return trimmed === "" ? null : trimmed;
 };
@@ -149,7 +150,7 @@ function quantityMicros(text: string): bigint | null {
 	return trimmed === "" ? null : parseQuantity(trimmed, displayPrecision.max);
 }
 
-function quantityError(text: string): string | null {
+export function quantityError(text: string): string | null {
 	const trimmed = text.trim();
 	if (trimmed === "") {
 		return "Informe uma quantidade maior que zero";
@@ -163,7 +164,7 @@ function quantityError(text: string): string | null {
 	return micros > 0n ? null : "Informe uma quantidade maior que zero";
 }
 
-function dateError(value: string): string | null {
+export function dateError(value: string): string | null {
 	return isoDate.test(value) ? null : "Data inválida";
 }
 

@@ -23,13 +23,14 @@ import {
 	FieldError,
 	FieldLabel,
 } from "@costura-pro/ui/components/field";
+import { Fieldset, FieldsetLegend } from "@costura-pro/ui/components/fieldset";
 import { Input } from "@costura-pro/ui/components/input";
 import { NumberField } from "@costura-pro/ui/components/number-field";
 import { Select } from "@costura-pro/ui/components/select";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { toast } from "sonner";
-
+import type { CommandDraft } from "@/lib/drafts";
 import { unitAbbreviation } from "@/lib/materials";
 import { localDay } from "@/lib/measurements";
 import {
@@ -47,7 +48,6 @@ import {
 	transferFields,
 	transferFormErrors,
 } from "@/lib/stock";
-import { useOpId } from "@/lib/use-op-id";
 import { client as api } from "@/utils/orpc";
 
 import {
@@ -73,12 +73,16 @@ const descriptions: Record<MovementAction, string> = {
 
 export function MovementDialog({
 	action,
+	draft,
+	onDone,
 	onOpenChange,
 	open,
 	referenceCostCents,
 	variant,
 }: {
 	action: MovementAction;
+	draft: CommandDraft;
+	onDone: () => void;
 	onOpenChange: (open: boolean) => void;
 	open: boolean;
 	referenceCostCents: string | null;
@@ -90,7 +94,9 @@ export function MovementDialog({
 				<MovementForm
 					action={action}
 					close={() => onOpenChange(false)}
+					draft={draft}
 					key={`${variant.variantId}:${action}`}
+					onDone={onDone}
 					referenceCostCents={referenceCostCents}
 					variant={variant}
 				/>
@@ -190,23 +196,25 @@ function ReasonField({
 function MovementForm({
 	action,
 	close,
+	draft,
+	onDone,
 	referenceCostCents,
 	variant,
 }: {
 	action: MovementAction;
 	close: () => void;
+	draft: CommandDraft;
+	onDone: () => void;
 	referenceCostCents: string | null;
 	variant: BalanceItemView;
 }) {
 	const queryClient = useQueryClient();
-	const { opIdFor } = useOpId();
+	const { inboundId, movementId, opIdFor } = draft;
 	const locations = useQuery(stockLocationsQuery());
 	const lots = useQuery({
 		...stockLotsQuery(variant.variantId),
 		enabled: variant.tracksLots,
 	});
-	const [movementId] = useState(() => crypto.randomUUID());
-	const [inboundId] = useState(() => crypto.randomUUID());
 	const [direction, setDirection] = useState<Direction>("out");
 	const [locationId, setLocationId] = useState("");
 	const [toLocationId, setToLocationId] = useState("");
@@ -317,11 +325,18 @@ function MovementForm({
 			await send();
 		} catch (error) {
 			const failed = await failedStockCommand(queryClient, error, "variante");
+			if (failed.kind === "exists") {
+				onDone();
+				toast.info("Este movimento já tinha sido registrado.");
+				close();
+				return;
+			}
 			setFailure(failed.message);
 			return;
 		} finally {
 			setSubmitting(false);
 		}
+		onDone();
 		await refreshStock(queryClient);
 		toast.success("Movimento registrado.");
 		close();
@@ -341,17 +356,16 @@ function MovementForm({
 				{variant.materialName} · {variant.variantName}. {descriptions[action]}
 			</DialogDescription>
 			{action === "adjustment" ? (
-				<Field name="direction">
-					<FieldLabel>Direção</FieldLabel>
+				<Fieldset>
+					<FieldsetLegend>Direção</FieldsetLegend>
 					<ChoiceChips
-						aria-label="Direção do ajuste"
 						onValueChange={(next) => setDirection(next as Direction)}
 						value={direction}
 					>
 						<ChoiceChip value="out">Sai do estoque</ChoiceChip>
 						<ChoiceChip value="in">Entra no estoque</ChoiceChip>
 					</ChoiceChips>
-				</Field>
+				</Fieldset>
 			) : null}
 			<SelectField
 				error={errors.locationId}

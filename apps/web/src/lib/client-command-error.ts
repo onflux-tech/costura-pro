@@ -10,6 +10,9 @@ export type ClientCommandFailure = {
 
 export type CommandSubject =
 	| "cliente"
+	| "compra"
+	| "conta"
+	| "fornecedor"
 	| "local"
 	| "lote"
 	| "material"
@@ -21,6 +24,9 @@ export type CommandSubject =
 
 const staleMessages: Record<CommandSubject, string> = {
 	cliente: "Este cliente mudou em outra janela ou aparelho.",
+	compra: "Esta compra mudou em outra janela ou aparelho.",
+	conta: "Esta conta mudou em outra janela ou aparelho.",
+	fornecedor: "Este fornecedor mudou em outra janela ou aparelho.",
 	local: "Este local mudou em outra janela ou aparelho.",
 	lote: "Este lote mudou em outra janela ou aparelho.",
 	material: "Este material mudou em outra janela ou aparelho.",
@@ -30,6 +36,23 @@ const staleMessages: Record<CommandSubject, string> = {
 	peça: "Esta peça mudou em outra janela ou aparelho.",
 	variante: "Esta variante mudou em outra janela ou aparelho.",
 };
+
+const personalSubjects: ReadonlySet<CommandSubject> = new Set([
+	"cliente",
+	"medição",
+	"peça",
+	"perfil",
+]);
+
+const alreadyDone: readonly (readonly [string, string])[] = [
+	[
+		commandMessages.financialMovementReversed,
+		"Este movimento já foi estornado.",
+	],
+	[commandMessages.obligationPaid, "Esta obrigação já foi paga."],
+	[commandMessages.purchaseReversed, "Esta compra já foi estornada."],
+	[commandMessages.stockMovementReversed, "Este movimento já foi estornado."],
+];
 
 export function clientCommandFailure(
 	error: unknown,
@@ -53,16 +76,11 @@ export function clientCommandFailure(
 	) {
 		return { kind: "exists", message: "Este cadastro já tinha sido salvo." };
 	}
-	if (
-		error.code === "CONFLICT" &&
-		error.message === commandMessages.stockMovementReversed
-	) {
-		return {
-			kind: "exists",
-			message: "Este movimento já foi estornado.",
-		};
+	const done = alreadyDone.find(([message]) => message === error.message);
+	if (error.code === "CONFLICT" && done) {
+		return { kind: "exists", message: done[1] };
 	}
-	if (error.code === "PRECONDITION_FAILED") {
+	if (error.code === "PRECONDITION_FAILED" && personalSubjects.has(subject)) {
 		return { kind: "anonymized", message: "Este cliente foi anonimizado." };
 	}
 	if (error.code === "CONFLICT") {

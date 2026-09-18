@@ -74,3 +74,57 @@ describe("falhas de comando de cliente", () => {
 		).toBe("Sua sessão terminou. Entre de novo.");
 	});
 });
+
+describe("falhas de compra e finanças", () => {
+	test("pagamento repetido, estorno repetido e compra já estornada viram exists", () => {
+		const cases = [
+			[commandMessages.obligationPaid, "Esta obrigação já foi paga."],
+			[commandMessages.purchaseReversed, "Esta compra já foi estornada."],
+			[
+				commandMessages.financialMovementReversed,
+				"Este movimento já foi estornado.",
+			],
+		] as const;
+		for (const [message, expected] of cases) {
+			expect(
+				clientCommandFailure(new ORPCError("CONFLICT", { message }), "compra")
+			).toEqual({ kind: "exists", message: expected });
+		}
+	});
+
+	test("versão velha de conta, fornecedor e compra", () => {
+		const error = new ORPCError("CONFLICT", {
+			message: commandMessages.staleVersion,
+		});
+		expect(clientCommandFailure(error, "conta").message).toBe(
+			"Esta conta mudou em outra janela ou aparelho."
+		);
+		expect(clientCommandFailure(error, "fornecedor").message).toBe(
+			"Este fornecedor mudou em outra janela ou aparelho."
+		);
+	});
+
+	test("obrigação cancelada chega com a mensagem do servidor", () => {
+		expect(
+			clientCommandFailure(
+				new ORPCError("NOT_FOUND", {
+					message: commandMessages.obligationCancelled,
+				}),
+				"compra"
+			)
+		).toEqual({ kind: "other", message: commandMessages.obligationCancelled });
+	});
+});
+
+describe("pré-condição fora de cliente", () => {
+	test("só cliente, perfil, medição e peça leem PRECONDITION_FAILED como anonimizado", () => {
+		const error = new ORPCError("PRECONDITION_FAILED", {
+			message: "Instalação ainda no wizard",
+		});
+		expect(clientCommandFailure(error, "peça").kind).toBe("anonymized");
+		expect(clientCommandFailure(error, "compra")).toEqual({
+			kind: "other",
+			message: "A configuração avançou em outra janela. A tela foi atualizada.",
+		});
+	});
+});
