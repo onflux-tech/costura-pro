@@ -62,6 +62,10 @@
       "types": "./dist/src/reservation.d.ts",
       "default": "./src/reservation.ts"
     },
+    "./service": {
+      "types": "./dist/src/service.d.ts",
+      "default": "./src/service.ts"
+    },
     "./sign-in-lockout": {
       "types": "./dist/src/sign-in-lockout.d.ts",
       "default": "./src/sign-in-lockout.ts"
