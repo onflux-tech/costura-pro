@@ -7,6 +7,7 @@ import { and, asc, eq, inArray, isNotNull, isNull, or, sql } from "drizzle-orm";
 import z from "zod";
 
 import { commandMessages } from "../command-messages";
+import { containing } from "../search";
 import { variantBalanceTotals } from "../stock/queries";
 import {
 	listMaterialVariants,
@@ -33,12 +34,6 @@ export type MaterialListItem = {
 	variantCount: number;
 	version: number;
 };
-
-const likeSpecial = /[\\%_]/g;
-
-function containing(token: string): string {
-	return `%${token.replace(likeSpecial, (character) => `\\${character}`)}%`;
-}
 
 type Reader = Pick<Database, "select" | "selectDistinct">;
 

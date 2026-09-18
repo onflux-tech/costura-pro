@@ -35,6 +35,7 @@ import z from "zod";
 
 import { commandMessages } from "../command-messages";
 import { notReversed } from "../finance/store";
+import { containing } from "../search";
 import {
 	type PurchaseItem,
 	type PurchaseSnapshot,
@@ -48,12 +49,6 @@ import { type SupplierSnapshot, supplierSnapshot } from "./supplier-store";
 export const purchasePageSize = 50;
 
 type Reader = Pick<Database, "select">;
-
-const likeSpecial = /[\\%_]/g;
-
-function containing(token: string): string {
-	return `%${token.replace(likeSpecial, (character) => `\\${character}`)}%`;
-}
 
 export const supplierListInput = z.object({
 	archived: z.boolean().default(false),

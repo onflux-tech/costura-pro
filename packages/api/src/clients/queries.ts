@@ -6,6 +6,7 @@ import { and, asc, isNotNull, isNull, sql } from "drizzle-orm";
 import z from "zod";
 
 import { commandMessages } from "../command-messages";
+import { containing } from "../search";
 import {
 	clientSnapshot,
 	listProfiles,
@@ -32,12 +33,6 @@ export type ClientListItem = {
 	updatedAt: string;
 	version: number;
 };
-
-const likeSpecial = /[\\%_]/g;
-
-function containing(token: string): string {
-	return `%${token.replace(likeSpecial, (character) => `\\${character}`)}%`;
-}
 
 type Reader = Pick<Database, "select">;
 

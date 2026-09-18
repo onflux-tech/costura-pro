@@ -21,6 +21,7 @@ import {
 } from "drizzle-orm";
 import z from "zod";
 
+import { containing } from "../search";
 import {
 	type StockLocationSnapshot,
 	type StockLotSnapshot,
@@ -64,12 +65,6 @@ export type StockBalancePoint = {
 };
 
 type Reader = Pick<Database, "select" | "selectDistinct">;
-
-const likeSpecial = /[\\%_]/g;
-
-function containing(token: string): string {
-	return `%${token.replace(likeSpecial, (character) => `\\${character}`)}%`;
-}
 
 export function listStockBalances(
 	db: Reader,
