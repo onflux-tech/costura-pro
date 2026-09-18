@@ -9,6 +9,7 @@ import {
 
 import { bigintInteger } from "../columns";
 import { materialVariant } from "./materials";
+import { purchase } from "./purchases";
 
 export const stockMovementKindValues = [
 	"opening",
@@ -16,6 +17,7 @@ export const stockMovementKindValues = [
 	"transferOut",
 	"transferIn",
 	"reversal",
+	"purchase",
 ] as const;
 
 export const stockLocation = sqliteTable("stock_location", {
@@ -56,6 +58,7 @@ export const stockMovement = sqliteTable(
 			.references(() => stockLocation.id),
 		lotId: text("lot_id").references(() => stockLot.id),
 		occurredOn: text("occurred_on").notNull(),
+		purchaseId: text("purchase_id").references(() => purchase.id),
 		quantityMicros: bigintInteger("quantity_micros").notNull(),
 		reason: text("reason"),
 		reversesMovementId: text("reverses_movement_id").references(
@@ -75,6 +78,7 @@ export const stockMovement = sqliteTable(
 			table.lotId
 		),
 		index("stock_movement_transfer_idx").on(table.transferId),
+		index("stock_movement_purchase_idx").on(table.purchaseId),
 		uniqueIndex("stock_movement_reverses_idx").on(table.reversesMovementId),
 	]
 );

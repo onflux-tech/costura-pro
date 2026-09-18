@@ -150,6 +150,7 @@ describe("stock schema", () => {
 				"location_id",
 				"lot_id",
 				"occurred_on",
+				"purchase_id",
 				"quantity_micros",
 				"reason",
 				"reverses_movement_id",

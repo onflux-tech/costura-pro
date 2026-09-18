@@ -71,6 +71,20 @@
       "when": 1789686095764,
       "tag": "0009_stock_movement_append_only",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "6",
+      "when": 1789700419505,
+      "tag": "0010_suppliers_purchases_finance",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "6",
+      "when": 1789700429792,
+      "tag": "0011_purchase_finance_append_only",
+      "breakpoints": true
     }
   ]
 }
