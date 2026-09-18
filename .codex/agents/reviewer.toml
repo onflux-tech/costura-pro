@@ -35,4 +35,7 @@ Reporte achados por severidade com caminho, linha, cenário de falha e requisito
 - Operação que grava mais de uma linha com ids vindos do aparelho (transferência, compra com obrigação e pagamento) precisa recusar cada id extra já usado e igual ao `aggregateId`, pela procedure direta e pelo push; sem isso a chave primária derruba o push inteiro com 500.
 - Rateio com resto numa posição fixa passa com pesos todos positivos: peça o item de peso zero (brinde) na última posição, com frete e desconto.
 - Diálogo que sorteia ids e `opId` ao montar grava de novo quando o dono fecha e reabre depois de uma resposta perdida: peça o rascunho na página, descartado só no sucesso.
+- Teste de push com patch de um campo só (`{ costCents: "12,50" }`) passa mesmo se o campo sair do schema: o zod remove o campo, o patch fica vazio e cai em `invalidPayload` por "Nada para alterar". Peça o inválido misturado com um campo válido e um teste que aplique o campo de fato.
+- Teste de pull que confere só o último snapshot (`.at(-1)`) não pega a criação sem `appendChange` quando o mesmo teste também edita: peça a lista das versões do agregado no pull.
+- Número exibido ao lado de um aviso (margem arredondada meio para cima junto de "abaixo da meta") pode contradizer o aviso no empate: peça o caso de fronteira exato e o arredondamento a favor do aviso.
 '''

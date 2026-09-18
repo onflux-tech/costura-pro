@@ -34,4 +34,6 @@ Não altere arquivos, banco, Git ou serviços; não rode testes ou navegador. En
 - Seletor da tela alimentado por procedure paginada esconde o que passa da primeira página: compare o limite da procedure com o que a tela oferece, e prefira leitura inteira (`suppliers.options`) ou busca.
 - Código de erro reaproveitado por agregados diferentes (`PRECONDITION_FAILED` para anonimizado e para estado do fato) muda de sentido pelo assunto: confira que a web só traduz como anonimizado nos assuntos com dado pessoal.
 - Data calculada no clique (estorno com `occurredOn` de hoje) entra no hash do servidor: a chave do `opIdFor` precisa incluí-la, senão a nova tentativa no dia seguinte recebe `CONFLICT`.
+- Payload que a tela monta dentro do componente (meta do diálogo) não é o que o teste de contrato confere quando o teste monta o próprio objeto: peça a função da `lib` usada pela tela e pelo teste.
+- Campo acrescentado ao snapshot de um agregado que já existia não chega aos snapshots gravados antes da migration: confira se a SPEC diz o padrão que o consumidor do pull aplica.
 '''
