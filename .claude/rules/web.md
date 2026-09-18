@@ -28,6 +28,7 @@ paths:
 - `Button` do Base UI com `render={<Link />}` vira `<a role="button">`: navegação com cara de botão usa `ButtonLink`.
 - A barra inferior usa `env(safe-area-inset-bottom)`, que só vale com `viewport-fit=cover` no `index.html`; confira no iPhone com a PWA instalada.
 - Verificação com browser-harness roda isolada do perfil do dono, cujo autofill mistura credenciais salvas no formulário. O caminho que funciona sempre é um Chrome headless próprio (`chrome.exe --headless=new --remote-debugging-port=9333 --user-data-dir=<scratchpad>`) com `BU_NAME` e `BU_CDP_URL`: a janela de um contexto isolado no Chrome do dono fica `document.visibilityState === "hidden"` quando encoberta e o Chrome deixa de responder a clique e toque (timeout de 5 s no harness).
+- Servidor de produção para a verificação sobe em segundo plano com `exec` no comando (`exec env ... bun dist/index.mjs`): sem ele, parar a tarefa encerra só o shell, o `bun` continua com a porta e o próximo build roda contra o processo velho. Confira pela linha de comando do processo antes de subir de novo.
 - Com a aba em segundo plano, animações e `requestAnimationFrame` do Base UI atrasam foco e fechamento de menu no browser-harness: use `activate_tab` antes de testar teclado.
 - Em desenvolvimento, o botão flutuante dos devtools do React Query cobre o "Mais" da barra inferior: esconda o overlay antes de clicar.
 - No iPhone, Safari e ícone instalado guardam dados separados: teste sempre na instância instalada.
@@ -72,4 +73,12 @@ paths:
 - No browser-harness, clique em coordenada abaixo da dobra não faz nada e não levanta erro: chame `DOM.scrollIntoViewIfNeeded` antes de ler a caixa do nó, senão o roteiro "passa" sem ter clicado. `Input.insertText` também escreve a partir do caret, então limpe o campo antes de preencher de novo.
 - Lista que parte da tabela de saldo só mostra o que já tem movimento, então a variante nova não aparece para receber o primeiro lançamento: a lista de saldos parte de `material_variant` com `LEFT JOIN`, e o filtro por local é que corta as zeradas.
 - `formatMoney` e `formatQuantity` só passaram a tratar sinal quando o estoque trouxe valor negativo; tela nova que exibe valor com sinal confere o negativo, senão sai `R$ -12,-50`.
-
+- `FieldHint` e `FieldError` são partes do `Field` do Base UI: fora de um `Field` lançam "FieldRootContext is missing" (erro 28 no build de produção) e derrubam a rota inteira para a tela de erro. Texto de apoio solto é `Text`.
+- `ChoiceChips` dentro de `Field` perde o nome de cada opção: o Base UI liga cada `Radio` ao `FieldLabel` por `aria-labelledby`, e o leitor de tela anuncia todos os rádios com o rótulo do grupo. Grupo de chips usa `Fieldset` com `FieldsetLegend` (`apps/web/src/atendimento/client-form.tsx`).
+- Diálogo com `<form>` próprio fica fora do `<form>` da página: o portal tira o diálogo do DOM do formulário, mas o submit sintético do React sobe pela árvore de componentes e dispara o `onSubmit` da página.
+- A sub-aba ativa casa por prefixo do `href`: página filha (nova, detalhe) mora abaixo do caminho da aba (`/compras/recebidas/nova`), senão nenhuma aba fica marcada.
+- Painel que abre dentro de uma `DataListRow` leva `md:col-span-full`: no desktop a linha é grade, e o filho extra cai espremido na primeira coluna.
+- Diálogo que lança dinheiro (saldo de abertura, ajuste, transferência) guarda ids e `opId` num rascunho da página por alvo e ação (`useDrafts`), descartado só no sucesso: sorteados ao montar, fechar e reabrir depois de uma resposta perdida grava de novo.
+- Seletor alimentado por lista paginada precisa da leitura inteira (`suppliers.options`) ou de busca; a primeira página sozinha esconde o 51º item sem aviso.
+- Chave do `opIdFor` cobre tudo o que entra no hash do servidor, inclusive o id do agregado e a data calculada no clique (`lotId` do lote novo, `occurredOn` do estorno); senão a nova tentativa recebe "opId reutilizado com conteúdo diferente".
+- No browser-harness, `input type="date"` aparece na árvore de acessibilidade com o papel `Date` (com maiúscula), e o `ChoiceChip` com o papel `radio`; procure pelo papel certo, senão o roteiro não acha o campo.

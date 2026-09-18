@@ -32,4 +32,4 @@ paths:
 - Chave primária composta com coluna anulável não garante unicidade no SQLite, onde dois `NULL` não colidem: projeção por ponto (variante, local, lote) usa `id` textual derivado (`balancePointId`), com as colunas ao lado para consulta e chave estrangeira.
 - Índice **único** sobre coluna anulável é a defesa em profundidade certa para "no máximo um": `stock_movement_reverses_idx` garante um estorno por movimento mesmo que a checagem no comando falhe, e não atrapalha as linhas sem estorno.
 - Agregado append-only (movimento de estoque) nasce só com criação, sem `updated_at` nem `archived_at`, e leva trigger de `UPDATE` e `DELETE` numa migration `--custom`; a projeção que ele alimenta muda na mesma transação e tem teste comparando a soma dos fatos com a linha projetada ([estoque](../../docs/areas/estoque.md)).
-
+- Coluna nova com chave estrangeira numa tabela append-only (`stock_movement.purchase_id`) só é segura se o drizzle-kit gerar `ALTER TABLE ... ADD ... REFERENCES`: se gerar recriação da tabela (copiar, apagar e renomear), as triggers da migration custom somem em silêncio. Confira o SQL gerado e mantenha o teste de append-only da tabela antiga.

@@ -26,7 +26,8 @@ O `id` da projeção é `variantId|locationId|lotId ou -`, porque coluna anuláv
 | `opening` | `stockMovements.create` | positivo, com valor informado |
 | `adjustment` | `stockMovements.create` | positivo com valor informado, ou negativo pela média do ponto |
 | `transferOut` e `transferIn` | `stockMovements.transfer`, duas linhas com o mesmo `transfer_id` | negativo na origem, positivo no destino |
-| `reversal` | `stockMovements.reverse` | contrário ao movimento original |
+| `reversal` | `stockMovements.reverse` ou estorno da compra | contrário ao movimento original |
+| `purchase` | `purchase.create` ([compras](compras.md)), um por item, com `purchase_id` | positivo, com o custo de aquisição do item |
 
 `stockMovements.create` só aceita `opening` e `adjustment`: a união discriminada recusa os outros pela forma, então um payload com `transferOut` vira `invalidPayload` no push em vez de criar meia transferência.
 
@@ -45,6 +46,8 @@ A variante declara `tracks_lots` na criação, e o campo é imutável como a uni
 `stockMovements.reverse` grava o movimento contrário apontando para o original. Um índice único em `reverses_movement_id` garante um estorno por movimento no banco (em SQLite os nulos não colidem), além da checagem na criação, que devolve `aggregateExists`. Para isso, `CreateRejection` ganhou a razão `aggregateExists`, que o push já conhecia como quarentena e que a procedure direta traduz em `CONFLICT`.
 
 Estornar uma perna de transferência estorna a contraparte na mesma operação, com `counterpartId` no payload; sem isso a quantidade total mudaria, porque só um dos dois locais seria desfeito.
+
+Movimento com `purchase_id` (a entrada da compra e o estorno dela) não se estorna por aqui: `stockMovements.reverse` responde `Movimento de compra se estorna pela compra`, e a tela troca "Estornar" por "Ver compra". Sem isso, a compra continuaria ativa com o estoque desfeito.
 
 ## Telas
 
@@ -68,3 +71,6 @@ O menu de ações da linha abre abertura, ajuste e transferência em diálogo, e
 | Nova tentativa de estorno responde que o cadastro foi enviado com outros dados | Ids sorteados a cada clique sob uma chave de `opId` estável | Guardar os ids por movimento alvo, como o diálogo faz com `useState` |
 | Data do movimento cai no dia seguinte à noite | `toISOString()` é UTC | `localDay` (`apps/web/src/lib/measurements.ts`), o mesmo do resto do app |
 | Soma de saldo volta como número do JavaScript | `sum()` em `sql` cru não passa pelo tipo da coluna | `cast(... as text)` na consulta, e o valor segue como string até a tela |
+| Ajuste com quantidade `"-1,50"` responde 500 | O `refine` do objeto (entrada com valor, saída sem) roda mesmo com a quantidade reprovada, porque a falha de outro `refine` é continuável, e chama `BigInt` no texto cru | `whenShapeIsValid` no `refine` do objeto |
+| Transferência ou estorno com o segundo id igual ao da operação derruba o push inteiro | O segundo insert batia na chave primária dentro da transação | O `create` recusa `inboundId` ou `counterpartId` igual ao `aggregateId` como `aggregateExists` |
+| Painel de detalhe da linha espremido na primeira coluna | O `DataListRow` é grade no desktop, e o filho extra cai na primeira célula | `md:col-span-full` no painel que abre dentro da linha |

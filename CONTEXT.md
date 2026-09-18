@@ -210,7 +210,7 @@ Fator que transforma a embalagem comprada, como rolo, cone ou pacote, na unidade
 Armário, prateleira ou área com saldo físico próprio. Lista plana, sem hierarquia.
 
 **Movimento de estoque**:
-Registro imutável de uma variação de saldo num ponto, com quantidade e valor assinados. Nasce por saldo de abertura, ajuste, transferência ou estorno, e nunca é editado nem apagado.
+Registro imutável de uma variação de saldo num ponto, com quantidade e valor assinados. Nasce por saldo de abertura, ajuste, transferência, compra ou estorno, e nunca é editado nem apagado.
 _Evitar_: lançamento, entrada e saída
 
 **Ponto de saldo**:
@@ -247,8 +247,22 @@ Limite abaixo do qual a variante pede reposição e quantidade até a qual a lis
 **Custo de referência**:
 Custo por unidade base que o dono informa na variante antes de existir compra, usado como ponto de partida para preço sugerido e custo provisório. Só o dono vê.
 
+**Fornecedor**:
+Loja ou pessoa de quem o ateliê compra material, com nome e contatos. É o que agrupa o histórico de compras.
+
+**Compra**:
+Registro imutável do que chegou de um fornecedor: itens com variante, local, embalagem, quantidade de embalagens e preço por embalagem, mais frete e desconto. Cada item entra no estoque como movimento de compra, e a compra nasce com a sua obrigação. Correção é o estorno da compra inteira.
+_Evitar_: pedido, nota de entrada
+
+**Rateio**:
+Divisão do frete e do desconto de uma compra entre os itens, na proporção do total de cada linha, com cada item arredondado para baixo e o centavo que sobra no último item que tem valor; brinde não recebe nada.
+
 **Custo de aquisição**:
-Preço dos itens de uma compra após o rateio proporcional de frete e desconto.
+Custo de um item da compra: total da linha mais a parte do frete menos a parte do desconto, depois do rateio.
+
+**Estorno de compra**:
+Registro que desfaz uma compra inteira: devolve os movimentos de estoque pelo valor de entrada, estorna o pagamento, se houver, e cancela a obrigação. Cada compra aceita um só.
+_Evitar_: cancelamento de compra, exclusão
 
 **Consumo real**:
 Quantidade retirada para produção, possivelmente de vários lotes, que reduz o saldo físico.
@@ -294,7 +308,11 @@ Leitura de vendas e custos pela data do evento comercial ou do consumo, independ
 Leitura do dinheiro recebido, pago ou transferido nas contas do ateliê.
 
 **Conta financeira**:
-Local onde o dinheiro do ateliê está, como dinheiro físico, banco ou conta de liquidação.
+Local onde o dinheiro do ateliê está, como dinheiro físico, banco, conta Pix ou conta de liquidação. O saldo é a soma dos movimentos financeiros dela.
+
+**Movimento financeiro**:
+Registro imutável de uma variação de saldo numa conta, com valor assinado. Nasce por saldo de abertura, transferência entre contas, quitação ou estorno; um estorno não se estorna.
+_Evitar_: lançamento
 
 **Conta de liquidação**:
 Conta intermediária em que valores de cartão aguardam repasse ao banco.
@@ -319,7 +337,10 @@ _Evitar_: crédito do cliente
 Saída financeira explícita que devolve ao cliente um valor já recebido. Nunca vira crédito automático.
 
 **Obrigação de compra**:
-Valor a pagar por aquisição recebida, com um único vencimento. A compra eleva o estoque e não é despesa imediata.
+Valor a pagar por aquisição recebida, com um único vencimento, criado junto da compra; na compra paga na hora, já nasce quitada. Fica aberta, paga ou cancelada conforme as quitações e o estorno da compra. A compra eleva o estoque e não é despesa imediata.
+
+**Quitação**:
+Pagamento integral de uma obrigação a partir de uma conta, numa data. Estornar a quitação reabre a obrigação. Na tela aparece como "Pagar".
 
 **Despesa direta**:
 Gasto vinculado a uma OS ou OP que refina sua margem real.

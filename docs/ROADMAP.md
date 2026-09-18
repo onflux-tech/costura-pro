@@ -223,8 +223,17 @@ Cada spike responde uma pergunta que muda o desenho antes de construir em cima d
   - telas em Estoque > Saldos e Locais, com lançamento em diálogo pela linha da variante, detalhe por local e lote, histórico com estorno, e saldo por variante na ficha do material;
   - verificado em navegador real no build de produção com banco novo: local criado pela tela, abertura com o custo sugerido (5 m a R$ 12,50 = R$ 62,50), ajuste que tira a média, transferência que conserva o total, estorno que devolve as duas pernas, variante por lote exigindo o lote, 1440, 768, 390 e 320 px sem rolagem horizontal, e teclado com foco preso no diálogo e Esc fechando.
 
+- Compras com fornecedor, conversão, rateio e obrigação, e contas financeiras (2026-09-18), descritas em [compras](areas/compras.md) e [finanças](areas/financas.md):
+  - fornecedor como cadastro próprio, fora da anonimização, e compra com itens em JSON, embalagem copiada da variante e trocável na compra, preço por embalagem e local e lote por item ([DEC-104 a DEC-107](PRD.md#93-catálogo-estoque-e-produção));
+  - conversão para a unidade base e rateio de frete e desconto pelo total da linha, com piso por item e resto no último item com valor (brinde sem custo), na mesma função do domínio usada pelo servidor e pela prévia da tela;
+  - compra, obrigação, estorno de compra e movimento financeiro append-only, com o estado da obrigação derivado dos fatos; toda compra nasce com a obrigação, que na compra paga na hora já nasce quitada; estorno da compra inteira devolve o estoque pelo valor de entrada e estorna o pagamento ([DEC-108](PRD.md#95-finanças), [ADR 0019](adr/0019-compra-e-obrigacao-como-fatos-imutaveis.md));
+  - conta financeira com tipo em lista fechada e saldo somado na leitura; saldo de abertura com sinal, transferência em duas pernas, estorno que não se estorna e quitação integral de obrigação ([DEC-109 a DEC-111](PRD.md#95-finanças));
+  - telas em Compras (Compras e Fornecedores, nova compra com diálogo de item e lote criado na hora, detalhe com custo de aquisição e estorno) e em Finanças (Contas com extrato na linha, A pagar com vencidas e quitação);
+  - teste de integração do CA-03 (compra em embalagem, conversão, custo de aquisição com frete e desconto, saldos de estoque e de conta e projeção igual à soma dos movimentos);
+  - verificado em navegador real no build de produção com banco novo: contas com abertura e transferência, fornecedor, compra paga na hora com três itens (um com lote novo) e valores de R$ 356,64, R$ 84,21 e R$ 89,15, compra a prazo com vencimento recusado antes da data da compra, quitação pelo banco, estorno da compra paga com a conta e o estoque de volta, histórico do estoque com "Ver compra", 320, 390, 768 e 1440 px sem rolagem horizontal, e teclado com foco preso no diálogo do item e Esc devolvendo o foco.
+
 **Pendente:**
-- Sessão de inventário (RF-EST-13, parte de sessão), catálogo de serviços e produtos com variantes e ficha técnica, compras, contas financeiras, etiquetas com leitura por câmera (S3) e busca global.
+- Sessão de inventário (RF-EST-13, parte de sessão), catálogo de serviços e produtos com variantes e ficha técnica, etiquetas com leitura por câmera (S3) e busca global.
 
 **Critério de saída:**
 - Parte de cadastro de estoque do CA-03 com teste de integração: variantes, local, lote, compra em embalagem, conversão e custo de aquisição com frete e desconto.
