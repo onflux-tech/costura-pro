@@ -40,6 +40,7 @@ Documentação curada e versionada do Costura Pro. Todo doc novo em `docs/` entr
 | [0017](adr/0017-dinheiro-e-quantidade-em-coluna-inteira.md) | Dinheiro e quantidade em coluna inteira do SQLite e inteiro em string no JSON |
 | [0018](adr/0018-movimento-append-only-com-projecao-de-saldo.md) | Movimento de estoque append-only com projeção de saldo na mesma transação |
 | [0019](adr/0019-compra-e-obrigacao-como-fatos-imutaveis.md) | Compra, obrigação e estorno como fatos imutáveis, com estado derivado |
+| [0020](adr/0020-servico-versionado-e-preco-sugerido-na-leitura.md) | Serviço versionado pelo próprio agregado e preço sugerido calculado na leitura |
 
 ## Agentes e harness
 
@@ -61,3 +62,4 @@ Quando uma área acumular conhecimento que não cabe numa rule, o `/entrega-fech
 | [Estoque](areas/estoque.md) | Antes de mexer em local, lote, movimento ou saldo: agregados e projeção, tipos de movimento, valor de saída pela média, lote por variante, estorno e armadilhas |
 | [Compras](areas/compras.md) | Antes de mexer em fornecedor, compra, conversão de embalagem, rateio de frete e desconto, obrigação ou estorno de compra: agregados, contas do custo de aquisição, comandos, telas e armadilhas |
 | [Finanças](areas/financas.md) | Antes de mexer em conta financeira, movimento financeiro, saldo de conta, transferência, pagamento ou estado da obrigação: agregados, tipos de movimento, obrigação a pagar, telas e armadilhas |
+| [Serviços](areas/servicos.md) | Antes de mexer em serviço, custo, preço praticado, meta de margem ou preço sugerido: agregado, meta do ateliê na instalação, a conta do preço, comandos, telas e armadilhas |

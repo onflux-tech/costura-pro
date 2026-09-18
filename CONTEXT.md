@@ -61,10 +61,10 @@ _Evitar_: exclusão
 ## Catálogo e preço
 
 **Serviço**:
-Atividade de costura ou terceirizada com custo interno fixo e preço padrão separados. O custo não inclui materiais listados à parte.
+Atividade de costura, feita no ateliê ou terceirizada, com custo e preço praticado separados. O custo não inclui materiais listados à parte. A versão sobe a cada edição, e o orçamento copia o serviço como estava.
 
 **Serviço terceirizado**:
-Serviço executado fora do ateliê, com custo estimado substituído pela despesa real quando ela é vinculada.
+Serviço executado fora do ateliê, marcado no cadastro, com custo estimado substituído pela despesa real quando ela é vinculada.
 
 **Produto base**:
 Definição comum de um produto acabado e de sua ficha técnica.
@@ -83,11 +83,11 @@ _Evitar_: receita
 Imagens do produto base usadas por todas as variantes; a capa da variante substitui apenas a imagem principal.
 
 **Margem desejada**:
-Meta de margem sobre o preço de venda usada para sugerir preço. Nunca bloqueia venda.
+Meta de margem sobre o preço de venda usada para sugerir preço. A meta do ateliê vale para todo serviço, e um serviço pode ter meta própria, que vence a do ateliê. Nunca bloqueia venda nem muda preço.
 _Evitar_: markup
 
 **Preço sugerido**:
-Custo estimado dividido por um menos a margem desejada.
+Custo estimado dividido por um menos a margem desejada, arredondado para cima ao centavo. É calculado na hora e nunca gravado.
 
 **Preço praticado**:
 Preço confirmado pelo dono em catálogo, orçamento ou venda. A sugestão não o altera automaticamente.
@@ -179,7 +179,7 @@ Venda direta e OS de ajuste da mesma peça, ligadas entre si com históricos sep
 Retorno de produto vendido com motivo, reembolso quando devido e destino: vendável, danificado ou perda.
 
 **Insumo não controlado**:
-Material usado num trabalho sem movimento de estoque, como retalho antigo, com custo estimado opcional.
+Material usado num trabalho sem movimento de estoque, como retalho antigo, digitado como linha livre do orçamento ou da OS, com custo estimado opcional. Não tem cadastro.
 _Evitar_: material avulso
 
 **Documento emitido**:

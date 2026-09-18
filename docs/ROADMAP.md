@@ -180,7 +180,7 @@ Cada spike responde uma pergunta que muda o desenho antes de construir em cima d
 
 **Objetivo:** cadastros e estoque físico com movimentos imutáveis.
 
-**Requisitos:** RF-ATD-01 a 03, 05 a 07; RF-CAT-01 a 12; RF-EST-01 a 06, 13, 14; RF-FIN-01; RF-ENT-08; RF-ACE-14 (captura e otimização de fotos).
+**Requisitos:** RF-ATD-01 a 03, 05 a 07; RF-CAT-01 a 09, 11, 12; RF-EST-01 a 06, 13, 14; RF-FIN-01; RF-ENT-08; RF-ACE-14 (captura e otimização de fotos).
 
 **Entregas:**
 - Clientes, perfis, modelos de medidas, arquivamento, anonimização e recepção de peças com fotos.
@@ -232,8 +232,15 @@ Cada spike responde uma pergunta que muda o desenho antes de construir em cima d
   - teste de integração do CA-03 (compra em embalagem, conversão, custo de aquisição com frete e desconto, saldos de estoque e de conta e projeção igual à soma dos movimentos);
   - verificado em navegador real no build de produção com banco novo: contas com abertura e transferência, fornecedor, compra paga na hora com três itens (um com lote novo) e valores de R$ 356,64, R$ 84,21 e R$ 89,15, compra a prazo com vencimento recusado antes da data da compra, quitação pelo banco, estorno da compra paga com a conta e o estoque de volta, histórico do estoque com "Ver compra", 320, 390, 768 e 1440 px sem rolagem horizontal, e teclado com foco preso no diálogo do item e Esc devolvendo o foco.
 
+- Serviço e preço sugerido (2026-09-18), descritos em [serviços](areas/servicos.md):
+  - serviço no ateliê ou terceirizado com custo e preço praticado separados, categoria em texto livre com sugestões, duração estimada em minutos e versão do próprio agregado, que o orçamento vai copiar ([DEC-112](PRD.md#93-catálogo-estoque-e-produção), [ADR 0020](adr/0020-servico-versionado-e-preco-sugerido-na-leitura.md));
+  - meta de margem do ateliê na instalação, com padrão de 40% e diálogo na lista, e meta própria opcional por serviço ([DEC-113](PRD.md#93-catálogo-estoque-e-produção));
+  - preço sugerido, margem do preço praticado e avisos de abaixo da meta e abaixo do custo calculados na tela pela mesma função do domínio, sem nunca mudar o preço ([DEC-114](PRD.md#93-catálogo-estoque-e-produção)); insumo não controlado decidido como linha livre do orçamento da F4 ([DEC-115](PRD.md#93-catálogo-estoque-e-produção));
+  - telas em Catálogo > Serviços (lista com busca, categoria, arquivados e selos, novo, edição com versão, conflito e arquivar);
+  - verificado em navegador real no build de produção com banco novo: custo de R$ 60 com sugestão de R$ 100 adotada por "Usar preço sugerido", terceirizado com meta própria de 30% abaixo da meta, serviço abaixo do custo, meta do ateliê trocada para 45% mudando só as sugestões, conflito entre janelas com "Carregar versão atual", arquivar bloqueado com mudança não salva, busca e filtro de categoria, 1440, 768, 390 e 320 px sem rolagem horizontal, toque a 390 px e teclado com foco preso no diálogo e Esc devolvendo o foco.
+
 **Pendente:**
-- Sessão de inventário (RF-EST-13, parte de sessão), catálogo de serviços e produtos com variantes e ficha técnica, etiquetas com leitura por câmera (S3) e busca global.
+- Sessão de inventário (RF-EST-13, parte de sessão), produtos com variantes, galeria e ficha técnica, etiquetas com leitura por câmera (S3) e busca global.
 
 **Critério de saída:**
 - Parte de cadastro de estoque do CA-03 com teste de integração: variantes, local, lote, compra em embalagem, conversão e custo de aquisição com frete e desconto.
@@ -244,15 +251,15 @@ Cada spike responde uma pergunta que muda o desenho antes de construir em cima d
 
 **Objetivo:** fechar a jornada cliente, orçamento, aprovação, OS, consumo, entrega e recebimento.
 
-**Requisitos:** RF-COM-01 a 10; RF-CAT-13 a 15; RF-EST-07 a 12, 15; RF-PRO-01 a 03; RF-DOC-01 a 03, 05; RF-ATD-04, 08 a 12; RF-FIN-02, 03; RF-ENT-10.
+**Requisitos:** RF-COM-01 a 10; RF-CAT-10, 13 a 15; RF-EST-07 a 12, 15; RF-PRO-01 a 03; RF-DOC-01 a 03, 05; RF-ATD-04, 08 a 12; RF-FIN-02, 03; RF-ENT-10.
 
 **Entregas:**
-- Orçamento com revisões, aceite parcial, desconto e alertas de margem.
+- Orçamento com revisões, aceite parcial, desconto e alertas de margem, com linhas de serviço (cópia de nome, custo, preço e versão), material e insumo não controlado em linha livre ([DEC-112](PRD.md#93-catálogo-estoque-e-produção), [DEC-115](PRD.md#93-catálogo-estoque-e-produção)).
 - Aprovação transacional que cria OS, subitens, snapshot de medidas, reservas, pendências e recebível.
 - Estados separados de produção, entrega e financeiro.
 - Lista de compras consolidada.
 - Consumo com lote sugerido, troca de material, reconciliação, saldo negativo com custo provisório e ajuste.
-- Fluxo de produção versionado com quadro por etapa.
+- Fluxo de produção versionado com quadro por etapa, e etapas sugeridas por serviço.
 - Entrega parcial e liquidação de cancelamento.
 - Recebíveis, pagamentos e alocação.
 - Documentos PDF congelados (conforme o S1), comprovante de recepção e etiqueta de custódia.
@@ -337,7 +344,7 @@ Só então a versão é chamada de v1.
 |---|---|---|---|---|---|---|
 | RF-ENT | 02, 03, 05, 06 | 08 | 10 | 04, 07, 09 | | 01 |
 | RF-ATD | | 01 a 03, 05 a 07 | 04, 08 a 12 | | | |
-| RF-CAT | | 01 a 12 | 13 a 15 | | | |
+| RF-CAT | | 01 a 09, 11, 12 | 10, 13 a 15 | | | |
 | RF-EST | | 01 a 06, 13, 14 | 07 a 12, 15 | | | |
 | RF-PRO | | | 01 a 03 | 04 a 08 | | |
 | RF-COM | | | 01 a 10 | 11 a 14 | 14 (offline) | |
