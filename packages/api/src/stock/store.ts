@@ -36,6 +36,7 @@ export type StockMovementFields = {
 	locationId: string;
 	lotId: string | null;
 	occurredOn: string;
+	purchaseId: string | null;
 	quantityMicros: string;
 	reason: string | null;
 	reversesMovementId: string | null;
@@ -70,6 +71,7 @@ export type StockMovementSnapshot = {
 	locationId: string;
 	lotId: string | null;
 	occurredOn: string;
+	purchaseId: string | null;
 	quantityMicros: string;
 	reason: string | null;
 	reversesMovementId: string | null;
@@ -118,6 +120,7 @@ export function stockMovementSnapshot(
 		locationId: row.locationId,
 		lotId: row.lotId,
 		occurredOn: row.occurredOn,
+		purchaseId: row.purchaseId,
 		quantityMicros: row.quantityMicros.toString(),
 		reason: row.reason,
 		reversesMovementId: row.reversesMovementId,

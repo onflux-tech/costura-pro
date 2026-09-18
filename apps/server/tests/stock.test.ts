@@ -439,6 +439,19 @@ describe("stock movements", () => {
 		await expect(
 			loose(openingInput(variantId, locationId, { quantityMicros: "12,50" }))
 		).rejects.toMatchObject({ code: "BAD_REQUEST" });
+		await expect(
+			loose({
+				kind: "adjustment",
+				locationId,
+				lotId: null,
+				movementId: crypto.randomUUID(),
+				occurredOn: "2026-09-17",
+				opId: newOpId(),
+				quantityMicros: "-1,50",
+				reason: "Perda",
+				variantId,
+			})
+		).rejects.toMatchObject({ code: "BAD_REQUEST" });
 	});
 
 	test("canonicalizes a signed integer with leading zeros", async () => {
@@ -1215,5 +1228,61 @@ describe("stock review gaps", () => {
 		const second = await owner.stockBalances.list({ offset: 50 });
 		expect(second.items).toHaveLength(1);
 		expect(second.nextOffset).toBeNull();
+	});
+});
+
+describe("stock ids of a two-row operation", () => {
+	test("refuses a transfer or a reversal whose second id repeats the first", async () => {
+		const { owner } = await ownerSetup();
+		const { locationId, variantId } = await stockedVariant(owner);
+		const destination = await createLocation(owner, { name: "Prateleira B" });
+		const same = crypto.randomUUID();
+		await expect(
+			owner.stockMovements.transfer({
+				fromLocationId: locationId,
+				inboundId: same,
+				lotId: null,
+				movementId: same,
+				occurredOn: "2026-09-17",
+				opId: newOpId(),
+				quantityMicros: "1000000",
+				reason: null,
+				toLocationId: destination.id,
+				variantId,
+			})
+		).rejects.toMatchObject({
+			code: "CONFLICT",
+			message: "Registro já existe",
+		});
+		const transfer = await owner.stockMovements.transfer({
+			fromLocationId: locationId,
+			inboundId: crypto.randomUUID(),
+			lotId: null,
+			movementId: crypto.randomUUID(),
+			occurredOn: "2026-09-17",
+			opId: newOpId(),
+			quantityMicros: "1000000",
+			reason: null,
+			toLocationId: destination.id,
+			variantId,
+		});
+		const reversalId = crypto.randomUUID();
+		await expect(
+			owner.stockMovements.reverse({
+				counterpartId: reversalId,
+				movementId: reversalId,
+				occurredOn: "2026-09-18",
+				opId: newOpId(),
+				reason: "Transferi errado",
+				reversesMovementId: transfer.id,
+			})
+		).rejects.toMatchObject({
+			code: "CONFLICT",
+			message: "Registro já existe",
+		});
+		const { points } = await owner.stockBalances.get({ variantId });
+		expect(
+			points.reduce((sum, point) => sum + BigInt(point.quantityMicros), 0n)
+		).toBe(5_000_000n);
 	});
 });

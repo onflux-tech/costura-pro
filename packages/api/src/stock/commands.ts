@@ -49,13 +49,16 @@ const notFound = (message: string): CreateRejection => ({
 	reason: "aggregateNotFound",
 });
 
-type Place = {
+export type Place = {
 	locationId: string;
 	lotId: string | null;
 	variantId: string;
 };
 
-function checkPlace(db: CommandExecutor, place: Place): CreateRejection | null {
+export function checkPlace(
+	db: CommandExecutor,
+	place: Place
+): CreateRejection | null {
 	const variant = readMaterialVariant(db, place.variantId);
 	if (!variant) {
 		return notFound(commandMessages.materialVariantNotFound);
@@ -155,6 +158,7 @@ const createMovement: CreateDefinition = {
 				locationId: fields.locationId,
 				lotId: fields.lotId,
 				occurredOn: fields.occurredOn,
+				purchaseId: null,
 				quantityMicros: fields.quantityMicros,
 				reason: fields.reason,
 				reversesMovementId: null,
@@ -185,7 +189,7 @@ const transferMovement: CreateDefinition = {
 		if (rejection) {
 			return rejection;
 		}
-		if (readStockMovement(db, fields.inboundId)) {
+		if (fields.inboundId === id || readStockMovement(db, fields.inboundId)) {
 			return { reason: "aggregateExists" };
 		}
 		const quantity = BigInt(fields.quantityMicros);
@@ -193,6 +197,7 @@ const transferMovement: CreateDefinition = {
 		const shared = {
 			lotId: fields.lotId,
 			occurredOn: fields.occurredOn,
+			purchaseId: null,
 			reason: fields.reason,
 			reversesMovementId: null,
 			transferId: id,
@@ -237,6 +242,9 @@ const reverseMovement: CreateDefinition = {
 		if (!original) {
 			return notFound(commandMessages.stockMovementNotFound);
 		}
+		if (original.purchaseId !== null) {
+			return notFound(commandMessages.stockMovementFromPurchase);
+		}
 		if (readReversalOf(db, original.id)) {
 			return {
 				message: commandMessages.stockMovementReversed,
@@ -256,7 +264,11 @@ const reverseMovement: CreateDefinition = {
 				reason: "aggregateExists",
 			};
 		}
-		if (fields.counterpartId && readStockMovement(db, fields.counterpartId)) {
+		if (
+			fields.counterpartId &&
+			(fields.counterpartId === id ||
+				readStockMovement(db, fields.counterpartId))
+		) {
 			return { reason: "aggregateExists" };
 		}
 		const pairId = counterpart ? id : null;
@@ -265,6 +277,7 @@ const reverseMovement: CreateDefinition = {
 			locationId: row.locationId,
 			lotId: row.lotId,
 			occurredOn: fields.occurredOn,
+			purchaseId: null,
 			quantityMicros: (-row.quantityMicros).toString(),
 			reason: fields.reason,
 			reversesMovementId: row.id,

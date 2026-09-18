@@ -7,6 +7,7 @@ import {
 	optionalText,
 	quantityMicrosSchema,
 	signedQuantityMicrosSchema,
+	whenShapeIsValid,
 } from "../schemas";
 
 const locationNameField = z
@@ -94,7 +95,10 @@ const adjustmentPayload = z
 			BigInt(values.quantityMicros) > 0n
 				? values.valueCents !== undefined
 				: values.valueCents === undefined,
-		"Entrada precisa de valor e saída toma a média do saldo"
+		{
+			...whenShapeIsValid,
+			message: "Entrada precisa de valor e saída toma a média do saldo",
+		}
 	);
 
 export const stockMovementCreatePayload = z.discriminatedUnion("kind", [

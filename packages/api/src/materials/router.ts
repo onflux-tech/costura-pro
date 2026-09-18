@@ -11,6 +11,8 @@ import {
 	listMaterialCategories,
 	listMaterials,
 	materialListInput,
+	searchMaterialVariants,
+	variantSearchInput,
 } from "./queries";
 import {
 	materialCreatePayload,
@@ -155,6 +157,10 @@ export const materialVariantsRouter = {
 				values,
 			})
 		),
+
+	search: readyProcedure
+		.input(variantSearchInput)
+		.handler(({ context, input }) => searchMaterialVariants(context.db, input)),
 
 	unarchive: variantArchiveToggle("materialVariant.unarchive"),
 

@@ -1,6 +1,7 @@
 import type { Database } from "@costura-pro/db";
 import { material, materialVariant } from "@costura-pro/db/schema/materials";
 import { searchTokens } from "@costura-pro/domain/client";
+import type { BaseUnitCode } from "@costura-pro/domain/unit";
 import { ORPCError } from "@orpc/server";
 import { and, asc, eq, inArray, isNotNull, isNull, or, sql } from "drizzle-orm";
 import z from "zod";
@@ -154,5 +155,79 @@ export function findVariantsByCode(db: Reader, code: string) {
 			.orderBy(asc(materialVariant.searchText), asc(materialVariant.id))
 			.limit(10)
 			.all(),
+	};
+}
+
+export const variantSearchInput = z.object({
+	offset: z.number().int().nonnegative().default(0),
+	query: z.string().max(100).optional(),
+});
+
+export type VariantOption = {
+	baseUnit: BaseUnitCode;
+	code: string | null;
+	displayPrecision: number;
+	id: string;
+	materialId: string;
+	materialName: string;
+	name: string;
+	packaging: { label: string; quantityMicros: string } | null;
+	tracksLots: boolean;
+};
+
+export function searchMaterialVariants(
+	db: Reader,
+	{ offset, query }: z.output<typeof variantSearchInput>
+): { items: VariantOption[]; nextOffset: number | null } {
+	const rows = db
+		.select({
+			baseUnit: materialVariant.baseUnit,
+			code: materialVariant.code,
+			displayPrecision: materialVariant.displayPrecision,
+			id: materialVariant.id,
+			materialId: material.id,
+			materialName: material.name,
+			name: materialVariant.name,
+			packagingLabel: materialVariant.packagingLabel,
+			packagingQuantityMicros: materialVariant.packagingQuantityMicros,
+			tracksLots: materialVariant.tracksLots,
+		})
+		.from(materialVariant)
+		.innerJoin(material, eq(material.id, materialVariant.materialId))
+		.where(
+			and(
+				isNull(materialVariant.archivedAt),
+				isNull(material.archivedAt),
+				...searchTokens(query ?? "").map((token) =>
+					or(
+						sql`${material.searchText} LIKE ${containing(token)} ESCAPE '\\'`,
+						sql`${materialVariant.searchText} LIKE ${containing(token)} ESCAPE '\\'`
+					)
+				)
+			)
+		)
+		.orderBy(
+			asc(material.searchText),
+			asc(materialVariant.searchText),
+			asc(materialVariant.id)
+		)
+		.limit(materialPageSize + 1)
+		.offset(offset)
+		.all();
+	return {
+		items: rows
+			.slice(0, materialPageSize)
+			.map(({ packagingLabel, packagingQuantityMicros, ...row }) => ({
+				...row,
+				packaging:
+					packagingLabel === null || packagingQuantityMicros === null
+						? null
+						: {
+								label: packagingLabel,
+								quantityMicros: packagingQuantityMicros.toString(),
+							},
+			})),
+		nextOffset:
+			rows.length > materialPageSize ? offset + materialPageSize : null,
 	};
 }

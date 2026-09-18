@@ -10,6 +10,7 @@ import {
 	updateDevice,
 } from "../devices/store";
 import type { Executor } from "../executor";
+import { financeCommands } from "../finance/commands";
 import {
 	installationSnapshot,
 	readInstallation,
@@ -17,6 +18,7 @@ import {
 } from "../installation/store";
 import { materialCommands } from "../materials/commands";
 import { measurementCommands } from "../measurements/commands";
+import { purchaseCommands } from "../purchases/commands";
 import { receivedItemCommands } from "../received-items/commands";
 import { atelierNameSchema, deviceNameSchema } from "../schemas";
 import { stockCommands } from "../stock/commands";
@@ -113,8 +115,10 @@ const setAtelierName: UpdateDefinition = {
 
 export const syncCommands = {
 	...clientCommands,
+	...financeCommands,
 	...materialCommands,
 	...measurementCommands,
+	...purchaseCommands,
 	...receivedItemCommands,
 	...stockCommands,
 	"device.rename": renameDevice,

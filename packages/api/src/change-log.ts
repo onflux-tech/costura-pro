@@ -5,16 +5,22 @@ import type { Executor } from "./executor";
 export type AggregateType =
 	| "client"
 	| "device"
+	| "financialAccount"
+	| "financialMovement"
 	| "installation"
 	| "material"
 	| "materialVariant"
 	| "measurement"
 	| "measurementTemplate"
+	| "obligation"
 	| "profile"
+	| "purchase"
+	| "purchaseReversal"
 	| "receivedItem"
 	| "stockLocation"
 	| "stockLot"
-	| "stockMovement";
+	| "stockMovement"
+	| "supplier";
 
 export type ChangeInput = {
 	aggregateId: string;

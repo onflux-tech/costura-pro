@@ -7,7 +7,7 @@ import z from "zod";
 
 import { hasChange, optionalText } from "../schemas";
 
-const phoneField = z
+export const phoneField = z
 	.string()
 	.nullable()
 	.transform((value, context) => {
@@ -22,7 +22,7 @@ const phoneField = z
 		return digits;
 	});
 
-const emailField = optionalText(clientFieldLength.email).pipe(
+export const emailField = optionalText(clientFieldLength.email).pipe(
 	z.email().nullable()
 );
 

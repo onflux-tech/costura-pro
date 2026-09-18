@@ -68,3 +68,8 @@ export const hasChange = (patch: Record<string, unknown>) =>
 	Object.values(patch).some((value) => value !== undefined);
 
 export const emptyPayload = z.object({});
+
+export const whenShapeIsValid = {
+	when: (payload: { issues: readonly unknown[] }) =>
+		payload.issues.length === 0,
+};
