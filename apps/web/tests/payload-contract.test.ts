@@ -4,6 +4,11 @@ import {
 	financialMovementTransferPayload,
 } from "@costura-pro/api/finance/schemas";
 import { purchaseCreatePayload } from "@costura-pro/api/purchases/schemas";
+import {
+	serviceCreatePayload,
+	servicePatchPayload,
+	targetMarginPayload,
+} from "@costura-pro/api/services/schemas";
 
 import {
 	accountOpeningFields,
@@ -14,6 +19,13 @@ import {
 	purchaseFields,
 	type VariantOptionView,
 } from "../src/lib/purchases";
+import {
+	emptyServiceValues,
+	type ServiceView,
+	serviceFields,
+	servicePatch,
+	targetMarginFields,
+} from "../src/lib/services";
 
 const uuid = () => crypto.randomUUID();
 
@@ -91,5 +103,60 @@ describe("payload da web contra o schema do servidor", () => {
 		expect(
 			financialMovementTransferPayload.parse({ ...transfer, inboundId: uuid() })
 		).toMatchObject({ amountCents: "4000" });
+	});
+
+	test("serviço, edição e meta do ateliê passam nos schemas de serviço", () => {
+		const fields = serviceFields({
+			...emptyServiceValues,
+			category: "Barra",
+			cost: "60",
+			estimatedMinutes: "30",
+			kind: "outsourced",
+			name: "Barra de calça",
+			price: "100,00",
+			targetMargin: "37,5",
+		});
+		expect(serviceCreatePayload.parse(fields)).toEqual(fields);
+		const opened: ServiceView = {
+			...fields,
+			archivedAt: null,
+			createdAt: "2026-09-18T12:00:00.000Z",
+			id: uuid(),
+			version: 1,
+		};
+		const patch = servicePatch(opened, {
+			...fields,
+			category: null,
+			notes: "Com overloque",
+			targetMarginBasisPoints: null,
+		});
+		expect(servicePatchPayload.parse(patch)).toEqual({
+			category: null,
+			notes: "Com overloque",
+			targetMarginBasisPoints: null,
+		});
+		const everything = servicePatch(opened, {
+			category: "Ajuste",
+			costCents: "7000",
+			estimatedMinutes: 45,
+			name: "Barra italiana",
+			notes: "Com overloque",
+			outsourced: false,
+			priceCents: "12000",
+			targetMarginBasisPoints: 2500,
+		});
+		expect(Object.keys(servicePatchPayload.parse(everything)).sort()).toEqual([
+			"category",
+			"costCents",
+			"estimatedMinutes",
+			"name",
+			"notes",
+			"outsourced",
+			"priceCents",
+			"targetMarginBasisPoints",
+		]);
+		expect(targetMarginPayload.parse(targetMarginFields("40"))).toEqual({
+			targetMarginBasisPoints: 4000,
+		});
 	});
 });

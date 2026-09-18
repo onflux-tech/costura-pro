@@ -13,6 +13,11 @@ export const sectionTabs = {
 			label: "Materiais",
 		},
 		{
+			href: "/catalogo-produtos/servicos",
+			id: "servicos",
+			label: "Serviços",
+		},
+		{
 			href: "/catalogo-produtos/modelos-de-medidas",
 			id: "modelos-de-medidas",
 			label: "Modelos de medidas",

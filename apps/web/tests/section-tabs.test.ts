@@ -30,6 +30,11 @@ describe("abas por destino", () => {
 			label: "Materiais",
 		},
 		{
+			href: "/catalogo-produtos/servicos",
+			id: "servicos",
+			label: "Serviços",
+		},
+		{
 			href: "/catalogo-produtos/modelos-de-medidas",
 			id: "modelos-de-medidas",
 			label: "Modelos de medidas",
@@ -57,6 +62,19 @@ describe("abas por destino", () => {
 		]) {
 			expect(sectionTabsFor("catalogo", path)).toEqual({
 				activeId: "materiais",
+				items: catalogTabs,
+			});
+		}
+	});
+
+	test("Catálogo marca Serviços na lista, no novo e na edição", () => {
+		for (const path of [
+			"/catalogo-produtos/servicos",
+			"/catalogo-produtos/servicos/novo",
+			"/catalogo-produtos/servicos/3f1c",
+		]) {
+			expect(sectionTabsFor("catalogo", path)).toEqual({
+				activeId: "servicos",
 				items: catalogTabs,
 			});
 		}
