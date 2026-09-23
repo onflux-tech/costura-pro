@@ -7,17 +7,17 @@ import { toast } from "sonner";
 import type { ClientCommandFailure } from "@/lib/client-command-error";
 import { emptyServiceValues, type ServiceFields } from "@/lib/services";
 import { useOpId } from "@/lib/use-op-id";
+import { pricingSettingsQuery } from "@/pricing/pricing-queries";
+import { SettingsPending } from "@/pricing/settings-failure";
 import { usePageHeader } from "@/shell/page-header";
 import { client as api } from "@/utils/orpc";
 
 import { ServiceForm } from "./service-form";
 import {
 	failedServiceCommand,
-	pricingSettingsQuery,
 	refreshServices,
 	serviceCategoriesQuery,
 } from "./service-queries";
-import { SettingsPending } from "./settings-failure";
 
 export function NewServicePage() {
 	const navigate = useNavigate();

@@ -13,9 +13,9 @@ import { ChevronLeftIcon, ChevronRightIcon } from "lucide-react";
 import type { RefObject } from "react";
 import { photoUrl } from "@/lib/media";
 
-import { photoAlt, type ReceivedItemPhotoView } from "@/lib/received-items";
+import { type PhotoView, photoAlt } from "@/lib/photos";
 
-export type ViewerPhoto = ReceivedItemPhotoView & {
+export type ViewerPhoto = PhotoView & {
 	downloadable?: boolean;
 	src?: string;
 };

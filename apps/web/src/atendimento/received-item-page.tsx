@@ -26,12 +26,13 @@ import { useRef, useState } from "react";
 import { clientCommandFailure } from "@/lib/client-command-error";
 import { blockingError, formatDay, localDay } from "@/lib/measurements";
 import { photoUrl } from "@/lib/media";
-import { conditionLabels, photoAlt } from "@/lib/received-items";
+import { photoAlt } from "@/lib/photos";
+import { conditionLabels } from "@/lib/received-items";
+import { PhotoViewer } from "@/photos/photo-viewer";
 import { usePageHeader } from "@/shell/page-header";
 import { client as api } from "@/utils/orpc";
 
 import { clientDetailQuery } from "./client-queries";
-import { PhotoViewer } from "./photo-viewer";
 import { receivedItemsQuery } from "./received-item-queries";
 import { ReturnDialog } from "./return-dialog";
 import { useClientAction } from "./use-client-action";

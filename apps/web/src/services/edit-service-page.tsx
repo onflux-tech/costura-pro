@@ -26,18 +26,18 @@ import {
 	servicePatch,
 } from "@/lib/services";
 import { useOpId } from "@/lib/use-op-id";
+import { pricingSettingsQuery } from "@/pricing/pricing-queries";
+import { SettingsPending } from "@/pricing/settings-failure";
 import { usePageHeader } from "@/shell/page-header";
 import { client as api } from "@/utils/orpc";
 
 import { ServiceForm } from "./service-form";
 import {
 	failedServiceCommand,
-	pricingSettingsQuery,
 	refreshServices,
 	serviceCategoriesQuery,
 	serviceQuery,
 } from "./service-queries";
-import { SettingsPending } from "./settings-failure";
 
 function ServiceEditor({
 	atelierTarget,

@@ -24,7 +24,8 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { toast } from "sonner";
 
-import { targetMarginError, targetMarginFields } from "@/lib/services";
+import { targetMarginError } from "@/lib/pricing";
+import { targetMarginFields } from "@/lib/services";
 import { client as api } from "@/utils/orpc";
 
 import { failedServiceCommand, refreshServices } from "./service-queries";

@@ -26,19 +26,13 @@ import { useEffect, useState } from "react";
 
 import { clientCommandFailure } from "@/lib/client-command-error";
 import { moneyLabel } from "@/lib/finance";
-import {
-	type ServiceView,
-	servicePriceFacts,
-	servicePricingView,
-} from "@/lib/services";
+import { pricingPreview } from "@/lib/pricing";
+import { type ServiceView, servicePriceFacts } from "@/lib/services";
 import { useOpId } from "@/lib/use-op-id";
+import { pricingSettingsQuery } from "@/pricing/pricing-queries";
 import { usePageHeader } from "@/shell/page-header";
 
-import {
-	pricingSettingsQuery,
-	serviceCategoriesQuery,
-	servicesQuery,
-} from "./service-queries";
+import { serviceCategoriesQuery, servicesQuery } from "./service-queries";
 import { TargetMarginDialog } from "./target-margin-dialog";
 
 const route = getRouteApi("/_app/catalogo-produtos/servicos/");
@@ -100,9 +94,7 @@ function ServiceRow({
 	service: ServiceView;
 }) {
 	const view =
-		atelierTarget === undefined
-			? null
-			: servicePricingView(service, atelierTarget);
+		atelierTarget === undefined ? null : pricingPreview(service, atelierTarget);
 	const facts = servicePriceFacts(service);
 	const belowTarget = view?.pricing?.belowTarget === true;
 	const margin =

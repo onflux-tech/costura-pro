@@ -30,6 +30,7 @@ export type VariantOptionView = {
 	materialName: string;
 	name: string;
 	packaging: { label: string; quantityMicros: string } | null;
+	referenceCostCents: string | null;
 	tracksLots: boolean;
 };
 

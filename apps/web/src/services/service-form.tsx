@@ -53,8 +53,7 @@ import {
 	serviceFields,
 	serviceFormErrors,
 } from "@/lib/services";
-
-import { PricingPanel } from "./pricing-panel";
+import { PricingPanel } from "@/pricing/pricing-panel";
 
 type TextKey = Exclude<keyof ServiceFormValues, "kind">;
 

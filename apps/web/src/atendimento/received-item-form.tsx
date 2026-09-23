@@ -41,9 +41,8 @@ import {
 	receivedItemFields,
 	receivedItemFormErrors,
 } from "@/lib/received-items";
-
-import { PhotoField } from "./photo-field";
-import type { PhotoDrafts } from "./use-photo-drafts";
+import { PhotoField } from "@/photos/photo-field";
+import type { PhotoDrafts } from "@/photos/use-photo-drafts";
 
 type ReceivedItemFormProps = {
 	failure: ClientCommandFailure | null;
@@ -227,8 +226,12 @@ export function ReceivedItemForm({
 						</Field>
 					</div>
 					<PhotoField
+						captionLimit={receivedItemLimits.caption}
 						disabled={submitting}
 						focusPicker={focusPhotos}
+						hint={`Opcional · até ${receivedItemLimits.photos} · otimizadas no aparelho`}
+						legend="Fotos de condição"
+						limit={receivedItemLimits.photos}
 						photos={photos}
 					/>
 					<Field name="accessories">

@@ -16,7 +16,7 @@ import { Stat } from "@costura-pro/ui/components/stat";
 import { Text } from "@costura-pro/ui/components/typography";
 
 import { moneyLabel } from "@/lib/finance";
-import type { PricingPreview } from "@/lib/services";
+import type { PricingPreview } from "@/lib/pricing";
 
 function targetSource(preview: PricingPreview): string {
 	const origin = preview.ownTarget ? "própria" : "do ateliê";
@@ -72,8 +72,8 @@ export function PricingPanel({
 							<Alert tone="danger">
 								<AlertTitle>Preço abaixo do custo</AlertTitle>
 								<AlertDescription>
-									Cada venda deste serviço sai no prejuízo. O preço continua
-									sendo o que você escolher.
+									Cada venda neste preço sai no prejuízo. O preço continua sendo
+									o que você escolher.
 								</AlertDescription>
 							</Alert>
 						) : null}

@@ -3,6 +3,13 @@ import {
 	financialMovementCreatePayload,
 	financialMovementTransferPayload,
 } from "@costura-pro/api/finance/schemas";
+import {
+	productCreatePayload,
+	productPatchPayload,
+	productVariantCreatePayload,
+	productVariantPatchPayload,
+	sheetPayload,
+} from "@costura-pro/api/products/schemas";
 import { purchaseCreatePayload } from "@costura-pro/api/purchases/schemas";
 import {
 	serviceCreatePayload,
@@ -14,6 +21,20 @@ import {
 	accountOpeningFields,
 	accountTransferFields,
 } from "../src/lib/finance";
+import {
+	emptyProductValues,
+	emptyProductVariantValues,
+	type MaterialVariantReference,
+	materialDraft,
+	type ProductVariantView,
+	type ProductView,
+	productFields,
+	productPatch,
+	productVariantFields,
+	productVariantPatch,
+	serviceDraft,
+	sheetItemOf,
+} from "../src/lib/products";
 import {
 	type PurchaseFormValues,
 	purchaseFields,
@@ -38,6 +59,7 @@ const fabric: VariantOptionView = {
 	materialName: "Gorgurão",
 	name: "Azul marinho",
 	packaging: { label: "Rolo 50 m", quantityMicros: "50000000" },
+	referenceCostCents: null,
 	tracksLots: false,
 };
 
@@ -158,5 +180,131 @@ describe("payload da web contra o schema do servidor", () => {
 		expect(targetMarginPayload.parse(targetMarginFields("40"))).toEqual({
 			targetMarginBasisPoints: 4000,
 		});
+	});
+});
+
+describe("produto e variante", () => {
+	const blue: MaterialVariantReference = {
+		archived: false,
+		baseUnit: "m",
+		code: "OX-AZ",
+		displayPrecision: 2,
+		id: uuid(),
+		materialId: uuid(),
+		materialName: "Tecido Oxford",
+		name: "Azul",
+		referenceCostCents: "2550",
+	};
+	const sewing = {
+		archived: false,
+		costCents: "4000",
+		id: uuid(),
+		name: "Costura",
+		outsourced: false,
+	};
+	const photo = {
+		caption: "Frente",
+		photoHash: "a".repeat(64),
+		thumbnailHash: "b".repeat(64),
+	};
+
+	test("a ficha montada pela tela passa pelo schema real", () => {
+		const fabricItem = sheetItemOf(
+			{
+				...materialDraft(blue),
+				loss: "10",
+				lossKind: "percent",
+				quantity: "1,2",
+			},
+			uuid()
+		);
+		const service = sheetItemOf(
+			{ ...serviceDraft(sewing), count: "2" },
+			uuid()
+		);
+		expect(sheetPayload.parse([fabricItem, service])).toEqual([
+			fabricItem,
+			service,
+		]);
+	});
+
+	test("o produto montado pela tela passa pelos schemas de criação e edição", () => {
+		const fields = productFields(
+			{
+				...emptyProductValues,
+				category: "Roupa",
+				name: "Vestido Midi",
+				targetMargin: "30",
+			},
+			[photo]
+		);
+		expect(productCreatePayload.parse(fields)).toEqual({
+			...fields,
+			sheet: [],
+		});
+		const opened: ProductView = {
+			...fields,
+			archivedAt: null,
+			createdAt: "2026-09-23T12:00:00.000Z",
+			id: uuid(),
+			sheet: [],
+			version: 1,
+		};
+		expect(
+			productPatchPayload.parse(
+				productPatch(opened, { ...fields, name: "Vestido Longo", photos: [] })
+			)
+		).toEqual({ name: "Vestido Longo", photos: [] });
+	});
+
+	test("a variante montada pela tela passa pelos schemas de criação e edição", () => {
+		const fabricItem = sheetItemOf(
+			{ ...materialDraft(blue), quantity: "1,2" },
+			uuid()
+		);
+		const fields = productVariantFields(
+			{
+				...emptyProductVariantValues,
+				code: "VM-P",
+				coverPhotoHash: photo.photoHash,
+				name: "P Azul",
+				price: "170,00",
+			},
+			[
+				{
+					item: sheetItemOf(
+						{ ...materialDraft(blue), quantity: "1,4" },
+						fabricItem.id
+					),
+					kind: "replace",
+				},
+			],
+			[fabricItem]
+		);
+		const productId = uuid();
+		expect(productVariantCreatePayload.parse({ ...fields, productId })).toEqual(
+			{
+				...fields,
+				productId,
+			}
+		);
+		const opened: ProductVariantView = {
+			...fields,
+			archivedAt: null,
+			createdAt: "2026-09-23T12:00:00.000Z",
+			id: uuid(),
+			productId,
+			version: 1,
+		};
+		expect(
+			productVariantPatchPayload.parse(
+				productVariantPatch(opened, {
+					...fields,
+					code: null,
+					coverPhotoHash: null,
+					sheetChanges: [],
+				})
+			)
+		).toEqual({ code: null, coverPhotoHash: null, sheetChanges: [] });
 	});
 });

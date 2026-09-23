@@ -4,12 +4,7 @@ import {
 } from "@costura-pro/domain/received-item";
 
 import { formatDay } from "./measurements";
-
-export type ReceivedItemPhotoView = {
-	caption: string | null;
-	photoHash: string;
-	thumbnailHash: string;
-};
+import type { PhotoView } from "./photos";
 
 export type ReceivedItemView = {
 	accessories: string | null;
@@ -21,7 +16,7 @@ export type ReceivedItemView = {
 	expectedReturnOn: string | null;
 	id: string;
 	notes: string | null;
-	photos: readonly ReceivedItemPhotoView[];
+	photos: readonly PhotoView[];
 	quantity: number;
 	receivedOn: string;
 	returnedOn: string | null;
@@ -34,7 +29,7 @@ export type ReceivedItemFormValues = {
 	description: string;
 	expectedReturnOn: string;
 	notes: string;
-	photos: readonly ReceivedItemPhotoView[];
+	photos: readonly PhotoView[];
 	quantity: string;
 	receivedOn: string;
 };
@@ -45,7 +40,7 @@ export type ReceivedItemFields = {
 	description: string;
 	expectedReturnOn: string | null;
 	notes: string | null;
-	photos: ReceivedItemPhotoView[];
+	photos: PhotoView[];
 	quantity: number;
 	receivedOn: string;
 };
@@ -62,13 +57,16 @@ export type ReceivedItemFieldErrors = Partial<
 	Record<ReceivedItemField, string>
 >;
 
+export const receivedItemPhotoLimit = {
+	limit: receivedItemLimits.photos,
+	owner: "peça",
+};
+
 export const conditionLabels: Record<ReceivedItemCondition, string> = {
 	damaged: "Com avaria",
 	good: "Bom",
 	worn: "Desgastada",
 };
-
-export const photoAccept = "image/jpeg,image/png,image/webp";
 
 const quantityPattern = /^\d{1,3}$/;
 
@@ -268,49 +266,6 @@ export function changedReceivedItem(
 	return Object.keys(full).length === 0 ? null : full;
 }
 
-export function acceptedFiles<T>(files: readonly T[], count: number) {
-	const room = Math.max(0, receivedItemLimits.photos - count);
-	return {
-		accepted: files.slice(0, room),
-		ignored: Math.max(0, files.length - room),
-	};
-}
-
-export function withoutRepeatedPhotos<T extends { photoHash: string }>(
-	current: readonly { photoHash: string }[],
-	prepared: readonly T[]
-): { added: T[]; repeated: number } {
-	const seen = new Set(current.map((photo) => photo.photoHash));
-	const added = prepared.filter((photo) => {
-		if (seen.has(photo.photoHash)) {
-			return false;
-		}
-		seen.add(photo.photoHash);
-		return true;
-	});
-	return { added, repeated: prepared.length - added.length };
-}
-
-const refusedStatuses = new Set([413, 415, 422]);
-
-export function uploadFailure(status: number | null): {
-	message: string;
-	retry: boolean;
-} {
-	return status !== null && refusedStatuses.has(status)
-		? { message: "Esta foto não pôde ser aceita. Escolha outra.", retry: false }
-		: { message: "Não foi possível enviar a foto.", retry: true };
-}
-
-export function photoAlt(
-	index: number,
-	total: number,
-	caption: string | null
-): string {
-	const position = `Foto ${index + 1} de ${total}`;
-	return caption ? `${position}: ${caption}` : position;
-}
-
 function shortDay(day: string): string {
 	return formatDay(day).slice(0, 5);
 }
@@ -333,15 +288,4 @@ export function itemSummary(item: ReceivedItemView): string {
 	]
 		.filter(Boolean)
 		.join(" · ");
-}
-
-export function excessNotice(ignored: number): string {
-	const left = ignored === 1 ? "1 ficou" : `${ignored} ficaram`;
-	return `Só cabem ${receivedItemLimits.photos} fotos por peça; ${left} de fora.`;
-}
-
-export function repeatedNotice(repeated: number): string {
-	return repeated === 1
-		? "1 foto repetida ficou de fora."
-		: `${repeated} fotos repetidas ficaram de fora.`;
 }

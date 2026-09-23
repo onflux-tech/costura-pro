@@ -25,6 +25,11 @@ describe("abas por destino", () => {
 
 	const catalogTabs = [
 		{
+			href: "/catalogo-produtos/produtos",
+			id: "produtos",
+			label: "Produtos",
+		},
+		{
 			href: "/catalogo-produtos/materiais",
 			id: "materiais",
 			label: "Materiais",
@@ -40,6 +45,23 @@ describe("abas por destino", () => {
 			label: "Modelos de medidas",
 		},
 	];
+
+	test("Catálogo marca Produtos na lista, na página, na ficha e na variante", () => {
+		for (const path of [
+			"/catalogo-produtos/produtos",
+			"/catalogo-produtos/produtos/novo",
+			"/catalogo-produtos/produtos/3f1c",
+			"/catalogo-produtos/produtos/3f1c/editar",
+			"/catalogo-produtos/produtos/3f1c/ficha",
+			"/catalogo-produtos/produtos/3f1c/variantes/nova",
+			"/catalogo-produtos/produtos/3f1c/variantes/9a2b",
+		]) {
+			expect(sectionTabsFor("catalogo", path)).toEqual({
+				activeId: "produtos",
+				items: catalogTabs,
+			});
+		}
+	});
 
 	test("Catálogo marca Modelos de medidas na lista e no editor", () => {
 		for (const path of [

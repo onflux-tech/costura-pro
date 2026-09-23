@@ -33,6 +33,7 @@ const fabric: VariantOptionView = {
 	materialName: "Gorgurão",
 	name: "Azul marinho",
 	packaging: { label: "Rolo 50 m", quantityMicros: "50000000" },
+	referenceCostCents: "2550",
 	tracksLots: false,
 };
 

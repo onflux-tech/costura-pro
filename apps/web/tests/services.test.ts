@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-
+import { pricingPreview } from "../src/lib/pricing";
 import {
 	emptyServiceValues,
 	formPricing,
@@ -11,7 +11,6 @@ import {
 	serviceFormValues,
 	servicePatch,
 	servicePriceFacts,
-	servicePricingView,
 	targetMarginFields,
 } from "../src/lib/services";
 
@@ -164,7 +163,7 @@ describe("edição completa e meta do diálogo", () => {
 
 describe("preço sugerido na tela", () => {
 	test("a meta própria vence a do ateliê", () => {
-		expect(servicePricingView(service, 4000)).toEqual({
+		expect(pricingPreview(service, 4000)).toEqual({
 			ownTarget: true,
 			pricing: {
 				belowCost: false,
@@ -178,7 +177,7 @@ describe("preço sugerido na tela", () => {
 	});
 
 	test("sem meta própria usa a do ateliê", () => {
-		const view = servicePricingView(
+		const view = pricingPreview(
 			{ ...service, targetMarginBasisPoints: null },
 			5000
 		);

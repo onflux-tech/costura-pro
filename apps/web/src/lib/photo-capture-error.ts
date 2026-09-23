@@ -1,4 +1,4 @@
-import { uploadFailure } from "./received-items";
+import { uploadFailure } from "./photos";
 
 export type PhotoCaptureKind = "decode" | "encode" | "tooLarge" | "upload";
 

@@ -52,3 +52,10 @@ export async function failedMaterialCommand(
 	}
 	return failure;
 }
+
+export function variantSearchQuery(query: string) {
+	return orpc.materialVariants.search.queryOptions({
+		input: { query: query || undefined },
+		meta: { silent: true },
+	});
+}

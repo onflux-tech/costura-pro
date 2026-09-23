@@ -4,7 +4,7 @@ export const Route = createFileRoute("/_app/catalogo-produtos/")({
 	beforeLoad: () => {
 		throw redirect({
 			replace: true,
-			to: "/catalogo-produtos/modelos-de-medidas",
+			to: "/catalogo-produtos/produtos",
 		});
 	},
 });

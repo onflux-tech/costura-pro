@@ -12,10 +12,10 @@ import { captureFailure } from "@/lib/photo-capture-error";
 import {
 	acceptedFiles,
 	excessNotice,
-	type ReceivedItemPhotoView,
+	type PhotoView,
 	repeatedNotice,
 	withoutRepeatedPhotos,
-} from "@/lib/received-items";
+} from "@/lib/photos";
 import { sessionQuery } from "@/lib/session";
 
 import type { ViewerPhoto } from "./photo-viewer";
@@ -36,7 +36,7 @@ export type PhotoDraft = {
 
 type Preparation = { failures: string[]; prepared: PreparedPhoto[] };
 
-function savedDraft(photo: ReceivedItemPhotoView): PhotoDraft {
+function savedDraft(photo: PhotoView): PhotoDraft {
 	return {
 		caption: photo.caption ?? "",
 		failure: null,
@@ -70,7 +70,12 @@ function prepareAll(files: readonly File[]): Promise<Preparation> {
 	);
 }
 
-export function usePhotoDrafts(initial: readonly ReceivedItemPhotoView[]) {
+export type PhotoLimit = { limit: number; owner: string };
+
+export function usePhotoDrafts(
+	initial: readonly PhotoView[],
+	{ limit, owner }: PhotoLimit
+) {
 	const queryClient = useQueryClient();
 	const [drafts, setDrafts] = useState<PhotoDraft[]>(() =>
 		initial.map(savedDraft)
@@ -129,7 +134,11 @@ export function usePhotoDrafts(initial: readonly ReceivedItemPhotoView[]) {
 
 	const add = useCallback(
 		async (files: readonly File[]) => {
-			const { accepted, ignored } = acceptedFiles(files, latest.current.length);
+			const { accepted, ignored } = acceptedFiles(
+				files,
+				latest.current.length,
+				limit
+			);
 			setPreparing(true);
 			const result = await prepareAll(accepted).finally(() =>
 				setPreparing(false)
@@ -160,7 +169,7 @@ export function usePhotoDrafts(initial: readonly ReceivedItemPhotoView[]) {
 			});
 			setDrafts((current) => [...current, ...fresh]);
 			setNotices([
-				...(ignored > 0 ? [excessNotice(ignored)] : []),
+				...(ignored > 0 ? [excessNotice(ignored, limit, owner)] : []),
 				...(repeated > 0 ? [repeatedNotice(repeated)] : []),
 				...new Set(result.failures),
 			]);
@@ -169,7 +178,7 @@ export function usePhotoDrafts(initial: readonly ReceivedItemPhotoView[]) {
 				await upload(draft);
 			}, Promise.resolve());
 		},
-		[upload]
+		[limit, owner, upload]
 	);
 
 	const remove = useCallback((photoHash: string) => {
@@ -193,7 +202,7 @@ export function usePhotoDrafts(initial: readonly ReceivedItemPhotoView[]) {
 		[update]
 	);
 
-	const reset = useCallback((photos: readonly ReceivedItemPhotoView[]) => {
+	const reset = useCallback((photos: readonly PhotoView[]) => {
 		setDrafts(photos.map(savedDraft));
 		setNotices([]);
 	}, []);
@@ -204,7 +213,7 @@ export function usePhotoDrafts(initial: readonly ReceivedItemPhotoView[]) {
 		drafts,
 		notices,
 		photos: drafts.map(
-			(draft): ReceivedItemPhotoView => ({
+			(draft): PhotoView => ({
 				caption: draft.caption.trim() === "" ? null : draft.caption.trim(),
 				photoHash: draft.photoHash,
 				thumbnailHash: draft.thumbnailHash,

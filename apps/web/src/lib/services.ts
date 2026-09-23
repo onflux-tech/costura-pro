@@ -2,12 +2,16 @@ import { formatMoneyInput, parseMoney } from "@costura-pro/domain/money";
 import {
 	formatMarginInput,
 	marginOfPrice,
-	type Pricing,
 	parseMarginPercent,
-	pricingOf,
-	suggestPrice,
 } from "@costura-pro/domain/pricing";
 import { serviceLimits } from "@costura-pro/domain/service";
+
+import {
+	ownTargetOf,
+	type PricingPreview,
+	pricingPreview,
+	targetMarginError,
+} from "./pricing";
 
 export type ServiceView = {
 	archivedAt: string | null;
@@ -97,21 +101,11 @@ function parseMinutes(text: string): number | null {
 		: minutes;
 }
 
-function parseOwnTarget(text: string): number | null {
-	return text.trim() === "" ? null : parseMarginPercent(text);
-}
-
 export function targetMarginFields(
 	text: string
 ): { targetMarginBasisPoints: number } | null {
 	const targetMarginBasisPoints = parseMarginPercent(text);
 	return targetMarginBasisPoints === null ? null : { targetMarginBasisPoints };
-}
-
-export function targetMarginError(text: string): string | null {
-	return text.trim() === "" || parseMarginPercent(text) !== null
-		? null
-		: "Use de 0 a 99,99%";
 }
 
 function moneyError(text: string, missing: string): string | null {
@@ -179,7 +173,7 @@ export function serviceFields(values: ServiceFormValues): ServiceFields {
 		notes: emptyToNull(values.notes),
 		outsourced: values.kind === "outsourced",
 		priceCents: String(parseMoney(values.price) ?? 0n),
-		targetMarginBasisPoints: parseOwnTarget(values.targetMargin),
+		targetMarginBasisPoints: ownTargetOf(values.targetMargin),
 	};
 }
 
@@ -206,57 +200,17 @@ export function servicePatch(
 	return Object.keys(patch).length === 0 ? null : patch;
 }
 
-export type PricingPreview = {
-	ownTarget: boolean;
-	pricing: Pricing | null;
-	suggestedCents: bigint;
-	targetMarginBasisPoints: number;
-};
-
-export function servicePricingView(
-	service: {
-		costCents: string;
-		priceCents: string | null;
-		targetMarginBasisPoints: number | null;
-	},
-	atelierTarget: number
-): PricingPreview {
-	const ownTarget = service.targetMarginBasisPoints !== null;
-	const targetMarginBasisPoints =
-		service.targetMarginBasisPoints ?? atelierTarget;
-	const costCents = BigInt(service.costCents);
-	if (service.priceCents === null) {
-		return {
-			ownTarget,
-			pricing: null,
-			suggestedCents: suggestPrice(costCents, targetMarginBasisPoints),
-			targetMarginBasisPoints,
-		};
-	}
-	const pricing = pricingOf({
-		costCents,
-		priceCents: BigInt(service.priceCents),
-		targetMarginBasisPoints,
-	});
-	return {
-		ownTarget,
-		pricing,
-		suggestedCents: pricing.suggestedCents,
-		targetMarginBasisPoints,
-	};
-}
-
 export function formPricing(
 	values: ServiceFormValues,
 	atelierTarget: number
 ): PricingPreview | null {
 	const cost = parseMoney(values.cost);
-	const own = parseOwnTarget(values.targetMargin);
+	const own = ownTargetOf(values.targetMargin);
 	if (cost === null || (values.targetMargin.trim() !== "" && own === null)) {
 		return null;
 	}
 	const price = parseMoney(values.price);
-	return servicePricingView(
+	return pricingPreview(
 		{
 			costCents: cost.toString(),
 			priceCents: price === null ? null : price.toString(),

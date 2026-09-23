@@ -36,13 +36,6 @@ export function serviceQuery(serviceId: string) {
 	});
 }
 
-export function pricingSettingsQuery() {
-	return orpc.pricing.settings.queryOptions({
-		input: {},
-		meta: { silent: true },
-	});
-}
-
 export async function refreshServices(queryClient: QueryClient) {
 	await queryClient.invalidateQueries({ queryKey: orpc.services.key() });
 	await queryClient.invalidateQueries({ queryKey: orpc.pricing.key() });

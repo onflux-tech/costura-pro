@@ -21,6 +21,7 @@ export type CommandSubject =
 	| "modelo"
 	| "peça"
 	| "perfil"
+	| "produto"
 	| "serviço"
 	| "variante";
 
@@ -37,6 +38,7 @@ const staleMessages: Record<CommandSubject, string> = {
 	modelo: "Este modelo mudou em outra janela ou aparelho.",
 	perfil: "Este perfil mudou em outra janela ou aparelho.",
 	peça: "Esta peça mudou em outra janela ou aparelho.",
+	produto: "Este produto mudou em outra janela ou aparelho.",
 	serviço: "Este serviço mudou em outra janela ou aparelho.",
 	variante: "Esta variante mudou em outra janela ou aparelho.",
 };

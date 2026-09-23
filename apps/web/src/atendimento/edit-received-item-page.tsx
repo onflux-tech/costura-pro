@@ -22,8 +22,10 @@ import {
 	formValuesOf,
 	type ReceivedItemFields,
 	type ReceivedItemView,
+	receivedItemPhotoLimit,
 } from "@/lib/received-items";
 import { useOpId } from "@/lib/use-op-id";
+import { usePhotoDrafts } from "@/photos/use-photo-drafts";
 import { usePageHeader } from "@/shell/page-header";
 import { client as api } from "@/utils/orpc";
 
@@ -34,7 +36,6 @@ import {
 } from "./client-queries";
 import { ReceivedItemForm } from "./received-item-form";
 import { receivedItemsQuery } from "./received-item-queries";
-import { usePhotoDrafts } from "./use-photo-drafts";
 
 export function EditReceivedItemPage({
 	clientId,
@@ -53,7 +54,7 @@ export function EditReceivedItemPage({
 	const [failure, setFailure] = useState<ClientCommandFailure | null>(null);
 	const detail = useQuery(clientDetailQuery(clientId));
 	const items = useQuery(receivedItemsQuery(clientId));
-	const photos = usePhotoDrafts([]);
+	const photos = usePhotoDrafts([], receivedItemPhotoLimit);
 	const live = items.data?.items.find((entry) => entry.id === itemId);
 	useEffect(() => {
 		if (!opened && live) {

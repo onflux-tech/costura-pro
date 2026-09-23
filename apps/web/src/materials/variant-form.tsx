@@ -44,7 +44,7 @@ import {
 	variantFields,
 	variantFormErrors,
 } from "@/lib/materials";
-import { photoAccept } from "@/lib/received-items";
+import { photoAccept } from "@/lib/photos";
 import { orpc } from "@/utils/orpc";
 
 import type { VariantPhoto } from "./use-variant-photo";

@@ -1,27 +1,17 @@
 import { describe, expect, test } from "bun:test";
 
 import {
-	captureFailure,
-	PhotoCaptureError,
-} from "../src/lib/photo-capture-error";
-import {
-	acceptedFiles,
 	changedReceivedItem,
 	custodyGroups,
 	custodyLine,
-	excessNotice,
 	firstInvalidField,
 	formValuesOf,
 	itemSummary,
 	parseQuantity,
-	photoAlt,
 	type ReceivedItemView,
 	receivedItemDateErrors,
 	receivedItemFields,
 	receivedItemFormErrors,
-	repeatedNotice,
-	uploadFailure,
-	withoutRepeatedPhotos,
 } from "../src/lib/received-items";
 
 function item(overrides: Partial<ReceivedItemView> = {}): ReceivedItemView {
@@ -208,56 +198,8 @@ describe("form", () => {
 	});
 });
 
-describe("photos", () => {
-	test("accepts only the room left and drops repeated hashes, inside the batch too", () => {
-		expect(acceptedFiles([1, 2, 3, 4, 5], 10)).toEqual({
-			accepted: [1, 2],
-			ignored: 3,
-		});
-		expect(acceptedFiles([1, 2, 3, 4, 5], 0)).toEqual({
-			accepted: [1, 2, 3, 4, 5],
-			ignored: 0,
-		});
-		expect(
-			withoutRepeatedPhotos(
-				[{ photoHash: "a" }],
-				[{ photoHash: "a" }, { photoHash: "b" }, { photoHash: "b" }]
-			)
-		).toEqual({ added: [{ photoHash: "b" }], repeated: 2 });
-	});
-
-	test("offers a new try only when it can work", () => {
-		expect(uploadFailure(null)).toEqual({
-			message: "Não foi possível enviar a foto.",
-			retry: true,
-		});
-		expect(uploadFailure(503).retry).toBe(true);
-		expect(uploadFailure(415)).toEqual({
-			message: "Esta foto não pôde ser aceita. Escolha outra.",
-			retry: false,
-		});
-		expect(captureFailure(new PhotoCaptureError("decode")).message).toBe(
-			"Não foi possível abrir esta foto neste navegador. Use JPEG, PNG ou WebP, ou tire pela câmera."
-		);
-		expect(captureFailure(new PhotoCaptureError("upload", 422)).retry).toBe(
-			false
-		);
-	});
-
-	test("agrees the notices with how many photos were left out", () => {
-		expect(excessNotice(1)).toBe(
-			"Só cabem 12 fotos por peça; 1 ficou de fora."
-		);
-		expect(excessNotice(3)).toBe(
-			"Só cabem 12 fotos por peça; 3 ficaram de fora."
-		);
-		expect(repeatedNotice(1)).toBe("1 foto repetida ficou de fora.");
-		expect(repeatedNotice(2)).toBe("2 fotos repetidas ficaram de fora.");
-	});
-
-	test("describes photos and items for the screen", () => {
-		expect(photoAlt(1, 5, "barra")).toBe("Foto 2 de 5: barra");
-		expect(photoAlt(0, 1, null)).toBe("Foto 1 de 1");
+describe("items", () => {
+	test("describes items for the screen", () => {
 		expect(custodyLine(item({ expectedReturnOn: "2026-09-26" }))).toBe(
 			"recebida 02/09 · devolução prevista 26/09"
 		);

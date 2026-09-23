@@ -18,8 +18,13 @@ import {
 	clientCommandFailure,
 } from "@/lib/client-command-error";
 import { blockingError, localDay } from "@/lib/measurements";
-import { emptyFormValues, type ReceivedItemFields } from "@/lib/received-items";
+import {
+	emptyFormValues,
+	type ReceivedItemFields,
+	receivedItemPhotoLimit,
+} from "@/lib/received-items";
 import { useOpId } from "@/lib/use-op-id";
+import { usePhotoDrafts } from "@/photos/use-photo-drafts";
 import { usePageHeader } from "@/shell/page-header";
 import { client as api } from "@/utils/orpc";
 
@@ -29,7 +34,6 @@ import {
 	refreshClients,
 } from "./client-queries";
 import { ReceivedItemForm } from "./received-item-form";
-import { usePhotoDrafts } from "./use-photo-drafts";
 
 export function ReceiveItemPage({ clientId }: { clientId: string }) {
 	const navigate = useNavigate();
@@ -41,7 +45,7 @@ export function ReceiveItemPage({ clientId }: { clientId: string }) {
 	const [today] = useState(() => localDay(new Date()));
 	const [initialValues] = useState(() => emptyFormValues(today));
 	const [failure, setFailure] = useState<ClientCommandFailure | null>(null);
-	const photos = usePhotoDrafts([]);
+	const photos = usePhotoDrafts([], receivedItemPhotoLimit);
 	const detail = useQuery(clientDetailQuery(clientId));
 	usePageHeader({
 		backHref: `/atendimento/clientes/${clientId}`,

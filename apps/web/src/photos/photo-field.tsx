@@ -1,4 +1,3 @@
-import { receivedItemLimits } from "@costura-pro/domain/received-item";
 import { Alert, AlertDescription } from "@costura-pro/ui/components/alert";
 import { Fieldset, FieldsetLegend } from "@costura-pro/ui/components/fieldset";
 import { FilePickerButton } from "@costura-pro/ui/components/file-picker-button";
@@ -7,7 +6,7 @@ import { Text } from "@costura-pro/ui/components/typography";
 import { CameraIcon, ImagesIcon } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
-import { photoAccept, photoAlt } from "@/lib/received-items";
+import { photoAccept, photoAlt } from "@/lib/photos";
 
 import { PhotoViewer } from "./photo-viewer";
 import type { PhotoDrafts } from "./use-photo-drafts";
@@ -17,12 +16,20 @@ function usesTouch(): boolean {
 }
 
 export function PhotoField({
+	captionLimit,
 	disabled,
 	focusPicker = false,
+	hint,
+	legend,
+	limit,
 	photos,
 }: {
+	captionLimit: number;
 	disabled: boolean;
 	focusPicker?: boolean;
+	hint: string;
+	legend: string;
+	limit: number;
 	photos: PhotoDrafts;
 }) {
 	const [touch] = useState(usesTouch);
@@ -31,8 +38,7 @@ export function PhotoField({
 	const openRefs = useRef(new Map<string, HTMLButtonElement>());
 	const originRef = useRef<HTMLElement | null>(null);
 	const total = photos.drafts.length;
-	const pickerDisabled =
-		disabled || photos.preparing || total >= receivedItemLimits.photos;
+	const pickerDisabled = disabled || photos.preparing || total >= limit;
 
 	useEffect(() => {
 		if (focusPicker) {
@@ -93,9 +99,9 @@ export function PhotoField({
 
 	return (
 		<Fieldset className="flex flex-col gap-3">
-			<FieldsetLegend>Fotos de condição</FieldsetLegend>
+			<FieldsetLegend>{legend}</FieldsetLegend>
 			<Text size="xs" tone="muted">
-				{`Opcional · até ${receivedItemLimits.photos} · otimizadas no aparelho`}
+				{hint}
 			</Text>
 			<div className="flex flex-wrap items-start gap-3">
 				{photos.drafts.map((draft, index) => (
@@ -103,7 +109,7 @@ export function PhotoField({
 						alt={photoAlt(index, total, draft.caption.trim() || null)}
 						captionField={{
 							label: `Legenda da foto ${index + 1}`,
-							maxLength: receivedItemLimits.caption,
+							maxLength: captionLimit,
 							onChange: (value) => photos.setCaption(draft.photoHash, value),
 							value: draft.caption,
 						}}

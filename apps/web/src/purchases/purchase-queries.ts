@@ -40,13 +40,6 @@ export function purchaseQuery(purchaseId: string) {
 	});
 }
 
-export function variantSearchQuery(query: string) {
-	return orpc.materialVariants.search.queryOptions({
-		input: { query: query || undefined },
-		meta: { silent: true },
-	});
-}
-
 export async function refreshPurchases(queryClient: QueryClient) {
 	await queryClient.invalidateQueries({ queryKey: orpc.suppliers.key() });
 	await queryClient.invalidateQueries({ queryKey: orpc.purchases.key() });
