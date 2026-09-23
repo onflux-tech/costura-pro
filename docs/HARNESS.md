@@ -92,7 +92,7 @@ Toda implementação passa por quatro skills do projeto, fonte em `.agents/skill
 | `/entrega-iniciar` | Começo de toda sessão de implementação | Entrega escolhida no ROADMAP, branch, rota (enxuta ou completa), spec local com DoD e mutações, rules da área lidas |
 | `/verificar` | Antes de declarar pronto, commit ou integração | Bateria completa com saída em arquivo |
 | `/revisar` | Entrega que toca dinheiro, quantidade, dados, autenticação, sync ou contrato entre camadas | `reviewer` e, se cruzar camadas, `contract`, com desafio de mutação |
-| `/entrega-fechar` | Fim da implementação; o hook de Stop cobra | Verificação, docs curadas e índice atualizados, harness evoluído, handoff da próxima sessão e `/integrar-branch` em seguida |
+| `/entrega-fechar` | Fim da implementação; o hook de Stop cobra | Verificação, docs curadas e índice atualizados, harness evoluído, banco de desenvolvimento do dono migrado e com dados de exemplo da entrega, handoff da próxima sessão e `/integrar-branch` em seguida |
 | `/integrar-branch` | Automático no fim do `/entrega-fechar`, ou pedido do dono | Commits por área, merge local linear na `main`, push sem confirmação e CI acompanhado |
 
 | Rota | Quando | Passos |
@@ -296,6 +296,8 @@ Configurados em `.claude/settings.json`. Cada script em `.claude/hooks/` exporta
 | Salvar devolve "Confira os campos e tente de novo." sem nenhum campo marcado | Teto da lista conferido só no botão de acrescentar, enquanto outra ação também cria elemento | Teto contado sobre o que vai ser gravado e aplicado a toda ação que cria elemento (rule de web) |
 | Produto recém-criado sugere preço de R$ 0,00 com margem de 100% | Soma de lista vazia tratada como custo completo | Estado vazio distinto de zero em toda conta exibida ([produtos](areas/produtos.md)) |
 | Commit por área recusado pelo pre-commit com "Failed to save unstaged changes" | Arquivos novos marcados com `git add -N` para entrar no diff da revisão; o `git stash create` do lefthook não aceita entrada "intent-to-add" | `git reset` misto antes dos commits por área (rule de harness) |
+| Fotos do banco de desenvolvimento aparecem no `git status` ou entram num commit | A pasta `media/` ao lado do `local.db` ficava fora do `.gitignore` | `/media/` no `.gitignore`, ancorado na raiz porque `packages/api/src/media/` é código |
+| `pnpm check` reprova arquivos que nem estão no git | O `biome.json` usa `vcs.useIgnoreFile: false` e lê todo `.ts` da árvore, inclusive em `docs/superpowers/` | Roteiro local guardado em markdown, em bloco de código (rule de harness) |
 
 ## 9. Registro de evolução
 
@@ -321,6 +323,7 @@ Configurados em `.claude/settings.json`. Cada script em `.claude/hooks/` exporta
 | 2026-09-18 | Doc de área `docs/areas/servicos.md` e ADR 0020 no índice e na §7; `agregados.md` com preferência do ateliê na instalação; rules de banco (coluna nova em tabela com linha provada por journal cortado e texto do `sqlite_master`), servidor (snapshot antigo sem campo novo no pull, preferência na instalação) e web (componente de campo contra a complexidade cognitiva do Biome); §8 com essas falhas e a margem arredondada a favor do aviso; lentes no `reviewer` (patch de um campo que o zod remove, pull conferido só no último snapshot, número que contradiz o aviso) e no `contract` (payload do diálogo fora da `lib`, campo novo em snapshot antigo) vindas da revisão | Revisão e fechamento da entrega de serviços e preço sugerido |
 | 2026-09-23 | Doc de área `docs/areas/produtos.md` e ADR 0021 no índice e na §7; rules de web (Esc no `SuggestionField`, roteiro do browser-harness em arquivo, Enter pelo CDP, `check-types` junto dos testes da web, união por `kind`, rota criada antes dos tipos, `key` pelo parâmetro na página congelada, teto em toda ação que cria elemento, conta de lista vazia) e banco (JSON do drizzle-kit fora do formato do Biome); §8 com essas falhas; lentes no `reviewer` (edição de cada campo de agregado novo, teto em toda ação, conta de lista vazia) e no `contract` (parâmetro da URL no pedido de página congelada) vindas da revisão | Revisão e fechamento da entrega de produto e ficha técnica |
 | 2026-09-23 | Rule de harness e §8 com a entrada "intent-to-add" do `git add -N` recusando o pre-commit do lefthook | Integração da entrega de produto e ficha técnica |
+| 2026-09-23 | Passo "Dados de exemplo" no `/entrega-fechar` (migrar o `local.db` com backup e semear pelas procedures) e `/media/` no `.gitignore`, com as fotos do banco de desenvolvimento fora do índice; rule de harness e §8 com o Biome lendo `.ts` fora do git | Pedido do dono depois da entrega de produto e ficha técnica |
 
 ## 10. Sessão nova
 

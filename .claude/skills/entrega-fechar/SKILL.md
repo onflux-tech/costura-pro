@@ -1,6 +1,6 @@
 ---
 name: entrega-fechar
-description: Fecha uma entrega do Costura Pro verificando, atualizando docs curadas e o índice e evoluindo o harness (rules, agents, skills, MCPs e falhas conhecidas). Use ao terminar uma implementação, antes de commit ou integração, e sempre que o hook de Stop pedir.
+description: Fecha uma entrega do Costura Pro verificando, atualizando docs curadas e o índice, evoluindo o harness (rules, agents, skills, MCPs e falhas conhecidas) e semeando dados de exemplo no banco de desenvolvimento do dono. Use ao terminar uma implementação, antes de commit ou integração, e sempre que o hook de Stop pedir.
 ---
 
 # Fechar entrega
@@ -24,5 +24,11 @@ O fechamento é o que torna o harness mais especialista a cada entrega. Cada pas
 
    Pronto quando cada aprendizado tiver destino ou tiver sido descartado com motivo.
 6. **Portas e checagens.** `pnpm harness:sync`, `pnpm harness:check`, `pnpm docs:check` e `pnpm harness:test`. Pronto com os quatro verdes.
-7. **Próxima sessão.** Grave em `docs/superpowers/handoff/` um prompt autocontido para a próxima entrega (o que ficou pendente e por onde começar) e mostre no chat.
-8. **Commit e integração.** Crie commits por área em inglês, no padrão conventional commits, sem citar fase, spike, spec, plano ou ID de requisito, decisão ou questão, com fonte e porta do harness juntas, e rode `/integrar-branch` em seguida, sem esperar pedido do dono. Pronto com o CI verde reportado.
+7. **Dados de exemplo.** Deixe o `local.db` do dono pronto para ele ver a entrega com `pnpm dev`; `local.db` e a pasta `media/` da raiz nunca entram em commit:
+   - sem servidor de desenvolvimento com o banco aberto, faça backup do banco (com `-wal` e `-shm`) e da pasta `media/` no scratchpad e rode `pnpm --filter @costura-pro/db run db:migrate`;
+   - semeie exemplos de cada estado que as telas novas mostram (vazio, incompleto, aviso, arquivado), aproveitando o que o banco já tem, pelas procedures e nunca por SQL solto: roteiro em Bun rodado de dentro de `apps/server` com `createRouterClient(appRouter, { context })` e o contexto do dono local (os comandos só leem `db` e `now`), ids e `opId` fixos e a nota "Dado de exemplo" nos registros; foto entra por `writeMediaFile` e `upsertMediaFile` antes do comando que a cita;
+   - ensaie numa cópia do banco e da mídia, rodando duas vezes para provar que não duplica, rode no banco real e confira as telas numa cópia com senha temporária no Chrome headless, apagando as cópias no fim.
+
+   Pronto com o banco migrado, os dados conferidos na tela e a lista do que foi semeado no chat.
+8. **Próxima sessão.** Grave em `docs/superpowers/handoff/` um prompt autocontido para a próxima entrega (o que ficou pendente, por onde começar e os dados de exemplo que o banco de desenvolvimento tem) e mostre no chat.
+9. **Commit e integração.** Crie commits por área em inglês, no padrão conventional commits, sem citar fase, spike, spec, plano ou ID de requisito, decisão ou questão, com fonte e porta do harness juntas, e rode `/integrar-branch` em seguida, sem esperar pedido do dono. Pronto com o CI verde reportado.

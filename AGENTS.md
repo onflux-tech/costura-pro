@@ -14,7 +14,7 @@ Toda implementação segue as skills do projeto (fonte em `.agents/skills/`; no 
 
 1. `entrega-iniciar`: escolhe a entrega do ROADMAP, cria a branch, define a rota e a spec local.
 2. `verificar` e, quando a entrega toca dinheiro, quantidade, dados, autenticação, sync ou contrato entre camadas, `revisar`.
-3. `entrega-fechar`: atualiza docs curadas e índice e evolui o harness pelos critérios do `docs/HARNESS.md` §4. É o que deixa o harness mais especialista a cada entrega.
+3. `entrega-fechar`: atualiza docs curadas e índice, evolui o harness pelos critérios do `docs/HARNESS.md` §4 e deixa o `local.db` do dono migrado e com dados de exemplo da entrega, para ele ver com `pnpm dev`. É o que deixa o harness mais especialista a cada entrega.
 4. `integrar-branch`: roda sozinho logo depois do `entrega-fechar` verde, com commits por área, merge `--ff-only` na `main`, push e CI acompanhado, sem pedir confirmação; não há PR.
 
 ## Regras por área
