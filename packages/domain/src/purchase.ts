@@ -1,4 +1,4 @@
-import { maxExactInteger, quantityScale } from "./quantity";
+import { maxExactInteger, multiplyHalfUp } from "./quantity";
 
 export const purchaseLimits = {
 	items: { max: 100, min: 1 },
@@ -43,9 +43,6 @@ export type PurchaseTotalsResult =
 const sumOf = (values: readonly bigint[]) =>
 	values.reduce((sum, value) => sum + value, 0n);
 
-const scaledHalfUp = (left: bigint, right: bigint) =>
-	(left * right * 2n + quantityScale) / (quantityScale * 2n);
-
 export function allocateProportionally(
 	total: bigint,
 	weights: readonly bigint[]
@@ -66,10 +63,10 @@ export function purchaseTotals(
 	discountCents: bigint
 ): PurchaseTotalsResult {
 	const gross = lines.map((line) =>
-		scaledHalfUp(line.packageCountMicros, line.unitPriceCents)
+		multiplyHalfUp(line.packageCountMicros, line.unitPriceCents)
 	);
 	const quantities = lines.map((line) =>
-		scaledHalfUp(line.packageCountMicros, line.packagingQuantityMicros)
+		multiplyHalfUp(line.packageCountMicros, line.packagingQuantityMicros)
 	);
 	const grossCents = sumOf(gross);
 	const totalCents = grossCents + freightCents - discountCents;

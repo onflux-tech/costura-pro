@@ -4,6 +4,7 @@ import {
 	formatQuantity,
 	formatQuantityInput,
 	maxExactInteger,
+	multiplyHalfUp,
 	parseQuantity,
 } from "./quantity";
 
@@ -55,4 +56,12 @@ test("formatQuantity keeps the sign in front of a negative balance", () => {
 	expect(formatQuantity(-500_000n, 2)).toBe("-0,50");
 	expect(formatQuantity(-2_000_000n, 0)).toBe("-2");
 	expect(formatQuantityInput(-1_500_000n, 2)).toBe("-1,50");
+});
+
+test("multiplyHalfUp multiplica quantidade por valor unitário, meio para cima", () => {
+	expect(multiplyHalfUp(1_320_000n, 2550n)).toBe(3366n);
+	expect(multiplyHalfUp(1_234_567n, 1000n)).toBe(1235n);
+	expect(multiplyHalfUp(1_234_499n, 1000n)).toBe(1234n);
+	expect(multiplyHalfUp(1_500_000n, 1n)).toBe(2n);
+	expect(multiplyHalfUp(0n, 999n)).toBe(0n);
 });

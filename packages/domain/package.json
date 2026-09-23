@@ -46,6 +46,10 @@
       "types": "./dist/src/pricing.d.ts",
       "default": "./src/pricing.ts"
     },
+    "./product": {
+      "types": "./dist/src/product.d.ts",
+      "default": "./src/product.ts"
+    },
     "./purchase": {
       "types": "./dist/src/purchase.d.ts",
       "default": "./src/purchase.ts"

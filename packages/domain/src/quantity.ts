@@ -45,6 +45,13 @@ export function formatQuantity(micros: bigint, precision: number): string {
 	return fraction ? `${grouped(whole)},${fraction}` : grouped(whole);
 }
 
+export function multiplyHalfUp(
+	quantityMicros: bigint,
+	perUnit: bigint
+): bigint {
+	return (quantityMicros * perUnit * 2n + quantityScale) / (quantityScale * 2n);
+}
+
 export function formatQuantityInput(micros: bigint, precision: number): string {
 	const [whole, fraction] = decimalOf(micros, precision);
 	return fraction ? `${whole},${fraction}` : whole;
