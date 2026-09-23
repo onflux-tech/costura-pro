@@ -12,6 +12,7 @@ build
 apps/web/src/routeTree.gen.ts
 local.db
 local.db-*
+/media/
 
 # Environment variables
 .env
