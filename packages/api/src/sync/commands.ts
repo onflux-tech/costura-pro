@@ -18,6 +18,7 @@ import {
 } from "../installation/store";
 import { materialCommands } from "../materials/commands";
 import { measurementCommands } from "../measurements/commands";
+import { productCommands } from "../products/commands";
 import { purchaseCommands } from "../purchases/commands";
 import { receivedItemCommands } from "../received-items/commands";
 import { atelierNameSchema, deviceNameSchema } from "../schemas";
@@ -119,6 +120,7 @@ export const syncCommands = {
 	...financeCommands,
 	...materialCommands,
 	...measurementCommands,
+	...productCommands,
 	...purchaseCommands,
 	...receivedItemCommands,
 	...serviceCommands,

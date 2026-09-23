@@ -562,6 +562,7 @@ describe("purchase with packaging, conversion and allocation", () => {
 			materialName: "Gorgurão",
 			name: "Azul marinho",
 			packaging: { label: "Rolo 50 m", quantityMicros: "50000000" },
+			referenceCostCents: null,
 			tracksLots: false,
 		});
 		await owner.materialVariants.archive({
@@ -573,10 +574,17 @@ describe("purchase with packaging, conversion and allocation", () => {
 		expect(after.items.map((variant) => variant.id)).toEqual([
 			catalog.floralId,
 		]);
+		await owner.materialVariants.update({
+			baseVersion: 1,
+			opId: newOpId(),
+			patch: { referenceCostCents: "35" },
+			variantId: catalog.threadId,
+		});
 		const thread = await owner.materialVariants.search({ query: "linha" });
 		expect(thread.items[0]).toMatchObject({
 			id: catalog.threadId,
 			packaging: null,
+			referenceCostCents: "35",
 		});
 	});
 

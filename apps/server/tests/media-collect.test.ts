@@ -468,6 +468,196 @@ describe("media collection", () => {
 		).toEqual([true, true]);
 	});
 
+	test("keeps the gallery of a product, archived included, and collects a photo taken out of it", async () => {
+		const clock = manualClock();
+		const { cookie, owner, server } = await ownerSetup({ now: clock.now });
+		const front = await upload(server, cookie, "galeria-frente");
+		const frontThumb = await upload(server, cookie, "galeria-frente-mini");
+		const back = await upload(server, cookie, "galeria-costas");
+		const backThumb = await upload(server, cookie, "galeria-costas-mini");
+		const productId = crypto.randomUUID();
+		await owner.products.create({
+			name: "Vestido Midi",
+			opId: newOpId(),
+			photos: [
+				{ caption: null, photoHash: front, thumbnailHash: frontThumb },
+				{ caption: "Costas", photoHash: back, thumbnailHash: backThumb },
+			],
+			productId,
+		});
+		clock.advance(25 * hour);
+		expect((await collect(server, clock.now())).rows).toBe(0);
+		await owner.products.archive({
+			baseVersion: 1,
+			opId: newOpId(),
+			productId,
+		});
+		clock.advance(25 * hour);
+		expect((await collect(server, clock.now())).rows).toBe(0);
+		await owner.products.update({
+			baseVersion: 2,
+			opId: newOpId(),
+			patch: {
+				photos: [
+					{ caption: null, photoHash: front, thumbnailHash: frontThumb },
+				],
+			},
+			productId,
+		});
+		clock.advance(25 * hour);
+		await collect(server, clock.now());
+		expect(
+			[front, frontThumb, back, backThumb].map((photo) =>
+				hasFile(server, photo)
+			)
+		).toEqual([true, true, false, false]);
+	});
+
+	test("keeps a gallery photo that exists only in an open product conflict until it is resolved", async () => {
+		const setup: SyncSetup = await syncSetup(servers);
+		const { server } = setup;
+		const current = await upload(
+			server,
+			setup.remoteCookie,
+			"produto-atual",
+			true
+		);
+		const currentThumb = await upload(
+			server,
+			setup.remoteCookie,
+			"produto-atual-mini",
+			true
+		);
+		const local = await upload(
+			server,
+			setup.remoteCookie,
+			"produto-conflito",
+			true
+		);
+		const localThumb = await upload(
+			server,
+			setup.remoteCookie,
+			"produto-conflito-mini",
+			true
+		);
+		const productId = crypto.randomUUID();
+		await setup.local.products.create({
+			name: "Vestido Midi",
+			opId: newOpId(),
+			photos: [
+				{ caption: null, photoHash: current, thumbnailHash: currentThumb },
+			],
+			productId,
+		});
+		await setup.local.products.update({
+			baseVersion: 1,
+			opId: newOpId(),
+			patch: { name: "Vestido Midi Linho" },
+			productId,
+		});
+		const pushed = await setup.sync.sync.push({
+			operations: [
+				{
+					aggregateId: productId,
+					aggregateType: "product",
+					baseVersion: 1,
+					command: "product.update",
+					deviceId: setup.device.id,
+					epoch: setup.epoch,
+					occurredAt: "2026-09-23T12:00:00.000Z",
+					opId: newOpId(),
+					payload: {
+						photos: [
+							{ caption: null, photoHash: local, thumbnailHash: localThumb },
+						],
+					},
+				},
+			],
+		});
+		expect(pushed.conflicts).toHaveLength(1);
+		const later = new Date(Date.now() + 25 * hour);
+		await collect(server, later);
+		expect(
+			[current, currentThumb, local, localThumb].map((photo) =>
+				hasFile(server, photo)
+			)
+		).toEqual([true, true, true, true]);
+		await setup.sync.sync.resolve({
+			choice: "keepServer",
+			conflictId: pushed.conflicts[0]?.conflictId ?? "",
+			opId: newOpId(),
+			reason: "Fica a galeria do PC",
+		});
+		await collect(server, later);
+		expect(
+			[current, currentThumb, local, localThumb].map((photo) =>
+				hasFile(server, photo)
+			)
+		).toEqual([true, true, false, false]);
+	});
+
+	test("keeps a gallery photo that remains only in the current values of an open product conflict", async () => {
+		const setup: SyncSetup = await syncSetup(servers);
+		const { server } = setup;
+		const photoHash = await upload(
+			server,
+			setup.remoteCookie,
+			"produto-so-no-atual",
+			true
+		);
+		const thumbnailHash = await upload(
+			server,
+			setup.remoteCookie,
+			"produto-so-no-atual-mini",
+			true
+		);
+		const productId = crypto.randomUUID();
+		await setup.local.products.create({
+			name: "Vestido Midi",
+			opId: newOpId(),
+			photos: [{ caption: null, photoHash, thumbnailHash }],
+			productId,
+		});
+		await setup.local.products.update({
+			baseVersion: 1,
+			opId: newOpId(),
+			patch: { name: "Vestido Midi Linho" },
+			productId,
+		});
+		const pushed = await setup.sync.sync.push({
+			operations: [
+				{
+					aggregateId: productId,
+					aggregateType: "product",
+					baseVersion: 1,
+					command: "product.update",
+					deviceId: setup.device.id,
+					epoch: setup.epoch,
+					occurredAt: "2026-09-23T12:00:00.000Z",
+					opId: newOpId(),
+					payload: { notes: "Com forro" },
+				},
+			],
+		});
+		expect(pushed.conflicts).toHaveLength(1);
+		await setup.local.products.update({
+			baseVersion: 2,
+			opId: newOpId(),
+			patch: { photos: [] },
+			productId,
+		});
+		await collect(server, new Date(Date.now() + 25 * hour));
+		expect(
+			[photoHash, thumbnailHash].map((photo) => [
+				hasRow(server, photo),
+				hasFile(server, photo),
+			])
+		).toEqual([
+			[true, true],
+			[true, true],
+		]);
+	});
+
 	test("collects thousands of referenced old photos without reading every item per photo", async () => {
 		const { owner, server } = await ownerSetup();
 		const clientId = crypto.randomUUID();

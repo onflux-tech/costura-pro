@@ -167,6 +167,7 @@ export type VariantOption = {
 	materialName: string;
 	name: string;
 	packaging: { label: string; quantityMicros: string } | null;
+	referenceCostCents: string | null;
 	tracksLots: boolean;
 };
 
@@ -185,6 +186,7 @@ export function searchMaterialVariants(
 			name: materialVariant.name,
 			packagingLabel: materialVariant.packagingLabel,
 			packagingQuantityMicros: materialVariant.packagingQuantityMicros,
+			referenceCostCents: materialVariant.referenceCostCents,
 			tracksLots: materialVariant.tracksLots,
 		})
 		.from(materialVariant)
@@ -212,16 +214,24 @@ export function searchMaterialVariants(
 	return {
 		items: rows
 			.slice(0, materialPageSize)
-			.map(({ packagingLabel, packagingQuantityMicros, ...row }) => ({
-				...row,
-				packaging:
-					packagingLabel === null || packagingQuantityMicros === null
-						? null
-						: {
-								label: packagingLabel,
-								quantityMicros: packagingQuantityMicros.toString(),
-							},
-			})),
+			.map(
+				({
+					packagingLabel,
+					packagingQuantityMicros,
+					referenceCostCents,
+					...row
+				}) => ({
+					...row,
+					packaging:
+						packagingLabel === null || packagingQuantityMicros === null
+							? null
+							: {
+									label: packagingLabel,
+									quantityMicros: packagingQuantityMicros.toString(),
+								},
+					referenceCostCents: referenceCostCents?.toString() ?? null,
+				})
+			),
 		nextOffset:
 			rows.length > materialPageSize ? offset + materialPageSize : null,
 	};

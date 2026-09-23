@@ -70,20 +70,26 @@ const referencedHashes = sql`
 	FROM received_item AS item, json_each(item.photos) AS photo
 	UNION
 	SELECT json_extract(photo.value, '$.photoHash')
+	FROM product AS item, json_each(item.photos) AS photo
+	UNION
+	SELECT json_extract(photo.value, '$.thumbnailHash')
+	FROM product AS item, json_each(item.photos) AS photo
+	UNION
+	SELECT json_extract(photo.value, '$.photoHash')
 	FROM sync_conflict AS conflict, json_each(conflict.local_values, '$.photos') AS photo
-	WHERE conflict.status = 'open' AND conflict.aggregate_type = 'receivedItem'
+	WHERE conflict.status = 'open' AND conflict.aggregate_type IN ('receivedItem', 'product')
 	UNION
 	SELECT json_extract(photo.value, '$.thumbnailHash')
 	FROM sync_conflict AS conflict, json_each(conflict.local_values, '$.photos') AS photo
-	WHERE conflict.status = 'open' AND conflict.aggregate_type = 'receivedItem'
+	WHERE conflict.status = 'open' AND conflict.aggregate_type IN ('receivedItem', 'product')
 	UNION
 	SELECT json_extract(photo.value, '$.photoHash')
 	FROM sync_conflict AS conflict, json_each(conflict.current_values, '$.photos') AS photo
-	WHERE conflict.status = 'open' AND conflict.aggregate_type = 'receivedItem'
+	WHERE conflict.status = 'open' AND conflict.aggregate_type IN ('receivedItem', 'product')
 	UNION
 	SELECT json_extract(photo.value, '$.thumbnailHash')
 	FROM sync_conflict AS conflict, json_each(conflict.current_values, '$.photos') AS photo
-	WHERE conflict.status = 'open' AND conflict.aggregate_type = 'receivedItem'
+	WHERE conflict.status = 'open' AND conflict.aggregate_type IN ('receivedItem', 'product')
 	UNION
 	SELECT json_extract(variant.photo, '$.photoHash')
 	FROM material_variant AS variant

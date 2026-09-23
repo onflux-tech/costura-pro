@@ -13,6 +13,8 @@ export type AggregateType =
 	| "measurement"
 	| "measurementTemplate"
 	| "obligation"
+	| "product"
+	| "productVariant"
 	| "profile"
 	| "purchase"
 	| "purchaseReversal"

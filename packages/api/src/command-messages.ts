@@ -13,6 +13,8 @@ export const commandMessages = {
 	obligationCancelled: "Obrigação cancelada",
 	obligationNotFound: "Obrigação não encontrada",
 	obligationPaid: "Obrigação já paga",
+	productNotFound: "Produto não encontrado",
+	productVariantNotFound: "Variante do produto não encontrada",
 	profileNotFound: "Perfil não encontrado",
 	purchaseNotFound: "Compra não encontrada",
 	purchaseReversed: "Compra já estornada",

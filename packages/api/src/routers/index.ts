@@ -13,6 +13,7 @@ import {
 	measurementsRouter,
 	measurementTemplatesRouter,
 } from "../measurements/router";
+import { productsRouter, productVariantsRouter } from "../products/router";
 import {
 	obligationsRouter,
 	purchasesRouter,
@@ -46,6 +47,8 @@ export const appRouter = {
 		message: "This is private",
 		user: context.session?.user,
 	})),
+	products: productsRouter,
+	productVariants: productVariantsRouter,
 	profiles: profilesRouter,
 	purchases: purchasesRouter,
 	receivedItems: receivedItemsRouter,
