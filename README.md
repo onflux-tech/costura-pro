@@ -1,3 +1,7 @@
+<p align="center">
+  <img alt="Costura Pro" src="https://repository-images.githubusercontent.com/1373266939/ea491313-7f77-4653-8db7-3f35935da59a" width="100%">
+</p>
+
 <h1 align="center">Costura Pro</h1>
 
 <p align="center">
