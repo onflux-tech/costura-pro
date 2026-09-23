@@ -239,8 +239,17 @@ Cada spike responde uma pergunta que muda o desenho antes de construir em cima d
   - telas em Catálogo > Serviços (lista com busca, categoria, arquivados e selos, novo, edição com versão, conflito e arquivar);
   - verificado em navegador real no build de produção com banco novo: custo de R$ 60 com sugestão de R$ 100 adotada por "Usar preço sugerido", terceirizado com meta própria de 30% abaixo da meta, serviço abaixo do custo, meta do ateliê trocada para 45% mudando só as sugestões, conflito entre janelas com "Carregar versão atual", arquivar bloqueado com mudança não salva, busca e filtro de categoria, 1440, 768, 390 e 320 px sem rolagem horizontal, toque a 390 px e teclado com foco preso no diálogo e Esc devolvendo o foco.
 
+- Produto base com variantes, galeria, capa e ficha técnica (2026-09-23), descritos em [produtos](areas/produtos.md):
+  - produto base com galeria de até 12 fotos com legenda e ficha técnica em lista no próprio produto, e variante com código, preço praticado e capa escolhida da galeria; kit como produto com categoria ([DEC-116](PRD.md#93-catálogo-estoque-e-produção), [ADR 0021](adr/0021-ficha-tecnica-no-produto-base-e-ajustes-por-variante.md));
+  - item de material sempre numa variante de material, serviço com quantidade inteira e observação por item; perda normal fixa ou percentual e quantidade planejada arredondada para cima ([DEC-117, DEC-118](PRD.md#93-catálogo-estoque-e-produção));
+  - variante que troca, tira ou acrescenta itens da ficha, com a ficha efetiva e o custo estimado calculados na tela pelas funções do domínio, preço sugerido pela meta própria do produto ou pela do ateliê, custo incompleto ou ficha vazia sem sugestão e teto de 60 ajustes em toda ação que cria ajuste ([DEC-119, DEC-120](PRD.md#93-catálogo-estoque-e-produção));
+  - fotos da galeria no conjunto de hashes referenciados da mídia, com a capa como ponteiro para a galeria;
+  - telas em Catálogo > Produtos, agora a primeira aba e a porta de entrada do Catálogo: lista com busca por variante e código, página do produto com galeria, ficha e variantes, editor da ficha e formulário da variante com capa, preço sugerido e ajustes ([DEC-121](PRD.md#93-catálogo-estoque-e-produção));
+  - verificado em navegador real no build de produção com banco novo: produto com 3 fotos e legenda; ficha com Oxford Azul 1,20 m e 10% de perda, linha com perda fixa, zíper, costura e bordado × 2 somando R$ 108,26; variante P Azul a R$ 170,00 com sugestão de R$ 180,44, margem de 36,31% e aviso de abaixo da meta; M Vermelho trocando o tecido (R$ 116,18, sugestão R$ 193,64, margem 41,88% a R$ 199,90); P sem bordado (R$ 78,26) adotando a sugestão de R$ 130,44; botão sem custo de referência deixando todas as variantes com custo incompleto e link para a variante do material; capa trocada para a imagem principal quando a foto saiu da galeria; conflito entre janelas no editor da ficha e na variante com "Carregar versão atual"; busca pelo código da variante; arquivar e desarquivar; 1440, 768, 390 e 320 px sem rolagem horizontal em sete telas, toque a 390 px e teclado com foco preso no diálogo e Esc devolvendo o foco;
+  - revisão final com reprodução antes e depois da correção no navegador: ficha vazia mostrando "Ficha vazia" em vez de sugestão de R$ 0,00 e margem de 100%, Trocar e Tirar desativados com aviso ao chegar a 60 ajustes, e a nova variante remontada pelo parâmetro depois de um salto no histórico, gravando no produto que a tela mostra; edição da variante, categoria e notas do produto, pull da variante editada, `keepLocal` sobre ajustes e o lado atual do conflito de produto na coleta cobertos por teste, com 13 mutações mortas.
+
 **Pendente:**
-- Sessão de inventário (RF-EST-13, parte de sessão), produtos com variantes, galeria e ficha técnica, etiquetas com leitura por câmera (S3) e busca global.
+- Sessão de inventário (RF-EST-13, parte de sessão), etiquetas com leitura por câmera (S3) e busca global.
 
 **Critério de saída:**
 - Parte de cadastro de estoque do CA-03 com teste de integração: variantes, local, lote, compra em embalagem, conversão e custo de aquisição com frete e desconto.
@@ -254,7 +263,7 @@ Cada spike responde uma pergunta que muda o desenho antes de construir em cima d
 **Requisitos:** RF-COM-01 a 10; RF-CAT-10, 13 a 15; RF-EST-07 a 12, 15; RF-PRO-01 a 03; RF-DOC-01 a 03, 05; RF-ATD-04, 08 a 12; RF-FIN-02, 03; RF-ENT-10.
 
 **Entregas:**
-- Orçamento com revisões, aceite parcial, desconto e alertas de margem, com linhas de serviço (cópia de nome, custo, preço e versão), material e insumo não controlado em linha livre ([DEC-112](PRD.md#93-catálogo-estoque-e-produção), [DEC-115](PRD.md#93-catálogo-estoque-e-produção)).
+- Orçamento com revisões, aceite parcial, desconto e alertas de margem, com linhas de serviço (cópia de nome, custo, preço e versão), material e insumo não controlado em linha livre ([DEC-112](PRD.md#93-catálogo-estoque-e-produção), [DEC-115](PRD.md#93-catálogo-estoque-e-produção)); orçamento sob medida sugerido pela ficha técnica de um produto, copiando a ficha efetiva com a quantidade planejada ([ADR 0021](adr/0021-ficha-tecnica-no-produto-base-e-ajustes-por-variante.md)).
 - Aprovação transacional que cria OS, subitens, snapshot de medidas, reservas, pendências e recebível.
 - Estados separados de produção, entrega e financeiro.
 - Lista de compras consolidada.
@@ -279,7 +288,7 @@ Cada spike responde uma pergunta que muda o desenho antes de construir em cima d
 **Requisitos:** RF-PRO-04 a 08; RF-COM-11 a 14; RF-FIN-04 a 15; RF-ENT-04, 07, 09.
 
 **Entregas:**
-- **Produção:** OP com unidades boas, perdas, saídas parciais e custo médio por variante.
+- **Produção:** OP com unidades boas, perdas, saídas parciais e custo médio por variante; a OP copia a ficha efetiva da variante do produto, e o saldo de acabado nasce com ela.
 - **Venda:** venda direta, atendimento vinculado, devolução com custo congelado e exceção de sobre-venda no servidor.
 - **Finanças:**
   - cartão com taxa e conta de liquidação;

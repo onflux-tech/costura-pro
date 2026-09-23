@@ -67,23 +67,41 @@ Atividade de costura, feita no ateliê ou terceirizada, com custo e preço prati
 Serviço executado fora do ateliê, marcado no cadastro, com custo estimado substituído pela despesa real quando ela é vinculada.
 
 **Produto base**:
-Definição comum de um produto acabado e de sua ficha técnica.
+Definição comum de um produto acabado ou de um kit, com a galeria compartilhada e a ficha técnica.
 
 **Variante de produto**:
-Tamanho, cor ou apresentação vendável com código, preço, capa opcional e saldo próprios.
+Tamanho, cor ou apresentação vendável com código, preço, capa opcional, ajustes da ficha e saldo próprios.
 
 **Kit**:
 Produto cuja unidade vendável representa o conjunto inteiro. Componentes só têm saldo se forem cadastrados como produtos próprios.
 
 **Ficha técnica**:
-Composição planejada de materiais, perdas normais e serviços de um produto base; a variante ajusta só o que difere.
+Composição planejada de um produto base: variantes de material com quantidade e perda normal, e serviços com quantidade. A variante do produto ajusta só o que difere.
 _Evitar_: receita
 
+**Item da ficha**:
+Linha da ficha técnica: uma variante de material com a quantidade de uma peça na unidade dela e perda normal opcional, ou um serviço com quantidade inteira, cada um com observação curta opcional.
+
+**Perda normal**:
+Sobra planejada de um material na ficha técnica, fixa na unidade dele ou percentual sobre a quantidade.
+
+**Quantidade planejada**:
+Quantidade de um item da ficha somada à perda normal, arredondada para cima. É ela que entra no custo estimado e, depois, na reserva.
+
+**Ajuste da variante**:
+Diferença de uma variante de produto em relação à ficha do produto base: um item trocado, um item tirado ou um item acrescentado.
+
+**Ficha efetiva**:
+Ficha de uma variante de produto depois de aplicar os ajustes dela à ficha do produto base.
+
+**Custo estimado**:
+Soma dos custos da ficha efetiva, com os materiais pelo custo de referência e os serviços pelo custo atual. É calculado na hora, fica incompleto quando falta o custo de algum material e não existe quando a ficha efetiva está vazia.
+
 **Galeria compartilhada**:
-Imagens do produto base usadas por todas as variantes; a capa da variante substitui apenas a imagem principal.
+Até 12 imagens do produto base, a primeira como imagem principal, usadas por todas as variantes. A capa da variante é uma dessas imagens e substitui apenas a principal.
 
 **Margem desejada**:
-Meta de margem sobre o preço de venda usada para sugerir preço. A meta do ateliê vale para todo serviço, e um serviço pode ter meta própria, que vence a do ateliê. Nunca bloqueia venda nem muda preço.
+Meta de margem sobre o preço de venda usada para sugerir preço. A meta do ateliê vale para todo serviço e produto, e um serviço ou um produto base pode ter meta própria, que vence a do ateliê. Nunca bloqueia venda nem muda preço.
 _Evitar_: markup
 
 **Preço sugerido**:

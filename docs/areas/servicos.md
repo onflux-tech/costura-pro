@@ -19,7 +19,7 @@ A versão do serviço é a do agregado: sobe a cada edição, inclusive arquivar
 
 ## A conta do preço
 
-`pricingOf` (`packages/domain/src/pricing.ts`) é a única conta, chamada pela lista e pela prévia do formulário por `servicePricingView` e `formPricing` (`apps/web/src/lib/services.ts`). O servidor não calcula sugestão.
+`pricingOf` (`packages/domain/src/pricing.ts`) é a única conta, chamada pela lista e pela prévia do formulário por `pricingPreview` (`apps/web/src/lib/pricing.ts`) e `formPricing` (`apps/web/src/lib/services.ts`). O servidor não calcula sugestão.
 
 | Valor | Conta |
 |---|---|
@@ -51,7 +51,7 @@ Catálogo tem a sub-aba Serviços (`/catalogo-produtos/servicos`), entre Materia
 | Sintoma | Causa | Como evitar |
 |---|---|---|
 | Preço do serviço muda sozinho depois de mexer na meta | Sugestão gravada no serviço ou comando da meta que reescreve serviços | A sugestão só existe na leitura; o teste confere que a meta nova não muda preço, versão nem `change_log` do serviço |
-| Sugestão da lista diferente da do formulário | Conta refeita na tela | As duas chamam `pricingOf` pelo mesmo caminho (`servicePricingView`) |
+| Sugestão da lista diferente da do formulário | Conta refeita na tela | As duas chamam `pricingOf` pelo mesmo caminho (`pricingPreview`) |
 | "Margem 40%" ao lado de "abaixo da meta" (custo R$ 600, preço R$ 999,99) | Margem arredondada meio para cima chega à meta que o preço não alcança | Margem arredondada para baixo em `marginOfPrice`, com o caso no teste do domínio |
 | Pull de um banco migrado traz a instalação sem `targetMarginBasisPoints` | O snapshot da instalação foi gravado antes da coluna existir, e a migration não grava snapshot novo | O consumidor aplica `defaultTargetMarginBasisPoints` até a próxima escrita da instalação ([SPEC §4](../SPEC.md#4-api-sincronização-e-conflito)) |
 | Meta do ateliê recusada como versão desatualizada logo depois de renomear o ateliê | A meta e o nome do ateliê dividem a versão da instalação | Esperado ([ADR 0020](../adr/0020-servico-versionado-e-preco-sugerido-na-leitura.md)); o diálogo fecha com aviso e recarrega a versão |
