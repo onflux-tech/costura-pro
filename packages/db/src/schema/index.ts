@@ -5,6 +5,7 @@ export * from "./installation";
 export * from "./materials";
 export * from "./measurements";
 export * from "./media";
+export * from "./products";
 export * from "./purchases";
 export * from "./received-items";
 export * from "./services";

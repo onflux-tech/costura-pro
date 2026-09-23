@@ -92,6 +92,13 @@
       "when": 1789734640604,
       "tag": "0012_services_target_margin",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "6",
+      "when": 1790198647551,
+      "tag": "0013_products_variants",
+      "breakpoints": true
     }
   ]
 }
