@@ -23,3 +23,4 @@ paths:
 - Mudança em `.claude/settings.json` ou nos hooks só vale numa sessão nova do Claude Code.
 - Stop hook que sai com código 0 só fala com o modelo pelo JSON `decision: block`; texto solto não chega.
 - Commit que toca `.claude/rules` roda a checagem do harness contra o que está no stage: com fonte de papel ou skill alterada e porta fora do stage, ele é recusado com "porta gerada fora do commit" mesmo depois do `pnpm harness:sync`. Commite fonte e portas antes do commit de docs, ou no mesmo.
+- `git add -N`, usado para pôr os arquivos novos no diff salvo para o `reviewer`, deixa entradas "intent-to-add" no índice, e o `git stash create` do lefthook recusa o pre-commit com "Failed to save unstaged changes". Antes dos commits por área, desfaça com `git reset` misto, que mexe só no índice e preserva a árvore de trabalho.
