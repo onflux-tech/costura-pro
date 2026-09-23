@@ -38,4 +38,7 @@ Reporte achados por severidade com caminho, linha, cenário de falha e requisito
 - Teste de push com patch de um campo só (`{ costCents: "12,50" }`) passa mesmo se o campo sair do schema: o zod remove o campo, o patch fica vazio e cai em `invalidPayload` por "Nada para alterar". Peça o inválido misturado com um campo válido e um teste que aplique o campo de fato.
 - Teste de pull que confere só o último snapshot (`.at(-1)`) não pega a criação sem `appendChange` quando o mesmo teste também edita: peça a lista das versões do agregado no pull.
 - Número exibido ao lado de um aviso (margem arredondada meio para cima junto de "abaixo da meta") pode contradizer o aviso no empate: peça o caso de fronteira exato e o arredondamento a favor do aviso.
+- Agregado novo com teste de criação e de uma edição só deixa sobreviver campo fora do update (preço fora das colunas, busca sem recalcular, snapshot sem `appendChange` na edição): peça a edição de cada campo do patch pela procedure e pelo push, relida por `get`, pela busca e pelo pull, e o patch da web campo a campo.
+- Teto de lista conferido só no botão de acrescentar deixa outra ação criar o elemento além do teto (Trocar e Tirar também criam ajuste): peça o teto em toda ação que cria elemento, contado sobre o que vai ser gravado.
+- Conta sobre lista vazia vira "completa com zero" e exibe sugestão de R$ 0,00 e margem de 100%: peça o estado vazio distinto de zero em toda conta derivada que a tela mostra.
 '''

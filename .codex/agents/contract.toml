@@ -36,4 +36,5 @@ Não altere arquivos, banco, Git ou serviços; não rode testes ou navegador. En
 - Data calculada no clique (estorno com `occurredOn` de hoje) entra no hash do servidor: a chave do `opIdFor` precisa incluí-la, senão a nova tentativa no dia seguinte recebe `CONFLICT`.
 - Payload que a tela monta dentro do componente (meta do diálogo) não é o que o teste de contrato confere quando o teste monta o próprio objeto: peça a função da `lib` usada pela tela e pelo teste.
 - Campo acrescentado ao snapshot de um agregado que já existia não chega aos snapshots gravados antes da migration: confira se a SPEC diz o padrão que o consumidor do pull aplica.
+- Página que congela a versão aberta e lê o id do parâmetro da URL no pedido grava em outro registro depois de um salto no histórico, porque a rota não remonta quando só o parâmetro muda: confira o `key` pelo parâmetro na rota, ou o id do dado congelado no pedido e na chave do `opIdFor`.
 '''
