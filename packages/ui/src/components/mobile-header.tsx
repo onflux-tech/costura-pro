@@ -1,5 +1,7 @@
+import { mergeProps } from "@base-ui/react/merge-props";
+import { useRender } from "@base-ui/react/use-render";
 import { cn } from "@costura-pro/ui/lib/utils";
-import { ArrowLeftIcon } from "lucide-react";
+import { ArrowLeftIcon, SearchIcon } from "lucide-react";
 import type * as React from "react";
 
 function MobileHeader({
@@ -70,4 +72,28 @@ function MobileHeaderBack({
 	);
 }
 
-export { MobileHeader, MobileHeaderBack };
+function MobileHeaderSearch({
+	className,
+	label = "Buscar",
+	render,
+	...props
+}: useRender.ComponentProps<"a"> & { label?: string }) {
+	return useRender({
+		defaultTagName: "a",
+		props: mergeProps<"a">(
+			{
+				"aria-label": label,
+				children: <SearchIcon aria-hidden="true" className="size-5" />,
+				className: cn(
+					"flex size-11 shrink-0 items-center justify-center rounded-md text-nav-muted outline-none focus-visible:outline-2 focus-visible:outline-nav-active focus-visible:outline-solid",
+					className
+				),
+			},
+			props
+		),
+		render,
+		state: { slot: "mobile-header-search" },
+	});
+}
+
+export { MobileHeader, MobileHeaderBack, MobileHeaderSearch };

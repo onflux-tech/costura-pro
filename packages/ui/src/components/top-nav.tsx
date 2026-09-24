@@ -1,3 +1,5 @@
+import { mergeProps } from "@base-ui/react/merge-props";
+import { useRender } from "@base-ui/react/use-render";
 import { BrandMark } from "@costura-pro/ui/components/brand";
 import {
 	type LinkRenderer,
@@ -133,25 +135,42 @@ function TopNav({
 
 function TopNavSearch({
 	className,
-	placeholder = "Buscar cliente, OS, material",
+	label = "Buscar cliente, produto, material",
+	render,
+	shortcut,
 	...props
-}: React.ComponentProps<"button"> & { placeholder?: string }) {
-	return (
-		<button
-			aria-label={placeholder}
-			className={cn(
-				"flex h-9 shrink-0 items-center gap-2 rounded-md border border-nav-foreground/15 bg-nav-foreground/10 px-2.5 text-nav-muted text-xs xl:w-48",
-				focusOnNav,
-				className
-			)}
-			data-slot="top-nav-search"
-			type="button"
-			{...props}
-		>
-			<SearchIcon aria-hidden="true" className="size-4 shrink-0" />
-			<span className="hidden truncate xl:inline">{placeholder}</span>
-		</button>
-	);
+}: useRender.ComponentProps<"button"> & { label?: string; shortcut?: string }) {
+	return useRender({
+		defaultTagName: "button",
+		props: mergeProps<"button">(
+			{
+				"aria-label": label,
+				children: (
+					<>
+						<SearchIcon aria-hidden="true" className="size-4 shrink-0" />
+						<span className="hidden truncate xl:inline">{label}</span>
+						{shortcut ? (
+							<span
+								aria-hidden="true"
+								className="ml-auto hidden shrink-0 font-mono text-2xs xl:inline"
+							>
+								{shortcut}
+							</span>
+						) : null}
+					</>
+				),
+				className: cn(
+					"flex h-9 shrink-0 items-center gap-2 rounded-md border border-nav-foreground/15 bg-nav-foreground/10 px-2.5 text-nav-muted text-xs xl:w-72",
+					focusOnNav,
+					className
+				),
+				type: "button",
+			},
+			props
+		),
+		render,
+		state: { slot: "top-nav-search" },
+	});
 }
 
 function TopNavAvatar({

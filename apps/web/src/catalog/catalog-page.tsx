@@ -5,6 +5,7 @@ import {
 import {
 	MobileHeader,
 	MobileHeaderBack,
+	MobileHeaderSearch,
 } from "@costura-pro/ui/components/mobile-header";
 import { MobileNav } from "@costura-pro/ui/components/mobile-nav";
 import { SubTabs } from "@costura-pro/ui/components/sub-tabs";
@@ -23,6 +24,7 @@ import { ContentSection } from "./content-section";
 import { DataSection } from "./data-section";
 import { FormSection } from "./form-section";
 import { PhotoSection } from "./photo-section";
+import { SearchSection } from "./search-section";
 
 const connection = {
 	offline: { label: "Offline · 3 operações na fila", tone: "offline" },
@@ -37,10 +39,12 @@ const tabs = [
 	{ href: "#formularios", id: "formularios", label: "Formulários" },
 	{ href: "#fotos", id: "fotos", label: "Fotos" },
 	{ href: "#dados", id: "dados", label: "Dados e progresso" },
+	{ href: "#busca", id: "busca", label: "Busca" },
 ];
 
 export function CatalogPage() {
 	const [state, setState] = useState<Connection>("offline");
+	const [paletteOpen, setPaletteOpen] = useState(false);
 	const status = (
 		<SyncStatus tone={connection[state].tone}>
 			{connection[state].label}
@@ -55,9 +59,17 @@ export function CatalogPage() {
 				activeId="hoje"
 				groups={destinationGroups}
 				items={destinations}
-				search={<TopNavSearch />}
+				search={
+					<TopNavSearch
+						aria-haspopup="dialog"
+						aria-keyshortcuts="Control+K Meta+K"
+						onClick={() => setPaletteOpen(true)}
+						shortcut="Ctrl K"
+					/>
+				}
 			/>
 			<MobileHeader
+				actions={<MobileHeaderSearch href="#busca" />}
 				back={<MobileHeaderBack />}
 				eyebrow="Design system"
 				heading="Catálogo de componentes"
@@ -87,6 +99,10 @@ export function CatalogPage() {
 				<FormSection />
 				<PhotoSection />
 				<DataSection />
+				<SearchSection
+					onPaletteOpenChange={setPaletteOpen}
+					paletteOpen={paletteOpen}
+				/>
 			</main>
 			<MobileNav
 				activeId="hoje"
