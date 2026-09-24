@@ -25,3 +25,27 @@ export function planReservation(
 		shortageMicros: neededMicros - reservedMicros,
 	};
 }
+
+export type ReservationNeed = {
+	key: string;
+	quantityMicros: bigint;
+	variantId: string;
+};
+
+export function planReservations<T extends ReservationNeed>(
+	needs: readonly T[],
+	physicalByVariant: ReadonlyMap<string, bigint>,
+	reservedByVariant: ReadonlyMap<string, bigint>
+): (T & ReservationPlan)[] {
+	const reserved = new Map(reservedByVariant);
+	return needs.map((need) => {
+		const already = reserved.get(need.variantId) ?? 0n;
+		const plan = planReservation(
+			physicalByVariant.get(need.variantId) ?? 0n,
+			already,
+			need.quantityMicros
+		);
+		reserved.set(need.variantId, already + plan.reservedMicros);
+		return { ...need, ...plan };
+	});
+}

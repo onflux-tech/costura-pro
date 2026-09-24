@@ -78,6 +78,10 @@
       "types": "./dist/src/service.d.ts",
       "default": "./src/service.ts"
     },
+    "./service-order": {
+      "types": "./dist/src/service-order.d.ts",
+      "default": "./src/service-order.ts"
+    },
     "./sign-in-lockout": {
       "types": "./dist/src/sign-in-lockout.d.ts",
       "default": "./src/sign-in-lockout.ts"

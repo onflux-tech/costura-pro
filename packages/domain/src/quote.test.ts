@@ -5,12 +5,12 @@ import {
 	addDays,
 	discountCents,
 	documentCode,
+	documentSearchKey,
 	pieceCost,
 	plannedMaterials,
 	type QuoteComponent,
 	type QuoteLineText,
 	quoteLineOfText,
-	quoteSearchKey,
 	quoteStatus,
 	quoteTotalsOfText,
 } from "./quote";
@@ -268,7 +268,7 @@ describe("estado e busca", () => {
 			refused: boolean,
 			today: string,
 			validUntil: string | null
-		) => quoteStatus({ refused, today, validUntil });
+		) => quoteStatus({ approved: false, refused, today, validUntil });
 		expect(status(true, "2026-09-24", "2026-10-09")).toBe("refused");
 		expect(status(true, "2026-09-24", null)).toBe("refused");
 		expect(status(false, "2026-09-24", null)).toBe("draft");
@@ -276,9 +276,36 @@ describe("estado e busca", () => {
 		expect(status(false, "2026-09-25", "2026-09-24")).toBe("expired");
 	});
 
-	test("quoteSearchKey guarda o código, os dígitos dele e os títulos sem acento", () => {
+	test("aprovado vence recusa, vencimento e emissão", () => {
 		expect(
-			quoteSearchKey({
+			quoteStatus({
+				approved: true,
+				refused: true,
+				today: "2026-10-10",
+				validUntil: "2026-09-30",
+			})
+		).toBe("approved");
+		expect(
+			quoteStatus({
+				approved: true,
+				refused: false,
+				today: "2026-09-20",
+				validUntil: "2026-09-30",
+			})
+		).toBe("approved");
+		expect(
+			quoteStatus({
+				approved: false,
+				refused: true,
+				today: "2026-09-20",
+				validUntil: "2026-09-30",
+			})
+		).toBe("refused");
+	});
+
+	test("documentSearchKey guarda o código, os dígitos dele e os títulos sem acento", () => {
+		expect(
+			documentSearchKey({
 				code: "ORC-2026-PC-0001",
 				titles: ["Vestido de Festa", "Bainha à mão"],
 			})

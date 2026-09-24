@@ -352,17 +352,27 @@ export function plannedMaterials(
 	return planned;
 }
 
-export type QuoteStatus = "draft" | "emitted" | "expired" | "refused";
+export type QuoteStatus =
+	| "approved"
+	| "draft"
+	| "emitted"
+	| "expired"
+	| "refused";
 
 export function quoteStatus({
+	approved,
 	refused,
 	today,
 	validUntil,
 }: {
+	approved: boolean;
 	refused: boolean;
 	today: string;
 	validUntil: string | null;
 }): QuoteStatus {
+	if (approved) {
+		return "approved";
+	}
 	if (refused) {
 		return "refused";
 	}
@@ -374,7 +384,7 @@ export function quoteStatus({
 
 const nonDigits = /\D/g;
 
-export function quoteSearchKey({
+export function documentSearchKey({
 	code,
 	titles,
 }: {
