@@ -78,6 +78,28 @@ describe("falhas de comando de cliente", () => {
 	});
 });
 
+describe("falhas de orçamento", () => {
+	test("versão velha e cliente anonimizado", () => {
+		expect(
+			clientCommandFailure(
+				new ORPCError("CONFLICT", { message: commandMessages.staleVersion }),
+				"orçamento"
+			)
+		).toEqual({
+			kind: "stale",
+			message: "Este orçamento mudou em outra janela ou aparelho.",
+		});
+		expect(
+			clientCommandFailure(
+				new ORPCError("PRECONDITION_FAILED", {
+					message: commandMessages.clientAnonymized,
+				}),
+				"orçamento"
+			)
+		).toEqual({ kind: "anonymized", message: "Este cliente foi anonimizado." });
+	});
+});
+
 describe("falhas de compra e finanças", () => {
 	test("pagamento repetido, estorno repetido e compra já estornada viram exists", () => {
 		const cases = [

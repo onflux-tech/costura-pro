@@ -136,6 +136,17 @@ export function ClientDetailPage({
 							<ButtonLink
 								render={
 									<Link
+										search={{ cliente: clientId }}
+										to="/orcamentos/rascunhos/novo"
+									/>
+								}
+								variant="outline"
+							>
+								Novo orçamento
+							</ButtonLink>
+							<ButtonLink
+								render={
+									<Link
 										params={{ clienteId: clientId }}
 										to="/atendimento/clientes/$clienteId/pecas/nova"
 									/>

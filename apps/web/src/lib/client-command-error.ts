@@ -20,6 +20,7 @@ export type CommandSubject =
 	| "medição"
 	| "meta"
 	| "modelo"
+	| "orçamento"
 	| "peça"
 	| "perfil"
 	| "produto"
@@ -38,6 +39,7 @@ const staleMessages: Record<CommandSubject, string> = {
 	medição: "Esta medição mudou em outra janela ou aparelho.",
 	meta: "A meta de margem mudou em outra janela ou aparelho.",
 	modelo: "Este modelo mudou em outra janela ou aparelho.",
+	orçamento: "Este orçamento mudou em outra janela ou aparelho.",
 	perfil: "Este perfil mudou em outra janela ou aparelho.",
 	peça: "Esta peça mudou em outra janela ou aparelho.",
 	produto: "Este produto mudou em outra janela ou aparelho.",
@@ -48,6 +50,7 @@ const staleMessages: Record<CommandSubject, string> = {
 const personalSubjects: ReadonlySet<CommandSubject> = new Set([
 	"cliente",
 	"medição",
+	"orçamento",
 	"peça",
 	"perfil",
 ]);

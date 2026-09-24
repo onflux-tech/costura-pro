@@ -19,7 +19,7 @@ import { Text } from "@costura-pro/ui/components/typography";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { type ReactNode, useEffect, useRef, useState } from "react";
-
+import { localDay } from "@/lib/measurements";
 import {
 	clientDetail,
 	isEmptyResult,
@@ -30,6 +30,7 @@ import {
 	parentDetail,
 	productVariantLabel,
 	profileDetail,
+	quoteDetail,
 	searchReady,
 	searchStatus,
 	serviceDetail,
@@ -79,6 +80,21 @@ function OptionContent({
 				<>
 					<Title query={query} text={option.hit.name} />
 					<Line>{profileDetail(option.hit)}</Line>
+				</>
+			);
+		case "quotes":
+			return (
+				<>
+					<div className="flex flex-wrap items-center gap-x-2">
+						<Title query={query} text={option.hit.code} />
+						{option.hit.archived ? <Badge>arquivado</Badge> : null}
+					</div>
+					<Line>
+						<Marked
+							query={query}
+							text={quoteDetail(option.hit, localDay(new Date()))}
+						/>
+					</Line>
 				</>
 			);
 		case "products": {
@@ -209,6 +225,11 @@ export function SearchDialog({
 					params: { clienteId: option.hit.clientId },
 					search: { perfil: option.hit.id },
 					to: "/atendimento/clientes/$clienteId",
+				});
+			case "quotes":
+				return navigate({
+					params: { orcamentoId: option.hit.id },
+					to: "/orcamentos/$orcamentoId",
 				});
 			case "products":
 				return navigate({

@@ -100,9 +100,11 @@ export type MaterialVariantReference = {
 export type ServiceReference = {
 	archived: boolean;
 	costCents: string;
+	estimatedMinutes: number | null;
 	id: string;
 	name: string;
 	outsourced: boolean;
+	version: number;
 };
 
 export type ProductReferences = {
@@ -251,14 +253,15 @@ export function serviceReferenceFor(
 	return references.services.find((service) => service.id === serviceId);
 }
 
+export function plannedMicros(item: SheetMaterialView): bigint {
+	return plannedQuantity(BigInt(item.quantityMicros), domainLoss(item.loss));
+}
+
 export function quantityLabel(
 	item: SheetMaterialView,
 	reference: MaterialVariantReference | undefined
 ): string {
-	const planned = plannedQuantity(
-		BigInt(item.quantityMicros),
-		domainLoss(item.loss)
-	);
+	const planned = plannedMicros(item);
 	return reference
 		? `${formatQuantity(planned, reference.displayPrecision)} ${unitAbbreviation(reference.baseUnit)}`
 		: formatQuantity(planned, 0);
@@ -375,9 +378,11 @@ export function serviceReferenceOf(service: ServiceView): ServiceReference {
 	return {
 		archived: service.archivedAt !== null,
 		costCents: service.costCents,
+		estimatedMinutes: service.estimatedMinutes,
 		id: service.id,
 		name: service.name,
 		outsourced: service.outsourced,
+		version: service.version,
 	};
 }
 

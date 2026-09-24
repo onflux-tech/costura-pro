@@ -117,6 +117,39 @@ describe("abas por destino", () => {
 		);
 	});
 
+	test("Orçamentos tem uma aba por estado e deixa a página do orçamento sem aba", () => {
+		expect(sectionTabsFor("orcamentos", "/orcamentos/rascunhos")).toEqual({
+			activeId: "rascunhos",
+			items: [
+				{
+					href: "/orcamentos/rascunhos",
+					id: "rascunhos",
+					label: "Rascunhos",
+				},
+				{ href: "/orcamentos/emitidos", id: "emitidos", label: "Emitidos" },
+				{ href: "/orcamentos/vencidos", id: "vencidos", label: "Vencidos" },
+				{
+					href: "/orcamentos/recusados",
+					id: "recusados",
+					label: "Recusados",
+				},
+			],
+		});
+		expect(
+			sectionTabsFor("orcamentos", "/orcamentos/rascunhos/novo").activeId
+		).toBe("rascunhos");
+		expect(sectionTabsFor("orcamentos", "/orcamentos/vencidos").activeId).toBe(
+			"vencidos"
+		);
+		for (const path of [
+			"/orcamentos/3f1c",
+			"/orcamentos/3f1c/pecas/nova",
+			"/orcamentos/3f1c/revisoes/2",
+		]) {
+			expect(sectionTabsFor("orcamentos", path).activeId).toBeUndefined();
+		}
+	});
+
 	test("destino sem abas e rota fora do shell devolvem lista vazia", () => {
 		expect(sectionTabsFor("agenda", "/agenda")).toEqual({
 			activeId: undefined,

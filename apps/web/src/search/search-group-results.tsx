@@ -11,6 +11,7 @@ import {
 	MaterialRow,
 	ProductRow,
 	ProfileRow,
+	QuoteRow,
 	ResultPanel,
 	SearchFailure,
 	ServiceRow,
@@ -25,6 +26,10 @@ function PageRows({ page, query }: { page: GroupPageView; query: string }) {
 		case "profiles":
 			return page.items.map((hit) => (
 				<ProfileRow hit={hit} key={hit.id} query={query} />
+			));
+		case "quotes":
+			return page.items.map((hit) => (
+				<QuoteRow hit={hit} key={hit.id} query={query} />
 			));
 		case "products":
 			return page.items.map((hit) => (

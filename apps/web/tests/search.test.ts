@@ -15,6 +15,8 @@ import {
 	parentDetail,
 	productVariantLabel,
 	profileDetail,
+	type QuoteHitView,
+	quoteDetail,
 	type SearchView,
 	type ShortcutEvent,
 	searchReady,
@@ -42,8 +44,20 @@ const nothingFound: SearchView = {
 	materials: none,
 	products: none,
 	profiles: none,
+	quotes: none,
 	services: none,
 };
+const quoteHit = (overrides: Partial<QuoteHitView> = {}): QuoteHitView => ({
+	archived: false,
+	clientName: "Maria Beatriz Alencar",
+	code: "ORC-2026-PC-0001",
+	id: "orc1",
+	refused: false,
+	revisionNumber: 1,
+	totalCents: "88200",
+	validUntil: "2026-10-09",
+	...overrides,
+});
 const cru: MaterialVariantHitView = {
 	archived: false,
 	baseUnit: "m",
@@ -86,6 +100,10 @@ const found: SearchView = {
 	},
 	materials: { items: [linho], total: 1 },
 	profiles: { items: [bia], total: 1 },
+	quotes: {
+		items: [quoteHit(), quoteHit({ code: "ORC-2026-PC-0002", id: "orc2" })],
+		total: 2,
+	},
 };
 
 describe("atalho da busca", () => {
@@ -190,6 +208,22 @@ describe("linhas do resultado", () => {
 		expect(moreVariants(3, 3)).toBeNull();
 	});
 
+	test("orçamento mostra o cliente, o estado do dia e o total", () => {
+		const today = "2026-09-24";
+		expect(quoteDetail(quoteHit(), today)).toBe(
+			"Maria Beatriz Alencar · emitido · R$ 882,00"
+		);
+		expect(quoteDetail(quoteHit({ validUntil: "2026-09-20" }), today)).toBe(
+			"Maria Beatriz Alencar · vencido · R$ 882,00"
+		);
+		expect(quoteDetail(quoteHit({ refused: true }), today)).toBe(
+			"Maria Beatriz Alencar · recusado · R$ 882,00"
+		);
+		expect(
+			quoteDetail(quoteHit({ revisionNumber: null, validUntil: null }), today)
+		).toBe("Maria Beatriz Alencar · rascunho · R$ 882,00");
+	});
+
 	test("serviço mostra a categoria e o preço praticado", () => {
 		expect(serviceDetail({ category: "Ajustes", priceCents: "3500" })).toBe(
 			"Ajustes · R$ 35,00"
@@ -212,10 +246,11 @@ describe("diálogo de busca", () => {
 		).toEqual([
 			["clients", "Clientes · 6", ["clients:a", "clients:b", "clients:c"]],
 			["profiles", "Perfis · 1", ["profiles:bia"]],
+			["quotes", "Orçamentos · 2", ["quotes:orc1", "quotes:orc2"]],
 			["materials", "Materiais · 1", ["materials:linho"]],
 			["more", null, ["all"]],
 		]);
-		expect(groups.at(-1)?.items[0]?.label).toBe("Ver todos os 8 resultados");
+		expect(groups.at(-1)?.items[0]?.label).toBe("Ver todos os 10 resultados");
 	});
 
 	test("sem resultado, oferece buscar nos arquivados", () => {
@@ -235,9 +270,10 @@ describe("diálogo de busca", () => {
 describe("abas da página", () => {
 	test("tudo com a soma e uma aba por grupo com resultado", () => {
 		expect(searchTabs(found)).toEqual([
-			{ count: 8, group: null, id: "tudo", label: "Tudo" },
+			{ count: 10, group: null, id: "tudo", label: "Tudo" },
 			{ count: 6, group: "clients", id: "clientes", label: "Clientes" },
 			{ count: 1, group: "profiles", id: "perfis", label: "Perfis" },
+			{ count: 2, group: "quotes", id: "orcamentos", label: "Orçamentos" },
 			{ count: 1, group: "materials", id: "materiais", label: "Materiais" },
 		]);
 		expect(searchTabs(nothingFound)).toEqual([
@@ -248,6 +284,7 @@ describe("abas da página", () => {
 	test("o parâmetro da URL vira o grupo da API e o resto vira nulo", () => {
 		expect(groupOfParam("materiais")).toBe("materials");
 		expect(groupOfParam("servicos")).toBe("services");
+		expect(groupOfParam("orcamentos")).toBe("quotes");
 		expect(groupOfParam("tudo")).toBeNull();
 		expect(groupOfParam(undefined)).toBeNull();
 	});
@@ -261,11 +298,18 @@ describe("abas da página", () => {
 describe("status e vazio", () => {
 	test("anuncia os totais por grupo na ordem da tela", () => {
 		expect(searchStatus(found, "linho", false)).toBe(
-			"6 clientes, 1 perfil e 1 material para linho"
+			"6 clientes, 1 perfil, 2 orçamentos e 1 material para linho"
 		);
 		expect(searchStatus(nothingFound, "zzz", false)).toBe(
 			"Nada encontrado para zzz"
 		);
+		expect(
+			searchStatus(
+				{ ...nothingFound, quotes: { items: [quoteHit()], total: 1 } },
+				"orc",
+				false
+			)
+		).toBe("1 orçamento para orc");
 	});
 
 	test("em andamento, anuncia a busca nova e nunca o resultado velho", () => {

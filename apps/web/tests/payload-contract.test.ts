@@ -13,6 +13,12 @@ import {
 } from "@costura-pro/api/products/schemas";
 import { purchaseCreatePayload } from "@costura-pro/api/purchases/schemas";
 import {
+	quoteContentPayload,
+	quoteCreatePayload,
+	quoteEmitPayload,
+	quoteRefusePayload,
+} from "@costura-pro/api/quotes/schemas";
+import {
 	serviceCreatePayload,
 	servicePatchPayload,
 	targetMarginPayload,
@@ -49,6 +55,25 @@ import {
 	purchaseFields,
 	type VariantOptionView,
 } from "../src/lib/purchases";
+import {
+	componentOf,
+	contentWithConditions,
+	contentWithLines,
+	createQuoteFields,
+	emissionFields,
+	emptyFreeLine,
+	emptyPiece,
+	freeLineOf,
+	materialComponentDraft,
+	materialLineDraft,
+	materialLineOf,
+	pieceLineOf,
+	refusalFields,
+	serviceComponentDraft,
+	serviceCopyOf,
+	serviceLineDraft,
+	serviceLineOf,
+} from "../src/lib/quote-drafts";
 import {
 	emptyServiceValues,
 	type ServiceView,
@@ -207,9 +232,11 @@ describe("produto e variante", () => {
 	const sewing = {
 		archived: false,
 		costCents: "4000",
+		estimatedMinutes: 60,
 		id: uuid(),
 		name: "Costura",
 		outsourced: false,
+		version: 1,
 	};
 	const photo = {
 		caption: "Frente",
@@ -383,5 +410,110 @@ describe("contagem de inventário", () => {
 			"6250",
 			null,
 		]);
+	});
+});
+
+describe("orçamento", () => {
+	const service: ServiceView = {
+		archivedAt: null,
+		category: null,
+		costCents: "6000",
+		createdAt: "2026-09-18T12:00:00.000Z",
+		estimatedMinutes: 90,
+		id: uuid(),
+		name: "Ajuste de cava",
+		notes: null,
+		outsourced: false,
+		priceCents: "16000",
+		targetMarginBasisPoints: null,
+		version: 3,
+	};
+
+	function lines() {
+		const copy = serviceCopyOf(service);
+		return [
+			serviceLineOf(
+				{
+					...serviceLineDraft(copy),
+					discount: {
+						kind: "percent",
+						reason: " Cliente antigo ",
+						value: "10",
+					},
+					note: " Barra italiana ",
+					quantity: "2",
+				},
+				uuid()
+			),
+			pieceLineOf(
+				{
+					...emptyPiece,
+					components: [
+						componentOf(
+							{
+								...materialComponentDraft(fabric),
+								cost: "38,00",
+								quantity: "2,4",
+							},
+							uuid()
+						),
+						componentOf(serviceComponentDraft(copy), uuid()),
+					],
+					description: "Vestido sob medida",
+					discount: { kind: "amount", reason: "", value: "80,00" },
+					price: "980,00",
+				},
+				uuid()
+			),
+			materialLineOf(
+				{ ...materialLineDraft(fabric), price: "45,00", quantity: "1,5" },
+				uuid()
+			),
+			freeLineOf(
+				{ ...emptyFreeLine, description: "Taxa de urgência", price: "50,00" },
+				uuid()
+			),
+		];
+	}
+
+	test("criação, conteúdo, emissão e recusa montados pela tela passam nos schemas reais", () => {
+		const clientId = uuid();
+		expect(
+			quoteCreatePayload.parse(createQuoteFields(clientId, "2026-09-24"))
+		).toEqual({
+			clientId,
+			createdOn: "2026-09-24",
+			discount: null,
+			leadTimeDays: null,
+			lines: [],
+			notes: null,
+			validityDays: 15,
+		});
+		const empty = {
+			discount: null,
+			leadTimeDays: null,
+			lines: [],
+			notes: null,
+			validityDays: 15,
+		};
+		const content = contentWithConditions(contentWithLines(empty, lines()), {
+			discount: { kind: "amount", reason: "Pacote", value: "300,00" },
+			leadTime: "20",
+			notes: "Prova em 10 dias",
+			validity: "15",
+		});
+		const parsedContent: unknown = quoteContentPayload.parse(content);
+		expect(parsedContent).toEqual(content);
+		const emission = emissionFields(content, "2026-09-24", " ");
+		const quoteId = uuid();
+		const parsedEmission: unknown = quoteEmitPayload.parse({
+			...emission,
+			quoteId,
+		});
+		expect(parsedEmission).toEqual({ ...emission, quoteId });
+		expect(quoteRefusePayload.parse(refusalFields("2026-09-24", " "))).toEqual({
+			reason: null,
+			refusedOn: "2026-09-24",
+		});
 	});
 });

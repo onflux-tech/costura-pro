@@ -1,8 +1,10 @@
 import { formatPhone } from "@costura-pro/domain/client";
+import { quoteStatus } from "@costura-pro/domain/quote";
 import { searchLimits } from "@costura-pro/domain/search";
 import type { BaseUnitCode } from "@costura-pro/domain/unit";
 
 import { moneyLabel } from "./finance";
+import { statusLabels } from "./quotes";
 import { balanceQuantity } from "./stock";
 
 type Group<T> = { items: T[]; total: number };
@@ -53,6 +55,17 @@ export type ParentHitView<V> = {
 	variants: V[];
 };
 
+export type QuoteHitView = {
+	archived: boolean;
+	clientName: string;
+	code: string;
+	id: string;
+	refused: boolean;
+	revisionNumber: number | null;
+	totalCents: string;
+	validUntil: string | null;
+};
+
 export type ServiceHitView = {
 	archived: boolean;
 	category: string | null;
@@ -67,6 +80,7 @@ export type SearchView = {
 	materials: Group<ParentHitView<MaterialVariantHitView>>;
 	products: Group<ParentHitView<ProductVariantHitView>>;
 	profiles: Group<ProfileHitView>;
+	quotes: Group<QuoteHitView>;
 	services: Group<ServiceHitView>;
 };
 
@@ -82,6 +96,7 @@ export type ShortcutEvent = Pick<
 export const searchGroupOrder = [
 	"clients",
 	"profiles",
+	"quotes",
 	"products",
 	"materials",
 	"services",
@@ -92,6 +107,7 @@ export type SearchGroupKey = (typeof searchGroupOrder)[number];
 export const groupParamValues = [
 	"clientes",
 	"perfis",
+	"orcamentos",
 	"produtos",
 	"materiais",
 	"servicos",
@@ -104,6 +120,7 @@ export const groupParams: Record<SearchGroupKey, GroupParam> = {
 	materials: "materiais",
 	products: "produtos",
 	profiles: "perfis",
+	quotes: "orcamentos",
 	services: "servicos",
 };
 
@@ -115,6 +132,7 @@ const groupNames: Record<
 	materials: { label: "Materiais", many: "materiais", one: "material" },
 	products: { label: "Produtos", many: "produtos", one: "produto" },
 	profiles: { label: "Perfis", many: "perfis", one: "perfil" },
+	quotes: { label: "Orçamentos", many: "orçamentos", one: "orçamento" },
 	services: { label: "Serviços", many: "serviços", one: "serviço" },
 };
 
@@ -133,6 +151,7 @@ export type PaletteOption =
 			kind: "materials";
 			label: string;
 	  }
+	| { hit: QuoteHitView; id: string; kind: "quotes"; label: string }
 	| { hit: ServiceHitView; id: string; kind: "services"; label: string }
 	| { id: "all"; kind: "all"; label: string }
 	| { id: "archived"; kind: "archived"; label: string };
@@ -221,6 +240,21 @@ export function moreVariants(
 	return rest === 1 ? "e mais 1 variante" : `e mais ${rest} variantes`;
 }
 
+export function quoteDetail(
+	hit: Pick<
+		QuoteHitView,
+		"clientName" | "refused" | "totalCents" | "validUntil"
+	>,
+	today: string
+): string {
+	const status = quoteStatus({
+		refused: hit.refused,
+		today,
+		validUntil: hit.validUntil,
+	});
+	return `${hit.clientName} · ${statusLabels[status]} · ${moneyLabel(hit.totalCents)}`;
+}
+
 export function serviceDetail(
 	hit: Pick<ServiceHitView, "category" | "priceCents">
 ): string {
@@ -262,6 +296,12 @@ function optionsOf(
 			id: `profiles:${hit.id}`,
 			kind: "profiles",
 			label: hit.name,
+		})),
+		quotes: firstOf(result.quotes.items).map((hit) => ({
+			hit,
+			id: `quotes:${hit.id}`,
+			kind: "quotes",
+			label: hit.code,
 		})),
 		services: firstOf(result.services.items).map((hit) => ({
 			hit,

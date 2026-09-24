@@ -90,6 +90,15 @@ function ShellFrame() {
 				heading={header?.heading ?? active?.label ?? "Costura Pro"}
 				status={connection.label}
 			/>
+			{tabs.items.length > 0 ? (
+				<SubTabs
+					activeId={tabs.activeId}
+					className="md:hidden"
+					items={tabs.items}
+					label="Seções"
+					renderLink={renderSectionLink}
+				/>
+			) : null}
 			<main className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-4 px-4 py-6 md:px-6">
 				<Outlet />
 			</main>

@@ -112,17 +112,21 @@ const button: MaterialVariantReference = {
 const sewing: ServiceReference = {
 	archived: false,
 	costCents: "4000",
+	estimatedMinutes: null,
 	id: id(6),
 	name: "Costura",
 	outsourced: false,
+	version: 1,
 };
 
 const embroidery: ServiceReference = {
 	archived: false,
 	costCents: "1500",
+	estimatedMinutes: null,
 	id: id(7),
 	name: "Bordado",
 	outsourced: true,
+	version: 1,
 };
 
 const references: ProductReferences = {
@@ -510,9 +514,11 @@ describe("item da ficha", () => {
 		expect(withService(references, reference).services.at(-1)).toEqual({
 			archived: false,
 			costCents: "900",
+			estimatedMinutes: null,
 			id: id(9),
 			name: "Aplicação",
 			outsourced: false,
+			version: 1,
 		});
 	});
 });

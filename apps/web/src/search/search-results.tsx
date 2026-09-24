@@ -18,7 +18,7 @@ import {
 import { Text } from "@costura-pro/ui/components/typography";
 import { Link } from "@tanstack/react-router";
 import type { ReactNode } from "react";
-
+import { localDay } from "@/lib/measurements";
 import {
 	type ClientHitView,
 	clientDetail,
@@ -31,6 +31,8 @@ import {
 	parentDetail,
 	productVariantLabel,
 	profileDetail,
+	type QuoteHitView,
+	quoteDetail,
 	type SearchGroupKey,
 	type SearchView,
 	type ServiceHitView,
@@ -49,6 +51,7 @@ export const groupHeadings: Record<SearchGroupKey, string> = {
 	materials: "Materiais",
 	products: "Produtos",
 	profiles: "Perfis",
+	quotes: "Orçamentos",
 	services: "Serviços",
 };
 
@@ -206,6 +209,29 @@ export function ProfileRow({
 	);
 }
 
+export function QuoteRow({ hit, query }: { hit: QuoteHitView; query: string }) {
+	return (
+		<Hit
+			badges={<ArchivedBadge archived={hit.archived} />}
+			detail={quoteDetail(hit, localDay(new Date()))}
+			link={
+				<ButtonLink
+					className={nameLink}
+					render={
+						<Link
+							params={{ orcamentoId: hit.id }}
+							to="/orcamentos/$orcamentoId"
+						/>
+					}
+					variant="link"
+				>
+					<Marked query={query} text={hit.code} />
+				</ButtonLink>
+			}
+		/>
+	);
+}
+
 export function ProductRow({
 	hit,
 	query,
@@ -325,6 +351,10 @@ function GroupRows({
 		case "profiles":
 			return result.profiles.items.map((hit) => (
 				<ProfileRow hit={hit} key={hit.id} query={query} />
+			));
+		case "quotes":
+			return result.quotes.items.map((hit) => (
+				<QuoteRow hit={hit} key={hit.id} query={query} />
 			));
 		case "products":
 			return result.products.items.map((hit) => (
