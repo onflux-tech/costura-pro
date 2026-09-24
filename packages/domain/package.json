@@ -58,6 +58,10 @@
       "types": "./dist/src/quantity.d.ts",
       "default": "./src/quantity.ts"
     },
+    "./quote": {
+      "types": "./dist/src/quote.d.ts",
+      "default": "./src/quote.ts"
+    },
     "./received-item": {
       "types": "./dist/src/received-item.d.ts",
       "default": "./src/received-item.ts"
