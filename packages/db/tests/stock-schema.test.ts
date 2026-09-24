@@ -14,6 +14,7 @@ import {
 } from "../src/index";
 import { material, materialVariant } from "../src/schema/materials";
 import {
+	inventorySession,
 	stockBalance,
 	stockLocation,
 	stockLot,
@@ -106,6 +107,16 @@ const movementValues = {
 	version: 1,
 } as const;
 
+const sessionValues = {
+	createdAt: new Date(0),
+	id: "session-1",
+	lines: [],
+	notes: null,
+	occurredOn: "2026-09-23",
+	reason: "Inventário anual",
+	version: 1,
+};
+
 function columnsOf(database: Database, table: string) {
 	return getNativeDatabase(database)
 		.query<{ name: string }, []>(
@@ -146,6 +157,7 @@ describe("stock schema", () => {
 			[
 				"created_at",
 				"id",
+				"inventory_session_id",
 				"kind",
 				"location_id",
 				"lot_id",
@@ -356,6 +368,131 @@ describe("stock schema", () => {
 		expect(indexes("stock_balance").map((row) => row.name)).toEqual(
 			expect.arrayContaining(["stock_balance_variant_idx"])
 		);
+	});
+
+	test("creates the inventory session with its columns", async () => {
+		const database = await migratedDatabase();
+		expect(columnsOf(database, "inventory_session")).toEqual(
+			[
+				"created_at",
+				"id",
+				"lines",
+				"notes",
+				"occurred_on",
+				"reason",
+				"version",
+			].sort()
+		);
+	});
+
+	test("keeps the counted lines of an inventory session through the JSON column", async () => {
+		const database = await migratedDatabase();
+		const lines = [
+			{
+				countedMicros: "12000000",
+				expectedMicros: "-2000000",
+				locationId: "location-1",
+				lotId: null,
+				movementId: "movement-9",
+				valueCents: "5000",
+				variantId: "variant-1",
+			},
+			{
+				countedMicros: "3000000",
+				expectedMicros: "3000000",
+				locationId: "location-1",
+				lotId: null,
+				movementId: null,
+				valueCents: null,
+				variantId: "variant-1",
+			},
+		];
+		database
+			.insert(inventorySession)
+			.values({ ...sessionValues, lines })
+			.run();
+		const row = database
+			.select()
+			.from(inventorySession)
+			.where(eq(inventorySession.id, "session-1"))
+			.get();
+		expect(row?.lines).toEqual(lines);
+		expect(row?.reason).toBe("Inventário anual");
+	});
+
+	test("links a movement only to an existing inventory session", async () => {
+		const database = await migratedDatabase();
+		seedVariant(database);
+		seedLocation(database, "location-1");
+		expect(() =>
+			database
+				.insert(stockMovement)
+				.values({
+					...movementValues,
+					id: "movement-1",
+					inventorySessionId: "sem-contagem",
+					kind: "inventory",
+				})
+				.run()
+		).toThrow();
+		database.insert(inventorySession).values(sessionValues).run();
+		database
+			.insert(stockMovement)
+			.values({
+				...movementValues,
+				id: "movement-1",
+				inventorySessionId: "session-1",
+				kind: "inventory",
+			})
+			.run();
+		expect(
+			database
+				.select()
+				.from(stockMovement)
+				.where(eq(stockMovement.id, "movement-1"))
+				.get()?.inventorySessionId
+		).toBe("session-1");
+	});
+
+	test("keeps inventory_session append-only", async () => {
+		const database = await migratedDatabase();
+		database.insert(inventorySession).values(sessionValues).run();
+		const native = getNativeDatabase(database);
+		expect(() =>
+			native.run(
+				"UPDATE inventory_session SET reason = 'x' WHERE id = 'session-1'"
+			)
+		).toThrow("inventory_session é append-only");
+		expect(() =>
+			native.run("DELETE FROM inventory_session WHERE id = 'session-1'")
+		).toThrow("inventory_session é append-only");
+	});
+
+	test("adds the inventory link to stock_movement without recreating the table", async () => {
+		const database = await migratedDatabase();
+		const native = getNativeDatabase(database);
+		const definition = native
+			.query<{ sql: string }, []>(
+				"SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'stock_movement'"
+			)
+			.get()?.sql;
+		expect(definition?.startsWith("CREATE TABLE `stock_movement`")).toBe(true);
+		expect(
+			native
+				.query<{ name: string }, []>(
+					"SELECT name FROM pragma_index_list('stock_movement')"
+				)
+				.all()
+				.map((row) => row.name)
+		).toEqual(expect.arrayContaining(["stock_movement_inventory_session_idx"]));
+		expect(
+			native
+				.query<{ name: string }, []>(
+					"SELECT name FROM sqlite_master WHERE type = 'trigger' AND tbl_name = 'stock_movement' ORDER BY name"
+				)
+				.all()
+				.map((row) => row.name)
+		).toEqual(["stock_movement_no_delete", "stock_movement_no_update"]);
 	});
 
 	test("keeps one balance row per variant, location and lot", async () => {

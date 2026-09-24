@@ -99,6 +99,20 @@
       "when": 1790198647551,
       "tag": "0013_products_variants",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "6",
+      "when": 1790211175022,
+      "tag": "0014_inventory_sessions",
+      "breakpoints": true
+    },
+    {
+      "idx": 15,
+      "version": "6",
+      "when": 1790211182117,
+      "tag": "0015_inventory_session_append_only",
+      "breakpoints": true
     }
   ]
 }
