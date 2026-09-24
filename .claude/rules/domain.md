@@ -9,6 +9,7 @@ paths:
 - Dinheiro em centavos `bigint` e quantidade em milionésimos da unidade base `bigint`; `number` nunca representa valor ([ADR 0010](../../docs/adr/0010-dinheiro-e-quantidade-inteiros.md)).
 - Medida de corpo é a exceção: inteiro de milímetros de 1 a 9999 como `number`, convertido de e para centímetros só por `parseCentimeters` e `formatCentimeters` ([ADR 0015](../../docs/adr/0015-medidas-em-milimetros-e-medicao-autocontida.md)).
 - Quantidade de peças recebidas também é exceção: contagem inteira de 1 a 999 como `number` (`receivedItemLimits`), porque não é estoque nem entra em cálculo.
+- Contagens do orçamento também são `number`: quantidade da linha de serviço, peça sob medida e linha livre (1 a 9999), `count` do componente de serviço (1 a 99), pontos-base do desconto percentual (1 a 10000) e dias de validade e prazo (1 a 365), sempre por `quoteLimits`. Viram `bigint` só dentro da conta (`BigInt(quantity) * preço`); a quantidade do material continua em milionésimos `bigint`.
 - Arredondamento ao centavo, meio para cima; no rateio, cada linha recebe a parte arredondada para baixo e a última linha com peso fica com o resto (`allocateProportionally`), o que conserva o total, nunca dá parte negativa e não dá custo a brinde ([SPEC §2](../../docs/SPEC.md#2-persistência-valores-e-fronteiras-de-domínio)).
 - TDD com `bun test` e arquivo `*.test.ts` ao lado do código, cobrindo fronteira e entrada inválida.
 - Nomes seguem o `CONTEXT.md`; termo novo entra lá na mesma mudança.
