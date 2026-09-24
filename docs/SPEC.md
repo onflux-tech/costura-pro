@@ -4,7 +4,7 @@
 |---|---|
 | Autoridade | O [PRD](PRD.md) define comportamento; [CONTEXT](../CONTEXT.md) define nomes; os [ADRs](adr/) justificam fronteiras difíceis. Esta SPEC define os contratos mínimos para implementar a v1 |
 | Estado | Contratos alvo da v1. O que já existe no código está na [§0](#0-estado-de-implementação); o restante é previsto e segue a ordem do [ROADMAP](ROADMAP.md) |
-| Última revisão | 2026-09-23 |
+| Última revisão | 2026-09-24 |
 
 Não é formato fiscal. Quando um contrato muda, atualize esta SPEC, a linha correspondente da §0 e, se a decisão for de mão única, o ADR.
 
@@ -34,6 +34,7 @@ Não é formato fiscal. Quando um contrato muda, atualize esta SPEC, a linha cor
 | Conta financeira, movimento financeiro (abertura, transferência, estorno) e quitação de obrigação | Implementado, sem recebível, cartão e despesa | `packages/domain/src/finance.ts`, `packages/db/src/schema/finance.ts`, migrations `0010` e `0011`, `packages/api/src/finance/`, `packages/api/src/purchases/commands.ts` (`obligation.pay`), `apps/web/src/finance/`, `apps/web/src/lib/finance.ts`, `apps/web/src/routes/_app/financas/`, `apps/server/tests/finance.test.ts`, `finance-sync.test.ts`, [finanças](areas/financas.md) | F3 (F4 e F5: recebível, pagamento de cliente, cartão, despesa) |
 | Serviço com custo, preço praticado, meta de margem do ateliê e meta própria, e preço sugerido calculado na tela | Implementado, sem etapas sugeridas | `packages/domain/src/service.ts`, `pricing.ts`, `packages/db/src/schema/services.ts`, `installation.ts`, migration `0012`, `packages/api/src/services/`, `apps/web/src/services/`, `apps/web/src/pricing/` (painel de preço sugerido comum), `apps/web/src/lib/services.ts`, `apps/web/src/lib/pricing.ts`, `apps/web/src/routes/_app/catalogo-produtos/servicos/`, `packages/db/tests/services-schema.test.ts`, `apps/server/tests/services.test.ts`, `services-sync.test.ts`, [serviços](areas/servicos.md) | F3 (F4: etapas sugeridas e cópia na linha do orçamento) |
 | Produto base e variante de produto com galeria compartilhada, capa por variante, ficha técnica com perda normal e ajustes por variante, e custo estimado e preço sugerido calculados na tela | Implementado, sem saldo de acabado | `packages/domain/src/product.ts`, `quantity.ts`, `packages/db/src/schema/products.ts`, migration `0013`, `packages/api/src/products/`, `packages/api/src/media/store.ts`, `apps/web/src/products/`, `apps/web/src/lib/products.ts`, `apps/web/src/materials/variant-picker.tsx`, `apps/web/src/routes/_app/catalogo-produtos/produtos/`, `packages/db/tests/products-schema.test.ts`, `apps/server/tests/products.test.ts`, `products-sync.test.ts`, [produtos](areas/produtos.md) | F3 (F4: cópia da ficha no orçamento; F5: saldo de acabado e OP) |
+| Busca global sobre clientes, perfis, produtos, materiais e serviços, com o filtro de cada lista compartilhado, variantes destacadas e trecho marcado: diálogo de busca rápida aberto pelo cabeçalho e por Ctrl+K, e a página `/busca` com uma aba por grupo e a lista completa paginada, aberta pelo "Ver todos" do diálogo e pela lupa do celular | Implementado online, sem orçamentos e OS e sem a busca offline | `packages/domain/src/search.ts`, `packages/api/src/global-search/`, `packages/api/src/{clients,materials,products,services}/queries.ts` (`clientMatches`, `materialMatches`, `productMatches`, `serviceMatches`), `packages/ui/src/components/command-palette.tsx`, `tabs.tsx`, `highlight.tsx`, `top-nav.tsx` (`TopNavSearch`), `mobile-header.tsx` (`MobileHeaderSearch`), `apps/web/src/lib/search.ts`, `apps/web/src/search/`, `apps/web/src/routes/_app/busca.tsx`, `apps/web/src/shell/app-shell.tsx`, `apps/server/tests/global-search.test.ts`, `apps/web/tests/search.test.ts`, [busca](areas/busca.md) | F3 (F4: orçamentos e OS; F6: offline) |
 | Orçamento, OS, documentos PDF, agenda e custódia | Previsto | | F4 |
 | OP, venda direta, finanças e relatórios | Previsto | | F5 |
 | Cofre offline, Dexie, outbox, conflitos e exportação | Previsto | | F6 |
@@ -438,6 +439,29 @@ Erros: os de sempre, com `NOT_FOUND` `Serviço não encontrado`; não há `PRECO
 | `productVariants.byCode` | leitura | `{ code }` | `{ items: { id, productId, productName, name, code }[] }`, até 10 variantes ativas, comparação sem caixa, para o aviso de código repetido |
 
 Erros: os de sempre, com `NOT_FOUND` `Produto não encontrado` e `Variante do produto não encontrada`; não há `PRECONDITION_FAILED`. No push, produto inexistente na criação da variante vira `aggregateNotFound`; item, ajuste ou foto repetidos, perda fora da faixa, quantidade zero, `count` fora de 1 a 99, preço fora do formato e patch vazio viram `invalidPayload`. Um ajuste `add` com o id de um item da base passa pela forma, porque a edição da variante não lê o produto; a web nunca o gera ([produtos](areas/produtos.md)).
+
+**Busca global** ([busca](areas/busca.md)). Duas leituras, sem comando e sem nada no sync, com sessão do dono e instalação `ready`, em qualquer acesso:
+
+| Procedure | Comando | Entrada | Resposta |
+|---|---|---|---|
+| `search.global` | leitura | `{ query, archived = false }`, `query` de 2 a 100 caracteres depois do trim | `{ clients, profiles, products, materials, services }`, cada grupo `{ items, total }` com até 5 itens e o total do grupo |
+| `search.group` | leitura | `{ query, archived = false, group, offset = 0 }`, `group` entre `clients`, `profiles`, `products`, `materials` e `services`, `offset` inteiro não negativo | `{ group, items, nextOffset, total }`, com até 50 itens do grupo a partir de `offset`, `nextOffset` nulo na última página e o mesmo item de `search.global` |
+
+| Grupo | Casa por | Item |
+|---|---|---|
+| `clients` | `clientMatches` (o `search_text` da lista: nome, e-mail e telefones), nunca cliente anonimizado | `{ id, name, kind, phone, secondaryPhone, email, archived }` |
+| `profiles` | nome do perfil normalizado, filtrado em memória por `matchesAll`; nunca perfil de cliente anonimizado | `{ id, name, clientId, clientName, archived }`, com `archived` verdadeiro quando o perfil ou o cliente está arquivado |
+| `products` | `productMatches` (produto ou alguma variante, arquivada inclusive) | `{ id, name, category, variantCount, archived, matchedCount, variants }`, com até 3 variantes `{ id, name, code, priceCents, archived }` |
+| `materials` | `materialMatches` (material ou alguma variante, arquivada inclusive) | o mesmo pai, com as variantes `{ id, name, code, baseUnit, displayPrecision, quantityMicros, archived }` e o saldo somado dos pontos da variante (`"0"` sem ponto, com sinal) |
+| `services` | `serviceMatches` (nome e categoria) | `{ id, name, category, outsourced, priceCents, archived }` |
+
+- **Tokens.** `searchTokens` (`packages/domain/src/search.ts`), a mesma regra das listas; consulta sem token (só pontuação, como `--`) devolve os grupos vazios em `search.global` e a página vazia com `total` 0 em `search.group`.
+- **Arquivados.** Com `archived` falso, só ativos (no perfil, perfil e cliente ativos); com verdadeiro, ativos e arquivados, ordenados com os ativos primeiro e depois por `search_text` e `id` (perfis pelo nome normalizado e `id`). Com `archived` falso, a ordem é a da lista da área, e os filtros são as mesmas funções, então os primeiros coincidem com os da lista.
+- **Limite e total.** Cada grupo é uma fonte com a página e a contagem sobre o mesmo filtro (`count()` do Drizzle; nos perfis, o tamanho da lista filtrada em memória). `search.global` devolve a página 0 com 5 itens e o total; `search.group` lê 51 linhas a partir de `offset` e devolve 50, com `nextOffset` igual a `offset + 50` quando veio a 51ª. A primeira página de `search.group` começa pelos mesmos itens de `search.global`.
+- **Variantes destacadas.** `matchedVariants` do domínio: decidem só as palavras que o pai não contém, e entra a variante que tem pelo menos uma delas, pelo número que tem e, no empate, na ordem da página (criação no produto, `search_text` no material); `matchedCount` é o total e `variants` leva as 3 primeiras. `variantCount` conta as variantes ativas.
+- **Sem custo.** A resposta não traz custo, custo de referência, valor de estoque nem margem.
+
+Erros: `BAD_REQUEST` para `query` fora de 2 a 100 depois do trim, `group` fora da lista e `offset` negativo ou fracionário, `UNAUTHORIZED` sem sessão e `PRECONDITION_FAILED` com a instalação fora de `ready`. A tela nunca envia menos de 2 caracteres (`searchReady` em `apps/web/src/lib/search.ts`), e o trecho marcado é calculado na tela por `highlightRanges` do domínio, sem nada a mais na resposta.
 
 **Rotas de mídia** ([mídia](areas/midia.md)). Fora do oRPC, montadas em `/api/media` antes de `/rpc`, com sessão do dono e instalação `ready` (`isAtLeast`), em qualquer acesso, e fora do evlog:
 

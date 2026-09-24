@@ -66,3 +66,4 @@ Quando uma área acumular conhecimento que não cabe numa rule, o `/entrega-fech
 | [Finanças](areas/financas.md) | Antes de mexer em conta financeira, movimento financeiro, saldo de conta, transferência, pagamento ou estado da obrigação: agregados, tipos de movimento, obrigação a pagar, telas e armadilhas |
 | [Serviços](areas/servicos.md) | Antes de mexer em serviço, custo, preço praticado, meta de margem ou preço sugerido: agregado, meta do ateliê na instalação, a conta do preço, comandos, telas e armadilhas |
 | [Produtos](areas/produtos.md) | Antes de mexer em produto base, variante de produto, galeria, capa ou ficha técnica: agregados, forma da ficha e dos ajustes, a conta do custo estimado, comandos, telas e armadilhas |
+| [Busca global](areas/busca.md) | Antes de mexer na busca global, no filtro de busca de uma lista, na normalização de texto ou no atalho de busca: onde a regra mora, grupos, arquivados e anonimizado, tela, busca offline e armadilhas |

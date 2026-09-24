@@ -400,6 +400,10 @@ Registro único do servidor com a identidade do ateliê, o passo do wizard, o ep
 **Checklist de continuidade**:
 Tarefas de configuração opcionais que aparecem depois do wizard, como logo, catálogo, saldos de abertura e Tunnel.
 
+**Busca global**:
+Busca por texto aberta de qualquer tela, que acha clientes, perfis de usuário da peça, produtos, materiais e serviços pelo nome, por um trecho do telefone ou pelo código de uma variante, e leva ao registro. Abre como diálogo de busca rápida sobre a tela atual, com os primeiros de cada grupo, e segue para a página de busca com a lista completa, uma aba por grupo. Arquivados só aparecem quando pedidos, e cliente anonimizado nunca.
+_Evitar_: pesquisa, filtro
+
 **Sandbox de demonstração**:
 Ambiente descartável e isolado que ensina o fluxo completo sem tocar dados reais.
 

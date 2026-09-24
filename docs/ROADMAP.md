@@ -256,8 +256,17 @@ Cada spike responde uma pergunta que muda o desenho antes de construir em cima d
   - telas em Estoque > Inventário (lista, nova contagem, contagem com acrescentar item e lote novo, revisão e contagem finalizada) e "Ver contagem" no histórico da variante;
   - verificado em navegador real no build de produção com banco novo: contagem às cegas nos dois locais, recarga e segunda aba mantendo o rascunho, Botão e Rolo 2 acrescentados, abertura de 5 m do Oxford lançada em outra aba e avisada na revisão (atual 15 m), sugestões de R$ 50,00 pela média e de R$ 9,00 e R$ 60,00 pelo custo de referência, falta da Linha estimada em R$ 4,00, resposta perdida seguida de nova tentativa sem duplicar, saldos finais Oxford 17 m (R$ 425,00), Linha 3 un (R$ 6,00), Botão 30 un (R$ 9,00) e Tricoline 11 m (R$ 220,00), estorno marcado na contagem, descarte do rascunho, 1440, 768, 390 e 320 px sem rolagem horizontal, toque a 390 px e teclado com foco preso no diálogo e Esc devolvendo o foco.
 
+- Busca global (2026-09-24), descrita em [busca](areas/busca.md):
+  - diálogo de busca rápida sobre a tela atual, aberto pelo botão do cabeçalho verde e por Ctrl+K (Cmd+K) fora de `/busca`, com até 3 por grupo, a contagem no rótulo, o primeiro em destaque e "Ver todos os N resultados" levando à página `/busca`, que também abre pela lupa do celular ([DEC-129](PRD.md#91-produto-e-escopo));
+  - clientes por nome, e-mail e trecho de telefone, perfis de usuário da peça pelo nome, produtos e materiais pelo nome, categoria e nome ou código de variante, e serviços; na página, uma aba por grupo com contagem, "Tudo" com 5 por grupo e "Ver os N <grupo>", e cada aba com o grupo inteiro, 50 por vez com "Mostrar mais"; trecho casado marcado sem acento nem caixa ([DEC-130, DEC-131](PRD.md#91-produto-e-escopo));
+  - linha do produto ou do material com até 3 variantes que casaram, com o preço praticado ou o saldo total, sem custo nem margem; arquivados só com "Incluir arquivados" ou "Buscar também nos arquivados", ativos primeiro; cliente anonimizado e os perfis dele nunca ([DEC-132, DEC-133](PRD.md#91-produto-e-escopo));
+  - leituras `search.global` (primeira página e total de cada grupo) e `search.group` (50 por página), com o filtro de cada lista compartilhado pela lista e pela busca, e a regra das palavras, da variante destacada e do trecho marcado em funções puras do domínio, prontas para a busca offline da F6 ([DEC-134](PRD.md#91-produto-e-escopo));
+  - componentes novos no `packages/ui`: `CommandPalette`, `Tabs` e `Highlight`, com o `TopNavSearch` virando botão; o campo da paleta mostra o foco por um traço sob a linha, sem caixa ([design system](areas/design-system.md));
+  - verificado em navegador real no build de produção com banco novo e 55 clientes a mais: botão do cabeçalho e Ctrl+K abrindo o diálogo com o campo focado, Esc devolvendo o foco ao botão, Ctrl+K sobre "Novo cliente" preenchido e Esc com o nome intacto, "linho cru" com "Cru · LIN-CRU · 31,00 m" e os trechos marcados, setas e Enter abrindo o material, "silva" com Clientes · 6 e "Ver todos os 6 resultados", "marta" com "Buscar também nos arquivados", abas com "Ver os 6 clientes" levando o foco ao painel, 56 clientes "lima" com 50 e "Mostrar mais", voltar e recarregar mantendo aba e busca, setas nas abas, resultado em andamento sem "Nada encontrado" antes da resposta, rede desligada com o alerta e "Tentar de novo" nas duas telas e no "Mostrar mais", lupa a 390 px mantendo a busca, e 1440, 1280, 1024, 768, 390 e 320 px sem rolagem horizontal na página e no diálogo.
+
 **Pendente:**
-- Etiquetas com leitura por câmera (S3) e busca global.
+- Etiquetas com leitura por câmera (S3).
+- Consultas do app fora da busca pausam quando o navegador se diz sem rede, mesmo com o servidor no mesmo computador (`networkMode` padrão `online` do TanStack Query); a busca usa `networkMode: "always"`. Decidir o `networkMode` do `QueryClient` antes da F6.
 
 **Critério de saída:**
 - Parte de cadastro de estoque do CA-03 com teste de integração: variantes, local, lote, compra em embalagem, conversão e custo de aquisição com frete e desconto.
@@ -268,7 +277,7 @@ Cada spike responde uma pergunta que muda o desenho antes de construir em cima d
 
 **Objetivo:** fechar a jornada cliente, orçamento, aprovação, OS, consumo, entrega e recebimento.
 
-**Requisitos:** RF-COM-01 a 10; RF-CAT-10, 13 a 15; RF-EST-07 a 12, 15; RF-PRO-01 a 03; RF-DOC-01 a 03, 05; RF-ATD-04, 08 a 12; RF-FIN-02, 03; RF-ENT-10.
+**Requisitos:** RF-COM-01 a 10; RF-CAT-10, 13 a 15; RF-EST-07 a 12, 15; RF-PRO-01 a 03; RF-DOC-01 a 03, 05; RF-ATD-04, 08 a 12; RF-FIN-02, 03; RF-ENT-08 (orçamentos e OS na busca), 10.
 
 **Entregas:**
 - Orçamento com revisões, aceite parcial, desconto e alertas de margem, com linhas de serviço (cópia de nome, custo, preço e versão), material e insumo não controlado em linha livre ([DEC-112](PRD.md#93-catálogo-estoque-e-produção), [DEC-115](PRD.md#93-catálogo-estoque-e-produção)); orçamento sob medida sugerido pela ficha técnica de um produto, copiando a ficha efetiva com a quantidade planejada ([ADR 0021](adr/0021-ficha-tecnica-no-produto-base-e-ajustes-por-variante.md)).
@@ -281,6 +290,7 @@ Cada spike responde uma pergunta que muda o desenho antes de construir em cima d
 - Recebíveis, pagamentos e alocação.
 - Documentos PDF congelados (conforme o S1), comprovante de recepção e etiqueta de custódia.
 - Agenda com compromissos, prazos, capacidade diária e mensagem preparada.
+- Orçamentos e OS na busca global.
 - Anonimização recusa cliente com OS ou saldo aberto; decidir com o dono como ela trata OS encerrada e documento emitido que trazem o nome do cliente, já que documento emitido é imutável ([ADR 0008](adr/0008-documentos-emitidos-imutaveis.md)) e a anonimização redige o histórico ([ADR 0014](adr/0014-anonimizacao-redige-historico-de-sincronizacao.md)).
 
 **Critério de saída:**
@@ -314,7 +324,7 @@ Cada spike responde uma pergunta que muda o desenho antes de construir em cima d
 
 **Objetivo:** o celular executa todos os fluxos operacionais sem internet e sincroniza sem perder nem duplicar.
 
-**Requisitos:** RF-ACE-04 (espelho completo), 05 a 13, 14 (cache offline de imagens); RF-DOC-04; RF-COM-14 (cenário offline).
+**Requisitos:** RF-ACE-04 (espelho completo), 05 a 13, 14 (cache offline de imagens); RF-DOC-04; RF-COM-14 (cenário offline); RF-ENT-08 (busca offline sobre os dados locais).
 
 **Entregas:**
 - Cofre com senha forte e PIN, espelho Dexie cifrado e outbox (conforme S2 e S4).
@@ -323,6 +333,7 @@ Cada spike responde uma pergunta que muda o desenho antes de construir em cima d
 - Caixa de conflitos, exceções e quarentena na interface.
 - Exportação e importação da outbox.
 - Assistente de instalação no iPhone, indicador de sync e avisos de quota.
+- Busca global offline sobre o espelho local, com as funções de busca do domínio.
 
 **Critério de saída:**
 - CA-06 offline, CA-07 e CA-08 completos.
@@ -359,7 +370,7 @@ Só então a versão é chamada de v1.
 
 | Área | F2 | F3 | F4 | F5 | F6 | F7 |
 |---|---|---|---|---|---|---|
-| RF-ENT | 02, 03, 05, 06 | 08 | 10 | 04, 07, 09 | | 01 |
+| RF-ENT | 02, 03, 05, 06 | 08 | 08 (orçamentos e OS), 10 | 04, 07, 09 | 08 (offline) | 01 |
 | RF-ATD | | 01 a 03, 05 a 07 | 04, 08 a 12 | | | |
 | RF-CAT | | 01 a 09, 11, 12 | 10, 13 a 15 | | | |
 | RF-EST | | 01 a 06, 13, 14 | 07 a 12, 15 | | | |
