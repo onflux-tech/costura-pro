@@ -49,4 +49,9 @@ Reporte achados por severidade com caminho, linha, cenário de falha e requisito
 - Marca, selo ou destaque feito só de fundo some sobre um fundo igual (marca do trecho na linha em destaque da paleta): peça a cor computada ou a captura do elemento sobre cada estado da linha em que aparece.
 - Fato imutável com texto pessoal (revisão do orçamento) redigido na anonimização só chega ao aparelho que já o puxou com versão nova e mudança nova no `change_log`: reescrever o snapshot antigo não move o cursor de ninguém. Peça o pull a partir do cursor de antes da anonimização, com a versão nova e o texto redigido.
 - Aviso ou confirmação calculado com um valor padrão enquanto a leitura não chega (meta de margem do ateliê na emissão) deixa a ação passar sem a confirmação, e o fato grava o valor real: peça o cenário com a leitura pendente e com a leitura falhada.
+- Valor gravado como snapshot a partir de uma leitura (medidas na aprovação) passa em toda a suíte com dado velho: com duas janelas visíveis a consulta não relê. Peça a leitura feita depois de abrir o diálogo (`isFetchedAfterMount`) e o teste da regra que bloqueia o envio.
+- Mapeamento de erro compartilhado (`exists`) que ganha um caso novo muda o sentido em outro fluxo: "Orçamento já aprovado" como `exists` servia à aprovação e virou "revisão já emitida" na emissão. Siga cada novo caso por todos os chamadores do mapeamento.
+- Estado só leitura novo (orçamento aprovado) precisa alcançar as rotas filhas que editam o agregado (página da peça), não só a página principal.
+- Operação com vários ids do aparelho precisa de um teste de id já usado por tipo de id (OS, recebível, reserva), na procedure e no push; um id testado não prova os outros.
+- Ordem por campo de negócio (prazo) testada com dados em que a ordem de criação dá o mesmo resultado não prova nada: peça o registro mais antigo com o prazo mais próximo.
 '''
