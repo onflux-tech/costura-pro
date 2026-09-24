@@ -3,6 +3,7 @@ import {
 	financialMovementCreatePayload,
 	financialMovementTransferPayload,
 } from "@costura-pro/api/finance/schemas";
+import { inventorySessionCreatePayload } from "@costura-pro/api/inventory/schemas";
 import {
 	productCreatePayload,
 	productPatchPayload,
@@ -16,11 +17,19 @@ import {
 	servicePatchPayload,
 	targetMarginPayload,
 } from "@costura-pro/api/services/schemas";
-
 import {
 	accountOpeningFields,
 	accountTransferFields,
 } from "../src/lib/finance";
+import {
+	draftPointOf,
+	type InventoryPointView,
+	inventoryFields,
+	reviewOf,
+	startDraft,
+	withCount,
+	withDetails,
+} from "../src/lib/inventory";
 import {
 	emptyProductValues,
 	emptyProductVariantValues,
@@ -306,5 +315,73 @@ describe("produto e variante", () => {
 				})
 			)
 		).toEqual({ code: null, coverPhotoHash: null, sheetChanges: [] });
+	});
+});
+
+describe("contagem de inventário", () => {
+	test("a contagem montada pela tela passa pelo schema real", () => {
+		const location = uuid();
+		const view = (
+			variantId: string,
+			overrides: Partial<InventoryPointView> = {}
+		): InventoryPointView => ({
+			archived: false,
+			baseUnit: "m",
+			code: null,
+			displayPrecision: 2,
+			locationId: location,
+			locationName: "Armário 1",
+			lotId: null,
+			lotLabel: null,
+			materialId: uuid(),
+			materialName: "Oxford",
+			quantityMicros: "10000000",
+			referenceCostCents: "2500",
+			tracksLots: false,
+			valueCents: "25000",
+			variantId,
+			variantName: "Azul",
+			...overrides,
+		});
+		const surplus = view(uuid());
+		const shortage = view(uuid(), { materialName: "Linha" });
+		const matched = view(uuid(), { lotId: uuid(), materialName: "Tricoline" });
+		const draft = withDetails(
+			withCount(
+				withCount(
+					withCount(
+						startDraft({
+							locationIds: [location],
+							now: new Date(),
+							sessionId: uuid(),
+							today: "2026-09-23",
+						}),
+						draftPointOf(surplus),
+						"12,5",
+						surplus.quantityMicros,
+						uuid()
+					),
+					draftPointOf(shortage),
+					"3",
+					shortage.quantityMicros,
+					uuid()
+				),
+				draftPointOf(matched),
+				"10",
+				matched.quantityMicros,
+				uuid()
+			),
+			{ reason: "Inventário anual" }
+		);
+		const fields = inventoryFields(
+			draft,
+			reviewOf(draft, [surplus, shortage, matched])
+		);
+		expect(inventorySessionCreatePayload.parse(fields)).toEqual(fields);
+		expect(fields.lines.map((line) => line.valueCents)).toEqual([
+			null,
+			"6250",
+			null,
+		]);
 	});
 });

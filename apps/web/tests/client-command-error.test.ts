@@ -22,6 +22,9 @@ describe("falhas de comando de cliente", () => {
 		expect(clientCommandFailure(error, "modelo").message).toBe(
 			"Este modelo mudou em outra janela ou aparelho."
 		);
+		expect(clientCommandFailure(error, "contagem").message).toBe(
+			"Esta contagem mudou em outra janela ou aparelho."
+		);
 	});
 
 	test("registro já gravado vira exists, e opId reutilizado segue genérico", () => {

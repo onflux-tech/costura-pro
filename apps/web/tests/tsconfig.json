@@ -6,6 +6,7 @@
     "strictNullChecks": true,
     "types": ["bun"],
     "paths": {
+      "@/*": ["../src/*"],
       "@costura-pro/ui/*": ["../../../packages/ui/src/*"]
     }
   },

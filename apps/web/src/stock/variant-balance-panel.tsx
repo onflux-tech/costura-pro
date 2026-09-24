@@ -165,6 +165,21 @@ export function VariantBalancePanel({ item }: { item: BalanceItemView }) {
 											{movement.lotLabel ? ` · ${movement.lotLabel}` : ""}
 											{movement.reason ? ` · ${movement.reason}` : ""}
 										</Text>
+										{movement.inventorySessionId ? (
+											<ButtonLink
+												className="h-auto min-h-11 justify-start self-start px-0 md:min-h-0"
+												render={
+													<Link
+														params={{ contagemId: movement.inventorySessionId }}
+														to="/estoque/inventario/$contagemId"
+													/>
+												}
+												size="sm"
+												variant="link"
+											>
+												Ver contagem
+											</ButtonLink>
+										) : null}
 									</div>
 								</DataListCell>
 								<DataListCell align="end" label="Quantidade">

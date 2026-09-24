@@ -35,9 +35,10 @@ const transfer: TransferFormValues = {
 };
 
 describe("sectionTabs", () => {
-	test("gives Estoque the balances and locations tabs", () => {
+	test("gives Estoque the balances, inventory and locations tabs", () => {
 		expect(sectionTabs.estoque.map((tab) => tab.href)).toEqual([
 			"/estoque/saldos",
+			"/estoque/inventario",
 			"/estoque/locais",
 		]);
 	});
@@ -146,6 +147,7 @@ describe("movementKindLabel", () => {
 		expect(movementKindLabel("transferOut")).toBe("Transferência (saída)");
 		expect(movementKindLabel("transferIn")).toBe("Transferência (entrada)");
 		expect(movementKindLabel("reversal")).toBe("Estorno");
+		expect(movementKindLabel("inventory")).toBe("Inventário");
 	});
 });
 

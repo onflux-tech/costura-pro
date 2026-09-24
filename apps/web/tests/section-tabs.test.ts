@@ -102,6 +102,21 @@ describe("abas por destino", () => {
 		}
 	});
 
+	test("Estoque marca Inventário na lista, na nova, na contagem, na revisão e na contagem finalizada", () => {
+		for (const path of [
+			"/estoque/inventario",
+			"/estoque/inventario/nova",
+			"/estoque/inventario/contagem",
+			"/estoque/inventario/revisao",
+			"/estoque/inventario/3f1c",
+		]) {
+			expect(sectionTabsFor("estoque", path).activeId).toBe("inventario");
+		}
+		expect(sectionTabsFor("estoque", "/estoque/saldos").activeId).toBe(
+			"saldos"
+		);
+	});
+
 	test("destino sem abas e rota fora do shell devolvem lista vazia", () => {
 		expect(sectionTabsFor("agenda", "/agenda")).toEqual({
 			activeId: undefined,

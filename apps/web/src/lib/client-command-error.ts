@@ -12,6 +12,7 @@ export type CommandSubject =
 	| "cliente"
 	| "compra"
 	| "conta"
+	| "contagem"
 	| "fornecedor"
 	| "local"
 	| "lote"
@@ -29,6 +30,7 @@ const staleMessages: Record<CommandSubject, string> = {
 	cliente: "Este cliente mudou em outra janela ou aparelho.",
 	compra: "Esta compra mudou em outra janela ou aparelho.",
 	conta: "Esta conta mudou em outra janela ou aparelho.",
+	contagem: "Esta contagem mudou em outra janela ou aparelho.",
 	fornecedor: "Este fornecedor mudou em outra janela ou aparelho.",
 	local: "Este local mudou em outra janela ou aparelho.",
 	lote: "Este lote mudou em outra janela ou aparelho.",

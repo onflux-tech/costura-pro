@@ -38,6 +38,7 @@ export const sectionTabs = {
 	],
 	estoque: [
 		{ href: "/estoque/saldos", id: "saldos", label: "Saldos" },
+		{ href: "/estoque/inventario", id: "inventario", label: "Inventário" },
 		{ href: "/estoque/locais", id: "locais", label: "Locais" },
 	],
 	financas: [
