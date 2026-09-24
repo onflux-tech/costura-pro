@@ -20,7 +20,7 @@ Registro datado das medidas de um perfil num modelo de medidas, com cópia do no
 _Evitar_: ficha de medidas, medida atual
 
 **Snapshot de medidas**:
-Cópia das medidas aprovadas para um subitem de OS. Atualizar o perfil não altera o snapshot.
+Cópia da medição atual de cada modelo do perfil (rótulos, valores, data e notas) congelada no subitem de OS na aprovação. Corrigir a medição ou o perfil depois não altera o snapshot; subitem sem perfil não tem snapshot.
 
 **Peça recebida**:
 Bem do cliente pagador sob custódia do ateliê para ajuste ou reparo, com estado na recepção (bom, com avaria ou desgastada), quantidade em unidades e data de devolução quando volta ao cliente. Não é estoque nem faturamento.
@@ -145,28 +145,34 @@ Dias corridos, 15 por padrão, que viram a data "válido até" na emissão. Pass
 **Prazo proposto**:
 Dias corridos contados da aprovação para entregar o trabalho do orçamento; opcional, "a combinar" quando vazio.
 
+**Prazo combinado**:
+Data de entrega acertada na aprovação, sugerida pelo dia do aceite mais o prazo proposto e nunca anterior ao aceite; vazia fica "a combinar". Vale para todos os subitens da OS.
+
 **Recusa do orçamento**:
 Registro, pelo dono, da data e do motivo opcional em que o cliente recusou. Desfazível; emitir nova revisão reabre o orçamento.
 
 **Materiais previstos**:
-Soma, por variante de material, do que as linhas e as peças sob medida do orçamento vão usar, comparada com o saldo físico atual. Mostra a falta, mas não reserva nada antes da aprovação.
+Soma, por variante de material, do que as linhas e as peças sob medida do orçamento vão usar, comparada com a disponibilidade atual. Mostra a falta, mas não reserva nada antes da aprovação.
 
 **Aceite parcial**:
 Revisão do orçamento que contém somente os itens que o cliente aceitou.
 
 **Aprovação**:
-Registro manual, pelo dono, da data, do canal e de nota opcional do aceite do cliente. Não exige assinatura nem sinal.
+Registro manual, pelo dono, do aceite do cliente sobre a última revisão emitida: data do aceite entre a emissão e o "válido até", canal e nota opcional. Não exige assinatura nem sinal; abre a OS na mesma operação e deixa o orçamento só leitura.
+
+**Canal da aprovação**:
+Por onde o cliente aceitou: Presencial, WhatsApp, Telefone, E-mail ou Outro.
 
 **Código documental**:
 Identificador humano permanente de um documento ou ordem, formado por tipo, ano, sigla do dispositivo e contador local, como `ORC-2026-CEL-0042`.
 _Evitar_: número sequencial
 
 **Ordem de Serviço (OS)**:
-Trabalho sob medida ou reparo nascido de um orçamento aprovado, com subitens, produção, entrega e cobrança.
+Trabalho sob medida ou reparo nascido da aprovação de um orçamento, com código `OS-<ano>-<sigla>-<número>`, subitens, produção, entrega e cobrança.
 _Evitar_: pedido
 
 **Subitem de trabalho**:
-Peça ou serviço dentro da OS com medidas, materiais, etapas, prazo e entrega próprios.
+Peça ou serviço dentro da OS com medidas, materiais, etapas, prazo e entrega próprios. Nasce um por linha de serviço, peça sob medida ou material da revisão aprovada; o de material é só entrega, e a linha livre fica só no valor.
 
 **Estado de produção**:
 Posição de um subitem no fluxo de produção, independente de entrega e pagamento.
@@ -277,13 +283,13 @@ Rolo ou aquisição identificável de uma variante de material, com quantidade p
 Quantidade ou valor existente no dia da instalação, registrado como movimento auditado que não é compra nem faturamento.
 
 **Reserva prevista**:
-Quantidade de material comprometida na aprovação da OS, sem reduzir o saldo físico.
+Quantidade de material comprometida para um subitem na aprovação da OS, calculada sobre a disponibilidade da hora da gravação, sem reduzir o saldo físico.
 
 **Disponibilidade**:
-Saldo físico menos reservas previstas.
+Saldo físico somado de todos os locais e lotes menos todas as reservas previstas da variante.
 
 **Pendência de abastecimento**:
-Falta entre a reserva prevista e a disponibilidade, rastreada até a ordem que a causou.
+Falta entre o previsto de um subitem e o que ficou reservado, derivada na leitura e rastreada até a ordem que a causou.
 
 **Lista de compras consolidada**:
 Soma das pendências de abastecimento com a reposição até o alvo, explicando a origem de cada quantidade.
@@ -372,7 +378,7 @@ _Evitar_: lançamento
 Conta intermediária em que valores de cartão aguardam repasse ao banco.
 
 **Recebível**:
-Valor devido por cliente numa OS ou venda, possivelmente dividido em entrada e parcelas livres.
+Valor devido por cliente numa OS ou venda, possivelmente dividido em entrada e parcelas livres. Na OS, nasce na aprovação com o total da revisão; total zero não cria recebível.
 
 **Pagamento**:
 Recebimento bruto que pode combinar meios e contas e ser alocado a vários recebíveis do mesmo cliente.

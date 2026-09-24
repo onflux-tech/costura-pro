@@ -35,7 +35,7 @@ Transição sobre um fato já gravado (estornar a compra, quitar a obrigação) 
 
 Fato cuja criação também muda o agregado pai (a emissão da revisão do orçamento limpa a recusa do rascunho) grava as duas coisas na mesma transação do `create`: o pai muda pelo mesmo `update` com compare-and-set da edição e ganha versão nova no `change_log`, e o fato nasce com `version` 1. A recusa continua só no `create` (orçamento inexistente, cliente anonimizado), nunca no efeito sobre o pai ([orçamentos](orcamentos.md)).
 
-Operação que grava várias linhas recebe todos os ids no payload e confere cada um antes de inserir, inclusive contra o próprio `aggregateId`: um segundo id igual ao da operação passaria pelo `exists` e bateria na chave primária, e a exceção dentro da transação derruba o push inteiro com 500.
+Operação que cria vários agregados e fatos de uma vez (`quote.approve` cria OS, aprovação, subitens, reservas e recebível) segue o mesmo caminho: o agregado da operação é o fato (`quoteApproval`), os outros entram no `change_log` com o próprio tipo, e quantidade que depende do estado do banco (a reserva) é decidida pelo servidor na gravação, com o id que o aparelho mandou para cada necessidade prevista; necessidade que não reserva nada não vira linha, e o id sobra. Operação que grava várias linhas recebe todos os ids no payload e confere cada um antes de inserir, inclusive contra o próprio `aggregateId`: um segundo id igual ao da operação passaria pelo `exists` e bateria na chave primária, e a exceção dentro da transação derruba o push inteiro com 500.
 
 `refine` no nível do objeto que converte valor (`BigInt`) leva `whenShapeIsValid` (`packages/api/src/schemas.ts`): por padrão o zod roda o `refine` do objeto mesmo quando outro `refine` de campo já falhou, porque essa falha é continuável, e o valor chega cru ([zod, `when`](https://zod.dev/api#when), consultado em 2026-09-18).
 
@@ -58,7 +58,7 @@ Quando a regra dependeria de consultar o banco para validar o payload (um campo 
 
 ## Redação de dado pessoal
 
-Agregado com dado pessoal entra em `personalDataAggregates` (`packages/api/src/redaction.ts`: `client`, `profile`, `measurement`, `receivedItem`, `quote` e `quoteRevision`) e participa da anonimização ([ADR 0014](../adr/0014-anonimizacao-redige-historico-de-sincronizacao.md)) chamando `redactHistory` na transação, depois de gravar a versão anonimizada:
+Agregado com dado pessoal entra em `personalDataAggregates` (`packages/api/src/redaction.ts`: `client`, `profile`, `measurement`, `receivedItem`, `quote`, `quoteRevision`, `quoteApproval`, `serviceOrder` e `serviceOrderItem`; os três últimos estão na lista para a quarentena gravar o hash redigido, porque a anonimização de cliente com OS é recusada) e participa da anonimização ([ADR 0014](../adr/0014-anonimizacao-redige-historico-de-sincronizacao.md)) chamando `redactHistory` na transação, depois de gravar a versão anonimizada:
 
 | Onde o dado fica | O que a redação faz |
 |---|---|

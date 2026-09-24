@@ -44,6 +44,7 @@ Documentação curada e versionada do Costura Pro. Todo doc novo em `docs/` entr
 | [0021](adr/0021-ficha-tecnica-no-produto-base-e-ajustes-por-variante.md) | Ficha técnica no produto base, ajustes por item na variante e custo estimado na leitura |
 | [0022](adr/0022-sessao-de-inventario-como-fato-com-esperado-da-contagem.md) | Sessão de inventário como fato gravado na finalização, com o esperado da hora da contagem |
 | [0023](adr/0023-orcamento-rascunho-com-revisao-emitida-como-fato.md) | Orçamento como rascunho mutável e cada emissão como revisão congelada, com redação na anonimização |
+| [0024](adr/0024-aprovacao-como-fato-que-cria-a-os.md) | Aprovação como fato que cria a OS, com subitens como agregados e reserva e recebível como fatos |
 
 ## Agentes e harness
 
@@ -69,3 +70,4 @@ Quando uma área acumular conhecimento que não cabe numa rule, o `/entrega-fech
 | [Produtos](areas/produtos.md) | Antes de mexer em produto base, variante de produto, galeria, capa ou ficha técnica: agregados, forma da ficha e dos ajustes, a conta do custo estimado, comandos, telas e armadilhas |
 | [Busca global](areas/busca.md) | Antes de mexer na busca global, no filtro de busca de uma lista, na normalização de texto ou no atalho de busca: onde a regra mora, grupos, arquivados e anonimizado, tela, busca offline e armadilhas |
 | [Orçamentos](areas/orcamentos.md) | Antes de mexer em orçamento, linha, peça sob medida, desconto, emissão de revisão, recusa ou estado do orçamento: agregados, forma das linhas, a conta dos totais e do custo, comandos, anonimização, telas e armadilhas |
+| [Ordens de serviço](areas/ordens-de-servico.md) | Antes de mexer em aprovação, OS, subitem, snapshot de medidas, reserva, disponível ou recebível: agregados e fatos, o comando e suas recusas, a conta da reserva, leituras, anonimização, telas e armadilhas |

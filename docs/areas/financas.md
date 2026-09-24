@@ -8,6 +8,8 @@ A conta financeira é onde o dinheiro do ateliê fica: caixa, banco, Pix ou outr
 
 ## Agregados
 
+O recebível da OS nasce na aprovação, como fato append-only (`receivable`, `kind` `serviceOrder`, com o total da revisão e a data do aceite), e por ora aparece só na página da OS; parcelas, pagamentos e a aba "A receber" chegam com a entrega de recebíveis ([ordens de serviço](ordens-de-servico.md)).
+
 | Tabela | Papel | Campos próprios |
 |---|---|---|
 | `financial_account` | agregado comum | `name` (1 a 60), `kind` (`cash`, `bank`, `pix`, `other`, editável), `notes`, `archived_at` |

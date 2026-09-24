@@ -272,7 +272,7 @@ Cada spike responde uma pergunta que muda o desenho antes de construir em cima d
 
 **Critério de saída:**
 - Parte de cadastro de estoque do CA-03 com teste de integração: variantes, local, lote, compra em embalagem, conversão e custo de aquisição com frete e desconto.
-- Arquivar e anonimizar cliente, sem dado pessoal no histórico de sincronização depois de anonimizar (a recusa com trabalho ou saldo aberto fecha na F4).
+- Arquivar e anonimizar cliente, sem dado pessoal no histórico de sincronização depois de anonimizar (a recusa com OS ou recebível em aberto fechou na F4, em 2026-09-24).
 - Jornadas de cadastro verificadas em navegador real no desktop e em 320 px.
 
 ## F4: Comercial, documentos e agenda
@@ -305,8 +305,17 @@ Cada spike responde uma pergunta que muda o desenho antes de construir em cima d
   - grupo "Orçamentos" na busca global e sub-abas Rascunhos, Emitidos, Vencidos e Recusados ([DEC-146](PRD.md#94-comercial-e-documentos));
   - verificado em navegador real no build de produção com banco novo: "Novo orçamento" pela ficha do cliente e pela lista, com `ORC-2026-PC-0001` e `0002`; serviço de R$ 160,00 com 10% dando R$ 144,00, para Maria e com o Blazer de linho; peça copiada da variante M Verde musgo com o custo do crepe editado para R$ 38,00 (R$ 499,80 por peça); zíper por unidade; taxa sem custo deixando o custo incompleto e depois com 0; subtotal R$ 1.182,00, desconto de R$ 300,00, total R$ 882,00, custo R$ 563,50, sugestão R$ 939,17, margem de 36,11% e "Faltam R$ 57,17 para atingir 40%"; crepe com falta de 1,40 m; emissão com a confirmação obrigatória, revisão 1 congelada, "Alterações não emitidas" e "Descartar alterações", revisão 2 sem a taxa e com motivo; vencido por emissão retroativa com validade de 1 dia, recusa e desfazer, emissão reabrindo o recusado, arquivar e desarquivar; busca por código, dígitos do código, cliente e descrição no diálogo e na página; conflito entre janelas com "Carregar versão atual" na página e novo salvamento no diálogo; resposta perdida na emissão seguida de nova tentativa sem duplicar; 1440, 768, 390 e 320 px sem rolagem horizontal em oito telas, sub-abas no celular em cinco destinos, toque a 390 px e teclado com foco preso nos diálogos e Esc devolvendo o foco.
 
+- Aprovação da revisão com OS, subitens, snapshot de medidas, reservas, falta e recebível, OS na busca e recusa da anonimização (2026-09-24), descrita em [ordens de serviço](areas/ordens-de-servico.md):
+  - aprovação só da última revisão emitida, com a data do aceite entre a emissão e o "válido até", canal em lista fechada e nota opcional, criando numa operação idempotente a OS `OS-<ano>-PC-<número>`, a aprovação, os subitens, as reservas e o recebível; aprovado vence recusa e vencimento, limpa a recusa e deixa o orçamento só leitura, com a sub-aba Aprovados ([DEC-149 a DEC-152, DEC-159 a DEC-161](PRD.md#94-comercial-e-documentos), [ADR 0024](adr/0024-aprovacao-como-fato-que-cria-a-os.md));
+  - um subitem por linha de serviço, peça e material, com a linha congelada, o snapshot da medição atual de cada modelo do perfil e o prazo combinado sugerido pelo prazo proposto; reservas por subitem e variante calculadas pelo servidor sobre o disponível, com a falta derivada; recebível com o total da revisão e a data do aceite ([DEC-153, DEC-154, DEC-156 a DEC-158](PRD.md#94-comercial-e-documentos));
+  - reservado e disponível em Saldos, na ficha do material, no detalhe da variante (reservas por OS) e nos materiais previstos de outro orçamento; lista de OS pelo prazo mais próximo e página da OS com faixa de estados, cartões com snapshot e materiais, recebível, painel interno e encerramento; grupo "OS" na busca global ([DEC-155, DEC-162, DEC-164](PRD.md#94-comercial-e-documentos));
+  - anonimização recusada com OS ou recebível em aberto, antes de qualquer escrita ([DEC-163](PRD.md#94-comercial-e-documentos)); idempotência da aprovação e recusa da anonimização provadas por teste, fechando esses dois critérios de saída;
+  - verificado em navegador real no build de produção com banco novo: prévia com os 3 subitens, as medidas de Maria nos subitens 1 e 2, a reserva de 1,50 m e a falta de 1,90 m do crepe (1,00 m já reservado por outra OS) e R$ 1.206,00 a receber; aceite antes da emissão e depois da validade recusados na tela; prazo sugerido acompanhando o aceite, trocado e devolvido pelo "Usar prazo sugerido"; `OS-2026-PC-0002` com faixa de estados, cartões, "Ver medidas", reservado e falta, recebível e painel interno; orçamento em Aprovados, só leitura, com "Abrir OS"; medida de Maria corrigida para 90,0 e a OS mantendo 88,0 (CA-02); Saldos com reservado e disponível, só o reservado de todos os locais com filtro de local, reservas por OS no detalhe da variante, ficha do material e materiais previstos de outro orçamento contra o disponível; busca da OS por código, título e cliente no diálogo e na página; anonimização de Maria recusada com a mensagem; resposta perdida seguida de nova tentativa sem duplicar; segunda janela com a releitura segurada recebendo "Este orçamento já tinha sido aprovado em outra janela." e a mesma OS; 1440, 768, 390 e 320 px sem rolagem horizontal na lista e na página da OS, no diálogo e em Saldos, toque a 390 px e teclado com foco preso no diálogo e Esc devolvendo o foco.
+
 **Pendente:**
-- Aprovação da revisão com OS, subitens, snapshot de medidas, reservas, pendências e recebível; PDF da revisão (A4 e 80 mm) com o preço por linha ou o total agrupado (RF-COM-02).
+- PDF da revisão (A4 e 80 mm) com o preço por linha ou o total agrupado (RF-COM-02).
+- Revisão comercial com nova aprovação lançando só a diferença, cancelamento e liquidação, consumo com lote e reconciliação, fluxo de produção, entrega, recebíveis com parcelas e pagamentos, lista de compras consolidada, documentos, agenda e custódia.
+- Redação de OS encerrada e de documento emitido na anonimização, decidida quando o encerramento existir.
 - Produto acabado como linha do orçamento, com o saldo de acabado (F5).
 
 **Critério de saída:**
@@ -387,13 +396,13 @@ Só então a versão é chamada de v1.
 | Área | F2 | F3 | F4 | F5 | F6 | F7 |
 |---|---|---|---|---|---|---|
 | RF-ENT | 02, 03, 05, 06 | 08 | 08 (orçamentos e OS), 10 | 04, 07, 09 | 08 (offline) | 01 |
-| RF-ATD | | 01 a 03, 05 a 07 | 04, 08 a 12 | | | |
+| RF-ATD | | 01 a 03, 05 a 07 | 04, 06 (recusa com OS ou recebível), 08 a 12 | | | |
 | RF-CAT | | 01 a 09, 11, 12 | 10, 13 a 15 | | | |
 | RF-EST | | 01 a 06, 13, 14 | 07 a 12, 15 | | | |
 | RF-PRO | | | 01 a 03 | 04 a 08 | | |
 | RF-COM | | | 01 a 10 | 11 a 14 | 14 (offline) | |
 | RF-DOC | | | 01 a 03, 05 | | 04 | |
-| RF-FIN | | 01 | 02, 03 | 04 a 15 | | |
+| RF-FIN | | 01 | 02, 03, 12 (data do faturamento na aprovação) | 04 a 15 | | |
 | RF-ACE | 01 a 03, 04 (aprovação) | 14 (captura) | | | 04 (espelho), 05 a 14 | 03 (resgate físico) |
 | RF-OPE | | | | | | 01 a 08 |
 

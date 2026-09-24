@@ -1,15 +1,15 @@
 # Busca global
 
-**Files:** `packages/domain/src/search.ts`, `packages/domain/src/search.test.ts`, `packages/api/src/search.ts`, `packages/api/src/global-search/queries.ts`, `packages/api/src/global-search/router.ts`, `packages/api/src/clients/queries.ts`, `packages/api/src/materials/queries.ts`, `packages/api/src/products/queries.ts`, `packages/api/src/services/queries.ts`, `packages/api/src/quotes/queries.ts`, `packages/ui/src/components/command-palette.tsx`, `packages/ui/src/components/tabs.tsx`, `packages/ui/src/components/highlight.tsx`, `packages/ui/src/components/top-nav.tsx`, `packages/ui/src/components/mobile-header.tsx`, `apps/web/src/lib/search.ts`, `apps/web/src/search/`, `apps/web/src/routes/_app/busca.tsx`, `apps/web/src/shell/app-shell.tsx`, `apps/server/tests/global-search.test.ts`, `apps/web/tests/search.test.ts`
+**Files:** `packages/domain/src/search.ts`, `packages/domain/src/search.test.ts`, `packages/api/src/search.ts`, `packages/api/src/global-search/queries.ts`, `packages/api/src/global-search/router.ts`, `packages/api/src/clients/queries.ts`, `packages/api/src/materials/queries.ts`, `packages/api/src/products/queries.ts`, `packages/api/src/services/queries.ts`, `packages/api/src/quotes/queries.ts`, `packages/api/src/service-orders/queries.ts`, `packages/ui/src/components/command-palette.tsx`, `packages/ui/src/components/tabs.tsx`, `packages/ui/src/components/highlight.tsx`, `packages/ui/src/components/top-nav.tsx`, `packages/ui/src/components/mobile-header.tsx`, `apps/web/src/lib/search.ts`, `apps/web/src/search/`, `apps/web/src/routes/_app/busca.tsx`, `apps/web/src/shell/app-shell.tsx`, `apps/server/tests/global-search.test.ts`, `apps/web/tests/search.test.ts`
 
 ## Overview
 
-A busca global acha pelo texto o que o dono já cadastrou: clientes, perfis de usuário da peça, orçamentos, produtos, materiais e serviços ([CONTEXT](../../CONTEXT.md), [DEC-129 a DEC-134](../PRD.md#91-produto-e-escopo), [DEC-146](../PRD.md#94-comercial-e-documentos)). Ela tem duas camadas:
+A busca global acha pelo texto o que o dono já cadastrou: clientes, perfis de usuário da peça, orçamentos, OS, produtos, materiais e serviços ([CONTEXT](../../CONTEXT.md), [DEC-129 a DEC-134](../PRD.md#91-produto-e-escopo), [DEC-146 e DEC-162](../PRD.md#94-comercial-e-documentos)). Ela tem duas camadas:
 
 - o **diálogo de busca rápida**, sobre a tela atual, aberto pelo botão do cabeçalho verde e por Ctrl+K (Cmd+K), com até 3 resultados por grupo e "Ver todos os N resultados" no fim;
 - a **página `/busca`**, dentro do shell, com uma aba por grupo e a lista completa, aberta pelo "Ver todos" do diálogo e pela lupa do cabeçalho do celular.
 
-São duas leituras, sem comando e sem nada no sync: `search.global` monta os seis grupos numa requisição, com a primeira página e o total de cada um, e `search.group` pagina um grupo de 50 em 50 ([SPEC §4](../SPEC.md#4-api-sincronização-e-conflito)). A OS entra quando existir, na F4, e a busca offline sobre o espelho local chega na F6.
+São duas leituras, sem comando e sem nada no sync: `search.global` monta os sete grupos numa requisição, com a primeira página e o total de cada um, e `search.group` pagina um grupo de 50 em 50 ([SPEC §4](../SPEC.md#4-api-sincronização-e-conflito)). A busca offline sobre o espelho local chega na F6.
 
 A regra das palavras é a mesma das listas de cada área: cada palavra da busca precisa aparecer como trecho em algum campo do registro, sem acento e sem maiúsculas, com trecho de telefone pelos dígitos. Para isso não divergir, o filtro de cada área é uma função só, chamada pela lista e pela busca, e as funções puras de texto moram no domínio.
 
@@ -22,7 +22,7 @@ A regra das palavras é a mesma das listas de cada área: cada palavra da busca 
 | Variante destacada | `matchedVariants` | Normaliza o pai e cada variante; decidem só as palavras que o pai não contém, e entra a variante que tem pelo menos uma delas, pelo número que tem e, no empate, na ordem da página |
 | Trecho marcado | `highlightRanges` | Intervalos do texto original onde cada palavra casa, achados no texto normalizado caractere a caractere e convertidos de volta (acento decomposto inclusive), ordenados e fundidos quando se sobrepõem ou se encostam |
 | Limites | `searchLimits` | 2 a 100 caracteres; 3 por grupo no diálogo, 5 por grupo em "Tudo", 50 por página na aba e 3 variantes por linha |
-| Filtro de cada área | `clientMatches`, `quoteMatches`, `materialMatches`, `productMatches`, `serviceMatches` nas consultas de cada área | O mesmo `LIKE` com `containing` (`%` e `_` escapados) que a lista usa; produto e material também casam por uma variante, arquivada inclusive |
+| Filtro de cada área | `clientMatches`, `quoteMatches`, `serviceOrderMatches`, `materialMatches`, `productMatches`, `serviceMatches` nas consultas de cada área | O mesmo `LIKE` com `containing` (`%` e `_` escapados) que a lista usa; produto e material também casam por uma variante, arquivada inclusive |
 | Leituras | `globalSearch` e `groupSearch` em `packages/api/src/global-search/queries.ts` | Uma fonte por grupo com a página e a contagem sobre o mesmo filtro; ativos primeiro e o resto na ordem da lista |
 | Tela | `apps/web/src/lib/search.ts` e `apps/web/src/search/` | Grupos do diálogo, abas, textos de cada linha, status para leitor de tela, estados vazios e o atalho |
 
@@ -32,12 +32,13 @@ A regra das palavras é a mesma das listas de cada área: cada palavra da busca 
 |---|---|---|---|
 | Clientes | nome, e-mail e telefones | telefone formatado, senão o secundário, senão e-mail, senão "Sem contato"; selos organização e arquivado | ficha do cliente |
 | Perfis | nome do perfil | "Perfil de" e o cliente; selo arquivado | ficha do cliente com o perfil escolhido (`?perfil=`) |
-| Orçamentos | código, dígitos do código, títulos das linhas e nome do cliente | código marcado; cliente, estado do dia (rascunho, emitido, vencido ou recusado) e total ao cliente; selo arquivado | página do orçamento |
+| Orçamentos | código, dígitos do código, títulos das linhas e nome do cliente | código marcado; cliente, estado do dia (rascunho, emitido, aprovado, vencido ou recusado) e total ao cliente; selo arquivado | página do orçamento |
+| OS | código, dígitos do código, títulos dos subitens e nome do cliente | código marcado; cliente, subitens, prazo ("a combinar" sem prazo) e total a receber ou "sem cobrança" (`serviceOrderDetail`); a OS não tem arquivamento | página da OS |
 | Produtos | nome, categoria, nome ou código de variante | categoria e variantes ativas; até 3 variantes com código e preço praticado, e "e mais N" (no diálogo, a primeira) | página do produto |
 | Materiais | nome, categoria, nome ou código de variante | categoria e variantes ativas; até 3 variantes com código e saldo total na unidade base (no diálogo, a primeira) | página do material |
 | Serviços | nome e categoria | categoria e preço praticado; selo terceirizado | página do serviço |
 
-Nenhum grupo traz custo, custo de referência, valor de estoque ou margem: preço praticado, total ao cliente e saldo em quantidade sim. O estado do orçamento é calculado na tela (`quoteDetail`), com o dia de hoje, a partir da recusa e do "válido até" da última revisão que a leitura traz. O trecho casado aparece marcado no nome e nas variantes (`Highlight` com `highlightRanges`).
+Nenhum grupo traz custo, custo de referência, valor de estoque ou margem: preço praticado, total ao cliente e saldo em quantidade sim. O estado do orçamento é calculado na tela (`quoteDetail`), com o dia de hoje, a partir da aprovação, da recusa e do "válido até" da última revisão que a leitura traz. O rótulo do atalho da aba concorda com o grupo ("Ver as 3 OS", "Ver os 6 clientes"). O trecho casado aparece marcado no nome e nas variantes (`Highlight` com `highlightRanges`).
 
 ## Diálogo
 
