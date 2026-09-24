@@ -1,6 +1,11 @@
 import { describe, expect, test } from "bun:test";
 
-import { balancePointId, exitValueCents, stockMovementKinds } from "./stock";
+import {
+	balancePointId,
+	countOutcome,
+	exitValueCents,
+	stockMovementKinds,
+} from "./stock";
 
 describe("stockMovementKinds", () => {
 	test("é a lista fechada na ordem de leitura", () => {
@@ -11,7 +16,32 @@ describe("stockMovementKinds", () => {
 			"transferIn",
 			"reversal",
 			"purchase",
+			"inventory",
 		]);
+	});
+});
+
+describe("countOutcome", () => {
+	test("falta quando o contado é menor que o esperado", () => {
+		expect(countOutcome(10_000_000n, 8_000_000n)).toEqual({
+			kind: "shortage",
+			quantityMicros: -2_000_000n,
+		});
+	});
+
+	test("sobra quando o contado é maior, inclusive sobre esperado negativo", () => {
+		expect(countOutcome(0n, 30_000_000n)).toEqual({
+			kind: "surplus",
+			quantityMicros: 30_000_000n,
+		});
+		expect(countOutcome(-2_000_000n, 0n)).toEqual({
+			kind: "surplus",
+			quantityMicros: 2_000_000n,
+		});
+	});
+
+	test("bate quando o contado é igual ao esperado", () => {
+		expect(countOutcome(5_000_000n, 5_000_000n)).toEqual({ kind: "match" });
 	});
 });
 
