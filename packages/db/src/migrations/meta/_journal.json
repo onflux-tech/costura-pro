@@ -113,6 +113,20 @@
       "when": 1790211182117,
       "tag": "0015_inventory_session_append_only",
       "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "6",
+      "when": 1790252083368,
+      "tag": "0016_quotes_revisions",
+      "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "6",
+      "when": 1790252090866,
+      "tag": "0017_quote_revision_append_only",
+      "breakpoints": true
     }
   ]
 }
