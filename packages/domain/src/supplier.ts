@@ -1,4 +1,4 @@
-import { normalizeText } from "./client";
+import { normalizeText } from "./search";
 
 export const supplierLimits = {
 	email: 254,

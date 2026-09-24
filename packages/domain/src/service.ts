@@ -1,4 +1,4 @@
-import { normalizeText } from "./client";
+import { normalizeText } from "./search";
 
 export const serviceLimits = {
 	category: 40,

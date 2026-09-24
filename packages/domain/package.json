@@ -66,6 +66,10 @@
       "types": "./dist/src/reservation.d.ts",
       "default": "./src/reservation.ts"
     },
+    "./search": {
+      "types": "./dist/src/search.d.ts",
+      "default": "./src/search.ts"
+    },
     "./service": {
       "types": "./dist/src/service.d.ts",
       "default": "./src/service.ts"

@@ -1,12 +1,6 @@
 import { describe, expect, test } from "bun:test";
 
-import {
-	formatPhone,
-	normalizePhone,
-	normalizeText,
-	searchKey,
-	searchTokens,
-} from "./client";
+import { formatPhone, normalizePhone, searchKey } from "./client";
 
 describe("normalizePhone", () => {
 	test("keeps only the digits of a masked mobile or landline", () => {
@@ -36,11 +30,7 @@ describe("formatPhone", () => {
 	});
 });
 
-describe("search", () => {
-	test("normalizes accents, case and spaces", () => {
-		expect(normalizeText("  João   DA Silva ")).toBe("joao da silva");
-	});
-
+describe("searchKey", () => {
 	test("builds the key from name, e-mail and phones", () => {
 		expect(
 			searchKey({
@@ -50,15 +40,5 @@ describe("search", () => {
 				secondaryPhone: null,
 			})
 		).toBe("maria beatriz alencar maria.alencar@email.com 81998154402");
-	});
-
-	test("turns masked phone pieces into digits and drops empty tokens", () => {
-		expect(searchTokens("João (81) 99815-4402")).toEqual([
-			"joao",
-			"81",
-			"998154402",
-		]);
-		expect(searchTokens("  . ")).toEqual([]);
-		expect(searchTokens("50%")).toEqual(["50%"]);
 	});
 });

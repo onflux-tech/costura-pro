@@ -1,9 +1,9 @@
-import { normalizeText } from "@costura-pro/domain/client";
 import {
 	formatCentimeters,
 	measurementLimits,
 	parseCentimeters,
 } from "@costura-pro/domain/measurement";
+import { normalizeText } from "@costura-pro/domain/search";
 
 export type MeasurementFieldView = {
 	fieldId: string;

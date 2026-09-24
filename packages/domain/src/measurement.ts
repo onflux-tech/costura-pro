@@ -1,4 +1,4 @@
-import { normalizeText } from "./client";
+import { normalizeText } from "./search";
 
 export const measurementLimits = {
 	fieldLabel: { max: 60, min: 1 },

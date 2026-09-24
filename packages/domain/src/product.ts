@@ -1,5 +1,5 @@
-import { normalizeText } from "./client";
 import { multiplyHalfUp } from "./quantity";
+import { normalizeText } from "./search";
 
 export const productLimits = {
 	caption: 40,

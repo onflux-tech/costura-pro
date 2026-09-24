@@ -1,3 +1,5 @@
+import { normalizeText } from "./search";
+
 export const clientKinds = ["person", "organization"] as const;
 
 export type ClientKind = (typeof clientKinds)[number];
@@ -12,20 +14,8 @@ export const clientFieldLength = {
 export const anonymizedClientName = "Cliente anonimizado";
 export const anonymizedProfileName = "Perfil anonimizado";
 
-const combiningMarks = /\p{M}/gu;
-const whitespace = /\s+/g;
 const nonDigit = /\D/g;
-const phoneLike = /^[\d()+.-]+$/;
 const areaCode = /^(?:1[1-9]|[2-9]\d)/;
-
-export function normalizeText(value: string): string {
-	return value
-		.normalize("NFD")
-		.replace(combiningMarks, "")
-		.toLowerCase()
-		.replace(whitespace, " ")
-		.trim();
-}
 
 export function normalizePhone(input: string): string | null {
 	const digits = input.replace(nonDigit, "");
@@ -55,13 +45,4 @@ export function searchKey(parts: {
 			.filter((part): part is string => Boolean(part))
 			.join(" ")
 	);
-}
-
-export function searchTokens(query: string): string[] {
-	return normalizeText(query)
-		.split(" ")
-		.map((token) =>
-			phoneLike.test(token) ? token.replace(nonDigit, "") : token
-		)
-		.filter((token) => token.length > 0);
 }
