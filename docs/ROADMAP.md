@@ -264,6 +264,8 @@ Cada spike responde uma pergunta que muda o desenho antes de construir em cima d
   - componentes novos no `packages/ui`: `CommandPalette`, `Tabs` e `Highlight`, com o `TopNavSearch` virando botão; o campo da paleta mostra o foco por um traço sob a linha, sem caixa ([design system](areas/design-system.md));
   - verificado em navegador real no build de produção com banco novo e 55 clientes a mais: botão do cabeçalho e Ctrl+K abrindo o diálogo com o campo focado, Esc devolvendo o foco ao botão, Ctrl+K sobre "Novo cliente" preenchido e Esc com o nome intacto, "linho cru" com "Cru · LIN-CRU · 31,00 m" e os trechos marcados, setas e Enter abrindo o material, "silva" com Clientes · 6 e "Ver todos os 6 resultados", "marta" com "Buscar também nos arquivados", abas com "Ver os 6 clientes" levando o foco ao painel, 56 clientes "lima" com 50 e "Mostrar mais", voltar e recarregar mantendo aba e busca, setas nas abas, resultado em andamento sem "Nada encontrado" antes da resposta, rede desligada com o alerta e "Tentar de novo" nas duas telas e no "Mostrar mais", lupa a 390 px mantendo a busca, e 1440, 1280, 1024, 768, 390 e 320 px sem rolagem horizontal na página e no diálogo.
 
+- Sub-abas de seção no celular (2026-09-24): Catálogo, Estoque, Compras, Finanças e Orçamentos mostram as abas logo abaixo do cabeçalho do celular, conferidas a 320 e 390 px sem rolagem horizontal da página ([DEC-148](PRD.md#91-produto-e-escopo)).
+
 **Pendente:**
 - Etiquetas com leitura por câmera (S3).
 - Consultas do app fora da busca pausam quando o navegador se diz sem rede, mesmo com o servidor no mesmo computador (`networkMode` padrão `online` do TanStack Query); a busca usa `networkMode: "always"`. Decidir o `networkMode` do `QueryClient` antes da F6.
@@ -292,6 +294,20 @@ Cada spike responde uma pergunta que muda o desenho antes de construir em cima d
 - Agenda com compromissos, prazos, capacidade diária e mensagem preparada.
 - Orçamentos e OS na busca global.
 - Anonimização recusa cliente com OS ou saldo aberto; decidir com o dono como ela trata OS encerrada e documento emitido que trazem o nome do cliente, já que documento emitido é imutável ([ADR 0008](adr/0008-documentos-emitidos-imutaveis.md)) e a anonimização redige o histórico ([ADR 0014](adr/0014-anonimizacao-redige-historico-de-sincronizacao.md)).
+
+**Concluído:**
+- Orçamento com rascunho, linhas, desconto, margem, emissão de revisão, recusa, vencimento e busca (2026-09-24), descrito em [orçamentos](areas/orcamentos.md):
+  - rascunho sempre editável com o código `ORC-<ano>-PC-<número>` gerado na criação, e cada emissão gravando uma revisão numerada e congelada com o conteúdo, os totais, o custo e a meta do momento; estado derivado entre rascunho, emitido, vencido e recusado ([DEC-135, DEC-136, DEC-141](PRD.md#94-comercial-e-documentos), [ADR 0023](adr/0023-orcamento-rascunho-com-revisao-emitida-como-fato.md));
+  - linhas de serviço do catálogo, com perfil e peça recebida opcionais, peça sob medida com componentes copiados da ficha efetiva de um produto ou de uma variante e editáveis, material do estoque e linha livre, com nomes, versões e custos copiados ([DEC-137, DEC-138](PRD.md#94-comercial-e-documentos));
+  - desconto por linha e no orçamento, em valor ou percentual, o do orçamento sobre o subtotal; custo incompleto sem sugestão nem margem, com a lista do que falta; custo, meta, preço sugerido, margem e avisos só no painel do dono; materiais previstos contra o saldo físico, com a falta ([DEC-139, DEC-140, DEC-147](PRD.md#94-comercial-e-documentos));
+  - validade em dias convertida em "válido até" na emissão, prazo proposto em dias após a aprovação, emissão com confirmação de cada aviso e data retroativa, recusa desfazível, emissão que reabre o recusado, arquivar e desarquivar, e aceite parcial como revisão nova sem os itens recusados ([DEC-142 a DEC-144](PRD.md#94-comercial-e-documentos));
+  - anonimização do cliente limpando os textos livres do rascunho e das revisões, com a trigger da revisão liberando só a redação ([DEC-145](PRD.md#94-comercial-e-documentos));
+  - grupo "Orçamentos" na busca global e sub-abas Rascunhos, Emitidos, Vencidos e Recusados ([DEC-146](PRD.md#94-comercial-e-documentos));
+  - verificado em navegador real no build de produção com banco novo: "Novo orçamento" pela ficha do cliente e pela lista, com `ORC-2026-PC-0001` e `0002`; serviço de R$ 160,00 com 10% dando R$ 144,00, para Maria e com o Blazer de linho; peça copiada da variante M Verde musgo com o custo do crepe editado para R$ 38,00 (R$ 499,80 por peça); zíper por unidade; taxa sem custo deixando o custo incompleto e depois com 0; subtotal R$ 1.182,00, desconto de R$ 300,00, total R$ 882,00, custo R$ 563,50, sugestão R$ 939,17, margem de 36,11% e "Faltam R$ 57,17 para atingir 40%"; crepe com falta de 1,40 m; emissão com a confirmação obrigatória, revisão 1 congelada, "Alterações não emitidas" e "Descartar alterações", revisão 2 sem a taxa e com motivo; vencido por emissão retroativa com validade de 1 dia, recusa e desfazer, emissão reabrindo o recusado, arquivar e desarquivar; busca por código, dígitos do código, cliente e descrição no diálogo e na página; conflito entre janelas com "Carregar versão atual" na página e novo salvamento no diálogo; resposta perdida na emissão seguida de nova tentativa sem duplicar; 1440, 768, 390 e 320 px sem rolagem horizontal em oito telas, sub-abas no celular em cinco destinos, toque a 390 px e teclado com foco preso nos diálogos e Esc devolvendo o foco.
+
+**Pendente:**
+- Aprovação da revisão com OS, subitens, snapshot de medidas, reservas, pendências e recebível; PDF da revisão (A4 e 80 mm) com o preço por linha ou o total agrupado (RF-COM-02).
+- Produto acabado como linha do orçamento, com o saldo de acabado (F5).
 
 **Critério de saída:**
 - CA-02, CA-03 e CA-04 completos.

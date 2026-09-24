@@ -119,8 +119,37 @@ Margem que evolui com consumo, perdas, despesas diretas e ajustes de custo poste
 ## Trabalho e venda
 
 **Orçamento**:
-Proposta comercial versionada ainda não aceita. Vencimento e aceite parcial exigem nova revisão.
+Proposta comercial para um cliente pagador, montada num rascunho sempre editável; cada emissão grava uma revisão congelada. O estado é derivado: rascunho, emitido, vencido ou recusado. Vencimento e aceite parcial exigem nova revisão.
 _Evitar_: pedido
+
+**Revisão do orçamento**:
+Retrato numerado e congelado do orçamento na emissão ("rev. 2"), com as linhas, os totais, o custo, a meta de margem do momento, a data da emissão e o "válido até". Nunca muda; o rascunho segue editável e prepara a revisão seguinte.
+_Evitar_: versão do orçamento
+
+**Linha do orçamento**:
+Item do orçamento: serviço do catálogo, peça sob medida, material do estoque ou linha livre, com quantidade, preço por unidade, desconto opcional e observação. Nomes, versões e custos são copiados quando a linha entra e não acompanham o catálogo.
+
+**Peça sob medida**:
+Linha do orçamento para uma peça a confeccionar, com descrição, quantidade de peças, preço por peça, perfil opcional e componentes, que podem vir da ficha técnica efetiva de um produto ou de uma variante.
+_Evitar_: produto (o acabado com saldo)
+
+**Componente da peça**:
+Material ou serviço de uma peça sob medida, com a quantidade por peça e o custo unitário copiados e editáveis. Material sem custo deixa o custo do orçamento incompleto.
+
+**Linha livre**:
+Linha do orçamento sem cadastro, como taxa de urgência, entrega ou insumo não controlado, com descrição, preço e custo opcional; custo vazio deixa o custo do orçamento incompleto, e 0 é cobrança sem custo.
+
+**Validade do orçamento**:
+Dias corridos, 15 por padrão, que viram a data "válido até" na emissão. Passada a data, o orçamento está vencido e renova só com nova revisão.
+
+**Prazo proposto**:
+Dias corridos contados da aprovação para entregar o trabalho do orçamento; opcional, "a combinar" quando vazio.
+
+**Recusa do orçamento**:
+Registro, pelo dono, da data e do motivo opcional em que o cliente recusou. Desfazível; emitir nova revisão reabre o orçamento.
+
+**Materiais previstos**:
+Soma, por variante de material, do que as linhas e as peças sob medida do orçamento vão usar, comparada com o saldo físico atual. Mostra a falta, mas não reserva nada antes da aprovação.
 
 **Aceite parcial**:
 Revisão do orçamento que contém somente os itens que o cliente aceitou.

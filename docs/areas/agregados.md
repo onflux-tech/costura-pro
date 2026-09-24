@@ -33,6 +33,8 @@ Recusa que precisa consultar o banco cabe no `create` de um `CreateDefinition`, 
 
 Transição sobre um fato já gravado (estornar a compra, quitar a obrigação) também é criação: nasce um fato novo que referencia o antigo, e o estado se lê dos fatos. É isso que dá caminho de recusa ("Compra já estornada" e "Obrigação já paga" como `aggregateExists`, "Obrigação cancelada" como `aggregateNotFound`) sem razão de quarentena nova, e que torna dois aparelhos quitando a mesma obrigação offline uma recusa clara em vez de um conflito de versão.
 
+Fato cuja criação também muda o agregado pai (a emissão da revisão do orçamento limpa a recusa do rascunho) grava as duas coisas na mesma transação do `create`: o pai muda pelo mesmo `update` com compare-and-set da edição e ganha versão nova no `change_log`, e o fato nasce com `version` 1. A recusa continua só no `create` (orçamento inexistente, cliente anonimizado), nunca no efeito sobre o pai ([orçamentos](orcamentos.md)).
+
 Operação que grava várias linhas recebe todos os ids no payload e confere cada um antes de inserir, inclusive contra o próprio `aggregateId`: um segundo id igual ao da operação passaria pelo `exists` e bateria na chave primária, e a exceção dentro da transação derruba o push inteiro com 500.
 
 `refine` no nível do objeto que converte valor (`BigInt`) leva `whenShapeIsValid` (`packages/api/src/schemas.ts`): por padrão o zod roda o `refine` do objeto mesmo quando outro `refine` de campo já falhou, porque essa falha é continuável, e o valor chega cru ([zod, `when`](https://zod.dev/api#when), consultado em 2026-09-18).
@@ -56,7 +58,7 @@ Quando a regra dependeria de consultar o banco para validar o payload (um campo 
 
 ## Redação de dado pessoal
 
-Agregado com dado pessoal entra em `personalDataAggregates` (`packages/api/src/redaction.ts`: `client`, `profile`, `measurement` e `receivedItem`) e participa da anonimização ([ADR 0014](../adr/0014-anonimizacao-redige-historico-de-sincronizacao.md)) chamando `redactHistory` na transação, depois de gravar a versão anonimizada:
+Agregado com dado pessoal entra em `personalDataAggregates` (`packages/api/src/redaction.ts`: `client`, `profile`, `measurement`, `receivedItem`, `quote` e `quoteRevision`) e participa da anonimização ([ADR 0014](../adr/0014-anonimizacao-redige-historico-de-sincronizacao.md)) chamando `redactHistory` na transação, depois de gravar a versão anonimizada:
 
 | Onde o dado fica | O que a redação faz |
 |---|---|
@@ -69,7 +71,7 @@ Agregado com dado pessoal entra em `personalDataAggregates` (`packages/api/src/r
 | Pendências | `sync.pending` não repete como `opIdReused` a operação que já está em quarentena na `operation` com hash redigido (com hash real, a repetição listada é conteúdo diferente e continua aparecendo) |
 | Arquivo do banco | `secure_delete` ligado na abertura e `truncateWal` depois da anonimização, com teste que procura os valores nos bytes do `.db` e do `-wal` |
 
-Agregado filho com dado pessoal (medições dos perfis, peças recebidas do cliente) é anonimizado na mesma transação do cliente, arquivados inclusive, e redigido com o próprio tipo. Quando o agregado referencia arquivos de mídia, a anonimização junta os hashes antes de redigir (linha viva, `change_log` e todos os conflitos), apaga as linhas de `media_file` sem outra referência dentro da transação, antes do `truncateWal`, e remove os arquivos depois do commit, com os hashes guardados numa variável do handler e nunca no resultado gravado da operação ([mídia](midia.md)). A função de anonimização recebe `mediaRoot` do contexto. Agregado novo que guarda hash de foto entra no conjunto `referencedHashes` de `packages/api/src/media/store.ts` (linha viva e conflitos abertos do próprio tipo, nos valores locais e atuais); fora dele, a coleta apaga a foto confirmada depois de 24 h.
+Agregado filho com dado pessoal (medições dos perfis, peças recebidas e orçamentos do cliente) é anonimizado na mesma transação do cliente, arquivados inclusive, e redigido com o próprio tipo. Fato imutável com texto pessoal (a revisão do orçamento) tem a exceção na trigger: o `UPDATE` só passa quando as colunas de valor ficam iguais, só o texto muda, a versão sobe exatamente uma e o id está em `redacted_aggregate`, então a redação do histórico vem antes da escrita da linha, e a versão nova entra no `change_log` para o aparelho que já tinha o fato receber a redação ([ADR 0023](../adr/0023-orcamento-rascunho-com-revisao-emitida-como-fato.md)). Quando o agregado referencia arquivos de mídia, a anonimização junta os hashes antes de redigir (linha viva, `change_log` e todos os conflitos), apaga as linhas de `media_file` sem outra referência dentro da transação, antes do `truncateWal`, e remove os arquivos depois do commit, com os hashes guardados numa variável do handler e nunca no resultado gravado da operação ([mídia](midia.md)). A função de anonimização recebe `mediaRoot` do contexto. Agregado novo que guarda hash de foto entra no conjunto `referencedHashes` de `packages/api/src/media/store.ts` (linha viva e conflitos abertos do próprio tipo, nos valores locais e atuais); fora dele, a coleta apaga a foto confirmada depois de 24 h.
 
 ## Testes mínimos de um agregado novo
 

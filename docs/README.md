@@ -43,6 +43,7 @@ Documentação curada e versionada do Costura Pro. Todo doc novo em `docs/` entr
 | [0020](adr/0020-servico-versionado-e-preco-sugerido-na-leitura.md) | Serviço versionado pelo próprio agregado e preço sugerido calculado na leitura |
 | [0021](adr/0021-ficha-tecnica-no-produto-base-e-ajustes-por-variante.md) | Ficha técnica no produto base, ajustes por item na variante e custo estimado na leitura |
 | [0022](adr/0022-sessao-de-inventario-como-fato-com-esperado-da-contagem.md) | Sessão de inventário como fato gravado na finalização, com o esperado da hora da contagem |
+| [0023](adr/0023-orcamento-rascunho-com-revisao-emitida-como-fato.md) | Orçamento como rascunho mutável e cada emissão como revisão congelada, com redação na anonimização |
 
 ## Agentes e harness
 
@@ -67,3 +68,4 @@ Quando uma área acumular conhecimento que não cabe numa rule, o `/entrega-fech
 | [Serviços](areas/servicos.md) | Antes de mexer em serviço, custo, preço praticado, meta de margem ou preço sugerido: agregado, meta do ateliê na instalação, a conta do preço, comandos, telas e armadilhas |
 | [Produtos](areas/produtos.md) | Antes de mexer em produto base, variante de produto, galeria, capa ou ficha técnica: agregados, forma da ficha e dos ajustes, a conta do custo estimado, comandos, telas e armadilhas |
 | [Busca global](areas/busca.md) | Antes de mexer na busca global, no filtro de busca de uma lista, na normalização de texto ou no atalho de busca: onde a regra mora, grupos, arquivados e anonimizado, tela, busca offline e armadilhas |
+| [Orçamentos](areas/orcamentos.md) | Antes de mexer em orçamento, linha, peça sob medida, desconto, emissão de revisão, recusa ou estado do orçamento: agregados, forma das linhas, a conta dos totais e do custo, comandos, anonimização, telas e armadilhas |
