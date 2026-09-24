@@ -20,6 +20,7 @@ export type CommandSubject =
 	| "medição"
 	| "meta"
 	| "modelo"
+	| "OS"
 	| "orçamento"
 	| "peça"
 	| "perfil"
@@ -39,6 +40,7 @@ const staleMessages: Record<CommandSubject, string> = {
 	medição: "Esta medição mudou em outra janela ou aparelho.",
 	meta: "A meta de margem mudou em outra janela ou aparelho.",
 	modelo: "Este modelo mudou em outra janela ou aparelho.",
+	OS: "Esta OS mudou em outra janela ou aparelho.",
 	orçamento: "Este orçamento mudou em outra janela ou aparelho.",
 	perfil: "Este perfil mudou em outra janela ou aparelho.",
 	peça: "Esta peça mudou em outra janela ou aparelho.",
@@ -62,8 +64,17 @@ const alreadyDone: readonly (readonly [string, string])[] = [
 	],
 	[commandMessages.obligationPaid, "Esta obrigação já foi paga."],
 	[commandMessages.purchaseReversed, "Esta compra já foi estornada."],
+	[commandMessages.quoteApproved, "Este orçamento já foi aprovado."],
 	[commandMessages.stockMovementReversed, "Este movimento já foi estornado."],
 ];
+
+export function quoteAlreadyApproved(error: unknown): boolean {
+	return (
+		error instanceof ORPCError &&
+		error.code === "CONFLICT" &&
+		error.message === commandMessages.quoteApproved
+	);
+}
 
 export function clientCommandFailure(
 	error: unknown,
@@ -90,6 +101,16 @@ export function clientCommandFailure(
 	const done = alreadyDone.find(([message]) => message === error.message);
 	if (error.code === "CONFLICT" && done) {
 		return { kind: "exists", message: done[1] };
+	}
+	if (
+		error.code === "PRECONDITION_FAILED" &&
+		error.message === commandMessages.clientHasOpenWork
+	) {
+		return {
+			kind: "other",
+			message:
+				"Este cliente tem OS aberta ou valor a receber. A anonimização fica disponível quando tudo estiver encerrado.",
+		};
 	}
 	if (error.code === "PRECONDITION_FAILED" && personalSubjects.has(subject)) {
 		return { kind: "anonymized", message: "Este cliente foi anonimizado." };

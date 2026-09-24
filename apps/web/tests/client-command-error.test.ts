@@ -2,7 +2,10 @@ import { describe, expect, test } from "bun:test";
 import { commandMessages } from "@costura-pro/api/command-messages";
 import { ORPCError } from "@orpc/client";
 
-import { clientCommandFailure } from "../src/lib/client-command-error";
+import {
+	clientCommandFailure,
+	quoteAlreadyApproved,
+} from "../src/lib/client-command-error";
 
 describe("falhas de comando de cliente", () => {
 	test("versão velha pede para carregar a versão atual", () => {
@@ -24,6 +27,9 @@ describe("falhas de comando de cliente", () => {
 		);
 		expect(clientCommandFailure(error, "contagem").message).toBe(
 			"Esta contagem mudou em outra janela ou aparelho."
+		);
+		expect(clientCommandFailure(error, "OS").message).toBe(
+			"Esta OS mudou em outra janela ou aparelho."
 		);
 	});
 
@@ -68,6 +74,29 @@ describe("falhas de comando de cliente", () => {
 		).toEqual({ kind: "other", message: commandMessages.clientNotFound });
 	});
 
+	test("OS aberta ou valor a receber explica por que a anonimização espera", () => {
+		expect(
+			clientCommandFailure(
+				new ORPCError("PRECONDITION_FAILED", {
+					message: commandMessages.clientHasOpenWork,
+				}),
+				"cliente"
+			)
+		).toEqual({
+			kind: "other",
+			message:
+				"Este cliente tem OS aberta ou valor a receber. A anonimização fica disponível quando tudo estiver encerrado.",
+		});
+		expect(
+			clientCommandFailure(
+				new ORPCError("PRECONDITION_FAILED", {
+					message: commandMessages.clientAnonymized,
+				}),
+				"cliente"
+			).kind
+		).toBe("anonymized");
+	});
+
 	test("rede e sessão seguem as mensagens gerais", () => {
 		expect(
 			clientCommandFailure(new TypeError("fetch failed"), "cliente").message
@@ -100,10 +129,27 @@ describe("falhas de orçamento", () => {
 	});
 });
 
+describe("orçamento aprovado em outra janela", () => {
+	test("reconhece a recusa por aprovação e não o registro já gravado", () => {
+		expect(
+			quoteAlreadyApproved(
+				new ORPCError("CONFLICT", { message: commandMessages.quoteApproved })
+			)
+		).toBe(true);
+		expect(
+			quoteAlreadyApproved(
+				new ORPCError("CONFLICT", { message: commandMessages.aggregateExists })
+			)
+		).toBe(false);
+		expect(quoteAlreadyApproved(new TypeError("fetch failed"))).toBe(false);
+	});
+});
+
 describe("falhas de compra e finanças", () => {
 	test("pagamento repetido, estorno repetido e compra já estornada viram exists", () => {
 		const cases = [
 			[commandMessages.obligationPaid, "Esta obrigação já foi paga."],
+			[commandMessages.quoteApproved, "Este orçamento já foi aprovado."],
 			[commandMessages.purchaseReversed, "Esta compra já foi estornada."],
 			[
 				commandMessages.financialMovementReversed,

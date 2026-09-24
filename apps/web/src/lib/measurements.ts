@@ -154,7 +154,10 @@ export function measuredTemplates(
 	return [...names].map(([id, name]) => ({ id, name }));
 }
 
-function measuredValueOf(measurement: MeasurementView | null, fieldId: string) {
+function measuredValueOf(
+	measurement: Pick<MeasurementView, "fields"> | null,
+	fieldId: string
+) {
 	return (
 		measurement?.fields.find((field) => field.fieldId === fieldId)?.valueMm ??
 		null
@@ -162,8 +165,8 @@ function measuredValueOf(measurement: MeasurementView | null, fieldId: string) {
 }
 
 export function fieldDelta(
-	current: MeasurementView,
-	previous: MeasurementView | null,
+	current: Pick<MeasurementView, "fields">,
+	previous: Pick<MeasurementView, "fields"> | null,
 	fieldId: string
 ): number | null {
 	const now = measuredValueOf(current, fieldId);

@@ -36,9 +36,11 @@ import {
 	type SearchGroupKey,
 	type SearchView,
 	type ServiceHitView,
+	type ServiceOrderHitView,
 	searchGroupOrder,
 	seeGroupLabel,
 	serviceDetail,
+	serviceOrderDetail,
 } from "@/lib/search";
 
 import { Marked } from "./marked";
@@ -52,6 +54,7 @@ export const groupHeadings: Record<SearchGroupKey, string> = {
 	products: "Produtos",
 	profiles: "Perfis",
 	quotes: "Orçamentos",
+	serviceOrders: "OS",
 	services: "Serviços",
 };
 
@@ -232,6 +235,29 @@ export function QuoteRow({ hit, query }: { hit: QuoteHitView; query: string }) {
 	);
 }
 
+export function ServiceOrderRow({
+	hit,
+	query,
+}: {
+	hit: ServiceOrderHitView;
+	query: string;
+}) {
+	return (
+		<Hit
+			detail={serviceOrderDetail(hit)}
+			link={
+				<ButtonLink
+					className={nameLink}
+					render={<Link params={{ osId: hit.id }} to="/os/$osId" />}
+					variant="link"
+				>
+					<Marked query={query} text={hit.code} />
+				</ButtonLink>
+			}
+		/>
+	);
+}
+
 export function ProductRow({
 	hit,
 	query,
@@ -355,6 +381,10 @@ function GroupRows({
 		case "quotes":
 			return result.quotes.items.map((hit) => (
 				<QuoteRow hit={hit} key={hit.id} query={query} />
+			));
+		case "serviceOrders":
+			return result.serviceOrders.items.map((hit) => (
+				<ServiceOrderRow hit={hit} key={hit.id} query={query} />
 			));
 		case "products":
 			return result.products.items.map((hit) => (

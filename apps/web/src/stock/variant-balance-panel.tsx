@@ -9,7 +9,7 @@ import {
 	DataListRow,
 } from "@costura-pro/ui/components/data-list";
 import { Skeleton } from "@costura-pro/ui/components/skeleton";
-import { Heading, Text } from "@costura-pro/ui/components/typography";
+import { Heading, Mono, Text } from "@costura-pro/ui/components/typography";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { useRef, useState } from "react";
@@ -78,6 +78,7 @@ export function VariantBalancePanel({ item }: { item: BalanceItemView }) {
 	};
 
 	const points = balance.data?.points ?? [];
+	const reservations = balance.data?.reservations ?? [];
 	const history = movements.data?.items ?? [];
 
 	return (
@@ -129,6 +130,54 @@ export function VariantBalancePanel({ item }: { item: BalanceItemView }) {
 					</DataList>
 				) : null}
 			</section>
+			{reservations.length > 0 ? (
+				<section className="flex flex-col gap-2">
+					<Heading level={3} size="title">
+						Reservas
+					</Heading>
+					<DataList aria-label="Reservas por OS" columns="minmax(0,1fr) 8rem">
+						<DataListHeader>
+							<DataListHeaderCell>OS</DataListHeaderCell>
+							<DataListHeaderCell align="end">Reservado</DataListHeaderCell>
+						</DataListHeader>
+						{reservations.map((reservation) => (
+							<DataListRow key={reservation.itemId}>
+								<DataListCell label="OS">
+									<div className="flex min-w-0 flex-col items-start gap-0.5">
+										<ButtonLink
+											className="h-auto min-h-11 justify-start px-0 md:min-h-0"
+											render={
+												<Link
+													params={{ osId: reservation.serviceOrderId }}
+													to="/os/$osId"
+												/>
+											}
+											variant="link"
+										>
+											<Mono>{reservation.code}</Mono>
+										</ButtonLink>
+										<Text size="xs" tone="subtle">
+											{reservation.itemTitle}
+										</Text>
+									</div>
+								</DataListCell>
+								<DataListCell align="end" label="Reservado">
+									<Text inline numeric>
+										{pointQuantity(
+											reservation.reservedMicros,
+											item.baseUnit,
+											item.displayPrecision
+										)}
+									</Text>
+								</DataListCell>
+							</DataListRow>
+						))}
+					</DataList>
+					<Text size="xs" tone="subtle">
+						Reserva não baixa o físico; sai no consumo ou no cancelamento da OS.
+					</Text>
+				</section>
+			) : null}
 			<section className="flex flex-col gap-2">
 				<Heading level={3} size="title">
 					Histórico

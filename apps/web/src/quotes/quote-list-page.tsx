@@ -35,6 +35,11 @@ const tabs: Record<
 	QuoteStatus,
 	{ description: string; empty: string; label: string }
 > = {
+	approved: {
+		description: "Orçamentos que o cliente aceitou, cada um com a sua OS.",
+		empty: "Nenhum orçamento aprovado ainda.",
+		label: "Aprovados",
+	},
 	draft: {
 		description: "Orçamentos em montagem, ainda sem revisão emitida.",
 		empty:
@@ -59,6 +64,9 @@ const tabs: Record<
 };
 
 function dateText(quote: QuoteListItemView): string {
+	if (quote.approvedOn) {
+		return `aprovado em ${formatDay(quote.approvedOn)}`;
+	}
 	if (quote.status === "refused" && quote.refusedOn) {
 		return `recusado em ${formatDay(quote.refusedOn)}`;
 	}
@@ -97,6 +105,9 @@ function QuoteRow({ quote }: { quote: QuoteListItemView }) {
 					<Text size="xs" tone="subtle">
 						{quote.clientName}
 					</Text>
+					{quote.serviceOrderCode ? (
+						<Mono className="text-xs">{quote.serviceOrderCode}</Mono>
+					) : null}
 				</div>
 			</DataListCell>
 			<DataListCell label="Data">

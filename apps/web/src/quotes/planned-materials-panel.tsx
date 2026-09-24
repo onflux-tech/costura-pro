@@ -42,7 +42,10 @@ export function PlannedMaterialsPanel({
 		<Panel>
 			<PanelHeader>
 				<PanelTitle>Materiais previstos</PanelTitle>
-				<PanelMeta>Reserva só acontece na aprovação.</PanelMeta>
+				<PanelMeta>
+					Disponível = físico menos o reservado para outras OS. A reserva
+					acontece na aprovação.
+				</PanelMeta>
 			</PanelHeader>
 			<DataList
 				aria-label="Materiais previstos"
@@ -51,7 +54,7 @@ export function PlannedMaterialsPanel({
 				<DataListHeader>
 					<DataListHeaderCell>Variante</DataListHeaderCell>
 					<DataListHeaderCell align="end">Previsto</DataListHeaderCell>
-					<DataListHeaderCell align="end">Saldo</DataListHeaderCell>
+					<DataListHeaderCell align="end">Disponível</DataListHeaderCell>
 					<DataListHeaderCell>Situação</DataListHeaderCell>
 				</DataListHeader>
 				{rows.map((row) => (
@@ -71,10 +74,17 @@ export function PlannedMaterialsPanel({
 								{amount(row, row.plannedMicros)}
 							</Text>
 						</DataListCell>
-						<DataListCell align="end" label="Saldo">
-							<Text inline numeric>
-								{amount(row, row.stockMicros)}
-							</Text>
+						<DataListCell align="end" label="Disponível">
+							<div className="flex flex-col gap-0.5">
+								<Text inline numeric>
+									{amount(row, row.availableMicros)}
+								</Text>
+								{row.reservedMicros > 0n ? (
+									<Text size="xs" tone="muted">
+										{`reservado ${amount(row, row.reservedMicros)}`}
+									</Text>
+								) : null}
+							</div>
 						</DataListCell>
 						<DataListCell label="Situação">
 							{row.shortageMicros > 0n ? (

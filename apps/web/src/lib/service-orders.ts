@@ -1,0 +1,544 @@
+import { type Pricing, pricingOf } from "@costura-pro/domain/pricing";
+import { quoteLineOfText } from "@costura-pro/domain/quote";
+import { planReservations } from "@costura-pro/domain/reservation";
+import {
+	type ApprovalChannel,
+	approvalLimits,
+	approvalWindowError,
+	isWorkLine,
+	linePlannedMaterials,
+	suggestedDueOn,
+	type WorkLineKind,
+} from "@costura-pro/domain/service-order";
+import type { BaseUnitCode } from "@costura-pro/domain/unit";
+
+import { moneyLabel } from "./finance";
+import {
+	currentByTemplate,
+	formatDay,
+	type MeasurementFieldView,
+	type MeasurementView,
+} from "./measurements";
+import { dayError } from "./quote-drafts";
+import {
+	type FrozenLineView,
+	lineTitle,
+	type QuoteDetailView,
+	type QuoteRevisionView,
+} from "./quotes";
+
+export const approvalChannelLabels: Record<ApprovalChannel, string> = {
+	email: "E-mail",
+	inPerson: "Presencial",
+	other: "Outro",
+	phone: "Telefone",
+	whatsapp: "WhatsApp",
+};
+
+export type WorkLineView = Exclude<FrozenLineView, { kind: "free" }>;
+
+export type MeasurementSnapshotView = {
+	fields: MeasurementFieldView[];
+	measurementId: string;
+	notes: string | null;
+	takenOn: string;
+	templateId: string;
+	templateName: string;
+	templateVersion: number;
+};
+
+export type MaterialRowView = {
+	baseUnit: BaseUnitCode;
+	displayPrecision: number;
+	label: string;
+	plannedMicros: bigint;
+	reservedMicros: bigint;
+	shortageMicros: bigint;
+	variantId: string;
+};
+
+export type ApprovalPreviewItem = {
+	kind: WorkLineKind;
+	line: WorkLineView;
+	measurements: MeasurementSnapshotView[];
+	missingMeasurements: boolean;
+	reservations: MaterialRowView[];
+	title: string;
+};
+
+export type ApprovalPreview = {
+	freeLines: string[];
+	items: ApprovalPreviewItem[];
+	receivableCents: bigint;
+	shortage: boolean;
+};
+
+function workLinesOf(revision: QuoteRevisionView): WorkLineView[] {
+	return revision.content.lines.filter((line): line is WorkLineView =>
+		isWorkLine(line)
+	);
+}
+
+function profileOf(line: WorkLineView): string | null {
+	return line.kind === "material" ? null : line.profileId;
+}
+
+function citation(
+	line: WorkLineView,
+	variantId: string
+): Pick<MaterialRowView, "baseUnit" | "displayPrecision" | "label"> {
+	if (line.kind === "material") {
+		return {
+			baseUnit: line.baseUnit,
+			displayPrecision: line.displayPrecision,
+			label: lineTitle(line),
+		};
+	}
+	const component =
+		line.kind === "custom"
+			? line.components.find(
+					(item) =>
+						item.kind === "material" && item.materialVariantId === variantId
+				)
+			: undefined;
+	if (component?.kind === "material") {
+		return {
+			baseUnit: component.baseUnit,
+			displayPrecision: component.displayPrecision,
+			label: `${component.materialName} · ${component.variantName}`,
+		};
+	}
+	return { baseUnit: "un", displayPrecision: 0, label: variantId };
+}
+
+function snapshotOf(measurement: MeasurementView): MeasurementSnapshotView {
+	return {
+		fields: measurement.fields.map((field) => ({ ...field })),
+		measurementId: measurement.id,
+		notes: measurement.notes,
+		takenOn: measurement.takenOn,
+		templateId: measurement.templateId,
+		templateName: measurement.templateName,
+		templateVersion: measurement.templateVersion,
+	};
+}
+
+export function approvalPreview(
+	revision: QuoteRevisionView,
+	measurements: readonly MeasurementView[] | null,
+	stock: QuoteDetailView["stock"]
+): ApprovalPreview {
+	const work = workLinesOf(revision);
+	const outcomes = planReservations(
+		work.flatMap((line) =>
+			linePlannedMaterials(quoteLineOfText(line)).map((material) => ({
+				key: line.id,
+				quantityMicros: material.quantityMicros,
+				variantId: material.variantId,
+			}))
+		),
+		new Map(stock.map((row) => [row.variantId, BigInt(row.quantityMicros)])),
+		new Map(stock.map((row) => [row.variantId, BigInt(row.reservedMicros)]))
+	);
+	const items = work.map((line): ApprovalPreviewItem => {
+		const profileId = profileOf(line);
+		const current =
+			profileId === null || measurements === null
+				? []
+				: currentByTemplate(measurements, profileId).map((pair) =>
+						snapshotOf(pair.current)
+					);
+		return {
+			kind: line.kind,
+			line,
+			measurements: current,
+			missingMeasurements:
+				profileId !== null && measurements !== null && current.length === 0,
+			reservations: outcomes
+				.filter((outcome) => outcome.key === line.id)
+				.map((outcome) => ({
+					...citation(line, outcome.variantId),
+					plannedMicros: outcome.quantityMicros,
+					reservedMicros: outcome.reservedMicros,
+					shortageMicros: outcome.shortageMicros,
+					variantId: outcome.variantId,
+				})),
+			title: lineTitle(line),
+		};
+	});
+	return {
+		freeLines: revision.content.lines
+			.filter((line) => !isWorkLine(line))
+			.map(lineTitle),
+		items,
+		receivableCents: BigInt(revision.totalCents),
+		shortage: outcomes.some((outcome) => outcome.shortageMicros > 0n),
+	};
+}
+
+export type ApprovalIds = {
+	approvalId: string;
+	items: ReadonlyMap<
+		string,
+		{ itemId: string; reservations: ReadonlyMap<string, string> }
+	>;
+	receivableId: string;
+	serviceOrderId: string;
+};
+
+export function approvalIds(
+	revision: QuoteRevisionView,
+	newId: () => string
+): ApprovalIds {
+	return {
+		approvalId: newId(),
+		items: new Map(
+			workLinesOf(revision).map((line) => [
+				line.id,
+				{
+					itemId: newId(),
+					reservations: new Map(
+						linePlannedMaterials(quoteLineOfText(line)).map((material) => [
+							material.variantId,
+							newId(),
+						])
+					),
+				},
+			])
+		),
+		receivableId: newId(),
+		serviceOrderId: newId(),
+	};
+}
+
+export type ApprovalDraft = {
+	approvedOn: string;
+	channel: ApprovalChannel | null;
+	dueOn: string;
+	note: string;
+};
+
+export function approvalDraft(
+	revision: QuoteRevisionView,
+	today: string
+): ApprovalDraft {
+	const capped = today > revision.validUntil ? revision.validUntil : today;
+	const approvedOn = capped < revision.emittedOn ? revision.emittedOn : capped;
+	return {
+		approvedOn,
+		channel: null,
+		dueOn: suggestedDueOn(approvedOn, revision.content.leadTimeDays) ?? "",
+		note: "",
+	};
+}
+
+export function approvalBlocker(read: {
+	failed: boolean;
+	fresh: boolean;
+}): string | null {
+	if (read.fresh) {
+		return null;
+	}
+	return read.failed
+		? "Não foi possível ler as medidas atuais do cliente. Tente de novo."
+		: "Conferindo as medidas atuais do cliente.";
+}
+
+export function acceptanceHint(
+	revision: Pick<QuoteRevisionView, "emittedOn" | "validUntil">,
+	today: string
+): string {
+	const lastDay = today < revision.validUntil ? today : revision.validUntil;
+	return lastDay === revision.emittedOn
+		? `Só ${formatDay(lastDay)}, o dia da emissão.`
+		: `Entre ${formatDay(revision.emittedOn)} e ${formatDay(lastDay)}.`;
+}
+
+export type ApprovalErrors = Partial<
+	Record<"approvedOn" | "channel" | "dueOn" | "note", string>
+>;
+
+function acceptanceError(
+	approvedOn: string,
+	revision: QuoteRevisionView,
+	today: string
+): string | null {
+	const invalid = dayError(approvedOn, today);
+	if (invalid) {
+		return invalid;
+	}
+	const window = approvalWindowError(approvedOn, revision);
+	if (window === "beforeEmission") {
+		return "O aceite não pode ser antes da emissão da revisão";
+	}
+	if (window === "afterValidity") {
+		return `A revisão valia até ${formatDay(revision.validUntil)}. Emita uma revisão nova para registrar este aceite.`;
+	}
+	return null;
+}
+
+function dueError(draft: ApprovalDraft): string | null {
+	const dueOn = draft.dueOn.trim();
+	if (dueOn === "") {
+		return null;
+	}
+	if (dayError(dueOn, "9999-12-31")) {
+		return "Data inválida";
+	}
+	return dueOn < draft.approvedOn
+		? "O prazo não pode ser antes do aceite"
+		: null;
+}
+
+export function approvalErrors(
+	draft: ApprovalDraft,
+	revision: QuoteRevisionView,
+	today: string
+): ApprovalErrors {
+	const errors: ApprovalErrors = {};
+	const approvedOn = acceptanceError(draft.approvedOn, revision, today);
+	if (approvedOn) {
+		errors.approvedOn = approvedOn;
+	}
+	if (draft.channel === null) {
+		errors.channel = "Escolha o canal";
+	}
+	if (draft.note.trim().length > approvalLimits.note) {
+		errors.note = `Use até ${approvalLimits.note} caracteres`;
+	}
+	const due = dueError(draft);
+	if (due) {
+		errors.dueOn = due;
+	}
+	return errors;
+}
+
+export type ApproveInput = {
+	approvalId: string;
+	approvedOn: string;
+	channel: ApprovalChannel;
+	dueOn: string | null;
+	items: {
+		itemId: string;
+		lineId: string;
+		measurements: MeasurementSnapshotView[];
+		reservations: { reservationId: string; variantId: string }[];
+	}[];
+	note: string | null;
+	quoteId: string;
+	receivableId: string;
+	revisionId: string;
+	serviceOrderId: string;
+};
+
+export function approvalFields({
+	draft,
+	ids,
+	preview,
+	quoteId,
+	revisionId,
+}: {
+	draft: ApprovalDraft & { channel: ApprovalChannel };
+	ids: ApprovalIds;
+	preview: ApprovalPreview;
+	quoteId: string;
+	revisionId: string;
+}): ApproveInput {
+	const note = draft.note.trim();
+	const dueOn = draft.dueOn.trim();
+	return {
+		approvalId: ids.approvalId,
+		approvedOn: draft.approvedOn,
+		channel: draft.channel,
+		dueOn: dueOn === "" ? null : dueOn,
+		items: preview.items.map((item) => {
+			const planned = ids.items.get(item.line.id);
+			return {
+				itemId: planned?.itemId ?? "",
+				lineId: item.line.id,
+				measurements: item.measurements,
+				reservations: item.reservations.map((reservation) => ({
+					reservationId: planned?.reservations.get(reservation.variantId) ?? "",
+					variantId: reservation.variantId,
+				})),
+			};
+		}),
+		note: note === "" ? null : note,
+		quoteId,
+		receivableId: ids.receivableId,
+		revisionId,
+		serviceOrderId: ids.serviceOrderId,
+	};
+}
+
+export type ServiceOrderItemView = {
+	createdAt: string;
+	dueOn: string | null;
+	id: string;
+	kind: WorkLineKind;
+	line: WorkLineView;
+	lineId: string;
+	measurements: MeasurementSnapshotView[];
+	position: number;
+	reservations: { reservedMicros: string; variantId: string }[];
+	serviceOrderId: string;
+	version: number;
+};
+
+export type ReceivableView = {
+	amountCents: string;
+	clientId: string;
+	createdAt: string;
+	id: string;
+	kind: "serviceOrder";
+	occurredOn: string;
+	serviceOrderId: string | null;
+	version: number;
+};
+
+export type ServiceOrderRevisionView = {
+	costCents: string | null;
+	discountCents: string;
+	emittedOn: string;
+	grossCents: string;
+	id: string;
+	number: number;
+	targetMarginBasisPoints: number;
+	totalCents: string;
+	validUntil: string;
+};
+
+export type ServiceOrderDetailView = {
+	approval: {
+		approvedOn: string;
+		channel: ApprovalChannel;
+		createdAt: string;
+		id: string;
+		note: string | null;
+		quoteId: string;
+		revisionId: string;
+		serviceOrderId: string;
+		version: number;
+	};
+	client: { anonymized: boolean; archived: boolean; id: string; name: string };
+	items: ServiceOrderItemView[];
+	quote: { code: string; id: string };
+	receivable: ReceivableView | null;
+	revision: ServiceOrderRevisionView;
+	serviceOrder: {
+		clientId: string;
+		code: string;
+		createdAt: string;
+		id: string;
+		openedOn: string;
+		quoteId: string;
+		updatedAt: string;
+		version: number;
+	};
+};
+
+export type ServiceOrderListItemView = {
+	clientId: string;
+	clientName: string;
+	code: string;
+	dueOn: string | null;
+	id: string;
+	itemCount: number;
+	openedOn: string;
+	shortage: boolean;
+	totalCents: string;
+};
+
+export function itemMaterials(item: ServiceOrderItemView): MaterialRowView[] {
+	const reserved = new Map(
+		item.reservations.map((row) => [row.variantId, BigInt(row.reservedMicros)])
+	);
+	return linePlannedMaterials(quoteLineOfText(item.line)).map((material) => {
+		const reservedMicros = reserved.get(material.variantId) ?? 0n;
+		const shortageMicros = material.quantityMicros - reservedMicros;
+		return {
+			...citation(item.line, material.variantId),
+			plannedMicros: material.quantityMicros,
+			reservedMicros,
+			shortageMicros: shortageMicros > 0n ? shortageMicros : 0n,
+			variantId: material.variantId,
+		};
+	});
+}
+
+export function subitemsLabel(count: number): string {
+	if (count === 0) {
+		return "sem subitens";
+	}
+	return count === 1 ? "1 subitem" : `${count} subitens`;
+}
+
+export function receivableLabel(totalCents: string): string {
+	return BigInt(totalCents) > 0n ? moneyLabel(totalCents) : "sem cobrança";
+}
+
+export type ClosingStep = { label: string; state: "done" | "pending" };
+
+export function closingSteps({
+	items,
+	receivable,
+}: Pick<ServiceOrderDetailView, "items" | "receivable">): ClosingStep[] {
+	const work = items.length === 0 ? "done" : "pending";
+	return [
+		{ label: "Todos os subitens reconciliados", state: work },
+		{ label: "Todos entregues ou cancelados", state: work },
+		{
+			label: "Financeiro resolvido",
+			state: receivable === null ? "done" : "pending",
+		},
+	];
+}
+
+export function productionSummary(
+	items: readonly Pick<ServiceOrderItemView, "kind">[]
+): string {
+	return items.some((item) => item.kind !== "material")
+		? "não iniciada"
+		: "sem produção";
+}
+
+export function deliverySummary(items: readonly unknown[]): string {
+	if (items.length === 0) {
+		return "nada a entregar";
+	}
+	return items.length === 1
+		? "0 de 1 entregue"
+		: `0 de ${items.length} entregues`;
+}
+
+export function financialSummary(
+	receivable: Pick<ReceivableView, "amountCents"> | null
+): string {
+	return receivable === null
+		? "sem cobrança"
+		: `a receber · ${moneyLabel(receivable.amountCents)}`;
+}
+
+export function dueLabel(
+	dueOn: string | null,
+	today: string
+): { late: boolean; text: string } {
+	return dueOn === null
+		? { late: false, text: "a combinar" }
+		: { late: dueOn < today, text: formatDay(dueOn) };
+}
+
+export function estimatedMargin(
+	revision: Pick<
+		ServiceOrderRevisionView,
+		"costCents" | "targetMarginBasisPoints" | "totalCents"
+	>
+): Pricing | null {
+	return revision.costCents === null
+		? null
+		: pricingOf({
+				costCents: BigInt(revision.costCents),
+				priceCents: BigInt(revision.totalCents),
+				targetMarginBasisPoints: revision.targetMarginBasisPoints,
+			});
+}

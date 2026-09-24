@@ -18,6 +18,7 @@ import {
 	quoteEmitPayload,
 	quoteRefusePayload,
 } from "@costura-pro/api/quotes/schemas";
+import { quoteApprovePayload } from "@costura-pro/api/service-orders/schemas";
 import {
 	serviceCreatePayload,
 	servicePatchPayload,
@@ -36,6 +37,7 @@ import {
 	withCount,
 	withDetails,
 } from "../src/lib/inventory";
+import type { MeasurementView } from "../src/lib/measurements";
 import {
 	emptyProductValues,
 	emptyProductVariantValues,
@@ -74,6 +76,12 @@ import {
 	serviceLineDraft,
 	serviceLineOf,
 } from "../src/lib/quote-drafts";
+import type { QuoteLineView, QuoteRevisionView } from "../src/lib/quotes";
+import {
+	approvalFields,
+	approvalIds,
+	approvalPreview,
+} from "../src/lib/service-orders";
 import {
 	emptyServiceValues,
 	type ServiceView,
@@ -83,6 +91,8 @@ import {
 } from "../src/lib/services";
 
 const uuid = () => crypto.randomUUID();
+
+const uuidPattern = /^[0-9a-f-]{36}$/;
 
 const fabric: VariantOptionView = {
 	baseUnit: "m",
@@ -515,5 +525,95 @@ describe("orçamento", () => {
 			reason: null,
 			refusedOn: "2026-09-24",
 		});
+	});
+
+	function revisionOf(content: QuoteLineView[]): QuoteRevisionView {
+		return {
+			content: {
+				discount: null,
+				leadTimeDays: 20,
+				lines: content.map((line) => ({
+					...line,
+					costCents: null,
+					discountCents: "0",
+					grossCents: "0",
+					totalCents: "0",
+				})),
+				notes: null,
+				validityDays: 15,
+			},
+			costCents: null,
+			createdAt: "2026-09-20T12:00:00.000Z",
+			discountCents: "0",
+			emittedOn: "2026-09-20",
+			grossCents: "0",
+			id: uuid(),
+			number: 1,
+			quoteId: uuid(),
+			reason: null,
+			targetMarginBasisPoints: 4000,
+			totalCents: "0",
+			validUntil: "2026-10-05",
+			version: 1,
+		};
+	}
+
+	function approvalOf(
+		revision: QuoteRevisionView,
+		measurements: MeasurementView[]
+	) {
+		return approvalFields({
+			draft: {
+				approvedOn: "2026-09-22",
+				channel: "inPerson",
+				dueOn: "2026-10-12",
+				note: " Aceitou na prova ",
+			},
+			ids: approvalIds(revision, uuid),
+			preview: approvalPreview(revision, measurements, []),
+			quoteId: revision.quoteId,
+			revisionId: revision.id,
+		});
+	}
+
+	test("aprovação montada pela tela passa no schema real", () => {
+		const { approvalId, ...payload } = approvalOf(revisionOf(lines()), []);
+		const parsed: unknown = quoteApprovePayload.parse(payload);
+		expect(parsed).toEqual(payload);
+		expect(approvalId).toMatch(uuidPattern);
+	});
+
+	test("aprovação com as medidas congeladas do perfil passa no schema real", () => {
+		const profileId = uuid();
+		const measurement: MeasurementView = {
+			archivedAt: null,
+			createdAt: "2026-09-01T12:00:00.000Z",
+			fields: [
+				{ fieldId: uuid(), label: "Busto", valueMm: 880 },
+				{ fieldId: uuid(), label: "Cintura", valueMm: null },
+			],
+			id: uuid(),
+			notes: "Prova com salto",
+			profileId,
+			takenOn: "2026-09-01",
+			templateId: uuid(),
+			templateName: "Vestido",
+			templateVersion: 2,
+			version: 1,
+		};
+		const revision = revisionOf(
+			lines().map((line) =>
+				line.kind === "service" || line.kind === "custom"
+					? { ...line, profileId }
+					: line
+			)
+		);
+		const { approvalId, ...payload } = approvalOf(revision, [measurement]);
+		expect(
+			payload.items.filter((item) => item.measurements.length > 0).length
+		).toBeGreaterThan(0);
+		const parsed: unknown = quoteApprovePayload.parse(payload);
+		expect(parsed).toEqual(payload);
+		expect(approvalId).toMatch(uuidPattern);
 	});
 });

@@ -586,6 +586,32 @@ export function PiecePage({
 		);
 	}
 
+	const { approval } = detail.data ?? session.detail;
+	if (approval) {
+		return (
+			<Alert tone="warning">
+				<AlertTitle>{`Este orçamento foi aprovado e abriu a ${approval.serviceOrderCode}.`}</AlertTitle>
+				<AlertDescription>
+					O orçamento aprovado fica só leitura. Mudança de preço, prazo ou
+					material chega com a revisão comercial da OS.
+				</AlertDescription>
+				<AlertActions>
+					<ButtonLink
+						render={
+							<Link
+								params={{ orcamentoId: quoteId }}
+								to="/orcamentos/$orcamentoId"
+							/>
+						}
+						variant="outline"
+					>
+						Voltar para o orçamento
+					</ButtonLink>
+				</AlertActions>
+			</Alert>
+		);
+	}
+
 	const reload = async () => {
 		const fresh = await detail.refetch();
 		const { data } = fresh;

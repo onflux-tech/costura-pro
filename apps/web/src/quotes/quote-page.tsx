@@ -28,6 +28,7 @@ import {
 } from "@/lib/quote-drafts";
 import {
 	latestRevisionOf,
+	type QuoteApprovalView,
 	type QuoteContentView,
 	type QuoteDetailView,
 	type QuoteLineView,
@@ -39,11 +40,12 @@ import { pricingSettingsQuery } from "@/pricing/pricing-queries";
 import { usePageHeader } from "@/shell/page-header";
 import { client as api } from "@/utils/orpc";
 
+import { ApprovedQuote } from "./approved-quote";
 import { ConditionsDialog } from "./conditions-dialog";
 import { FreeLineDialog } from "./free-line-dialog";
 import { MaterialLineDialog } from "./material-line-dialog";
 import { PlannedMaterialsPanel } from "./planned-materials-panel";
-import { QuoteActions } from "./quote-actions";
+import { ApprovedQuoteActions, QuoteActions } from "./quote-actions";
 import { QuoteHeader } from "./quote-header";
 import { QuoteInternalPanel } from "./quote-internal-panel";
 import { type NewLineKind, QuoteLinesPanel } from "./quote-lines-panel";
@@ -210,6 +212,7 @@ function QuoteWorkspace({
 							<QuoteActions
 								detail={detail}
 								onFailure={setFailure}
+								people={people}
 								summary={summary}
 								targetKnown={target !== null}
 							/>
@@ -306,6 +309,35 @@ function QuoteWorkspace({
 	);
 }
 
+function ApprovedWorkspace({
+	approval,
+	detail,
+}: {
+	approval: QuoteApprovalView;
+	detail: QuoteDetailView;
+}) {
+	const { people } = usePeople(detail.client.id);
+	const [failure, setFailure] = useState<ClientCommandFailure | null>(null);
+	return (
+		<div className="flex flex-col gap-4">
+			{failure ? (
+				<Alert role="alert" tone="danger">
+					<AlertTitle>Não foi possível mudar o orçamento</AlertTitle>
+					<AlertDescription>{failure.message}</AlertDescription>
+				</Alert>
+			) : null}
+			<ApprovedQuote
+				actions={
+					<ApprovedQuoteActions onFailure={setFailure} quote={detail.quote} />
+				}
+				approval={approval}
+				detail={detail}
+				people={people}
+			/>
+		</div>
+	);
+}
+
 export function QuotePage({ quoteId }: { quoteId: string }) {
 	const detail = useQuery(quoteQuery(quoteId));
 	usePageHeader({
@@ -333,6 +365,11 @@ export function QuotePage({ quoteId }: { quoteId: string }) {
 					</ButtonLink>
 				</AlertActions>
 			</Alert>
+		);
+	}
+	if (detail.data.approval) {
+		return (
+			<ApprovedWorkspace approval={detail.data.approval} detail={detail.data} />
 		);
 	}
 	return <QuoteWorkspace detail={detail.data} onReload={detail.refetch} />;

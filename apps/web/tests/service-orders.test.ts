@@ -1,0 +1,620 @@
+import { describe, expect, test } from "bun:test";
+
+import type { MeasurementView } from "../src/lib/measurements";
+import type {
+	FrozenLineView,
+	QuoteLineView,
+	QuoteRevisionView,
+} from "../src/lib/quotes";
+import {
+	acceptanceHint,
+	approvalBlocker,
+	approvalChannelLabels,
+	approvalDraft,
+	approvalErrors,
+	approvalFields,
+	approvalIds,
+	approvalPreview,
+	closingSteps,
+	deliverySummary,
+	dueLabel,
+	estimatedMargin,
+	financialSummary,
+	itemMaterials,
+	productionSummary,
+	receivableLabel,
+	type ServiceOrderDetailView,
+	subitemsLabel,
+} from "../src/lib/service-orders";
+
+const id = (n: number) =>
+	`00000000-0000-4000-8000-${String(n).padStart(12, "0")}`;
+
+function sequence(start: number): () => string {
+	let next = start;
+	return () => {
+		next += 1;
+		return id(next);
+	};
+}
+
+const maria = id(50);
+const crepe = id(81);
+const zipper = id(89);
+
+function frozen(line: QuoteLineView, totalCents = "0"): FrozenLineView {
+	return {
+		...line,
+		costCents: null,
+		discountCents: "0",
+		grossCents: totalCents,
+		totalCents,
+	};
+}
+
+const service = frozen({
+	catalogPriceCents: "16000",
+	discount: null,
+	estimatedMinutes: 90,
+	id: id(1),
+	kind: "service",
+	note: null,
+	outsourced: false,
+	profileId: maria,
+	quantity: 1,
+	receivedItemId: id(60),
+	serviceId: id(70),
+	serviceName: "Ajuste de cava",
+	serviceVersion: 1,
+	unitCostCents: "6000",
+	unitPriceCents: "16000",
+});
+
+const piece = frozen({
+	components: [
+		{
+			baseUnit: "m",
+			code: "CRP-PT",
+			displayPrecision: 2,
+			id: id(11),
+			kind: "material",
+			materialName: "Crepe",
+			materialVariantId: crepe,
+			quantityMicros: "3400000",
+			unitCostCents: "3000",
+			variantName: "Preto",
+		},
+		{
+			baseUnit: "un",
+			code: null,
+			displayPrecision: 0,
+			id: id(12),
+			kind: "material",
+			materialName: "Zíper",
+			materialVariantId: zipper,
+			quantityMicros: "1000000",
+			unitCostCents: "370",
+			variantName: "20 cm",
+		},
+	],
+	description: "Vestido de festa",
+	discount: null,
+	id: id(2),
+	kind: "custom",
+	note: null,
+	profileId: maria,
+	quantity: 1,
+	source: null,
+	unitPriceCents: "98000",
+});
+
+const material = frozen({
+	baseUnit: "un",
+	code: null,
+	discount: null,
+	displayPrecision: 0,
+	id: id(3),
+	kind: "material",
+	materialName: "Zíper",
+	materialVariantId: zipper,
+	note: null,
+	quantityMicros: "2000000",
+	unitCostCents: "370",
+	unitPriceCents: "800",
+	variantName: "20 cm",
+});
+
+const rush = frozen({
+	description: "Taxa de urgência",
+	discount: null,
+	id: id(4),
+	kind: "free",
+	note: null,
+	quantity: 1,
+	unitCostCents: "0",
+	unitPriceCents: "5000",
+});
+
+const revision: QuoteRevisionView = {
+	content: {
+		discount: null,
+		leadTimeDays: 20,
+		lines: [service, piece, material, rush],
+		notes: null,
+		validityDays: 15,
+	},
+	costCents: "62350",
+	createdAt: "2026-09-20T12:00:00.000Z",
+	discountCents: "0",
+	emittedOn: "2026-09-20",
+	grossCents: "120600",
+	id: id(100),
+	number: 1,
+	quoteId: id(99),
+	reason: null,
+	targetMarginBasisPoints: 4000,
+	totalCents: "120600",
+	validUntil: "2026-10-05",
+	version: 1,
+};
+
+function measurement(
+	n: number,
+	templateName: string,
+	takenOn: string,
+	overrides: Partial<MeasurementView> = {}
+): MeasurementView {
+	return {
+		archivedAt: null,
+		createdAt: `${takenOn}T12:00:00.000Z`,
+		fields: [{ fieldId: id(200 + n), label: "Busto", valueMm: 880 }],
+		id: id(300 + n),
+		notes: null,
+		profileId: maria,
+		takenOn,
+		templateId: id(400 + n),
+		templateName,
+		templateVersion: 1,
+		version: 1,
+		...overrides,
+	};
+}
+
+const measurements = [
+	measurement(1, "Vestido", "2026-09-01"),
+	measurement(2, "Blazer e paletó", "2026-09-10"),
+	measurement(3, "Vestido", "2026-08-01", { templateId: id(401) }),
+];
+
+const stock = [
+	{ quantityMicros: "2500000", reservedMicros: "1000000", variantId: crepe },
+	{ quantityMicros: "5000000", reservedMicros: "0", variantId: zipper },
+];
+
+describe("prévia da aprovação", () => {
+	const preview = approvalPreview(revision, measurements, stock);
+
+	test("lista as linhas de trabalho com as medidas atuais e deixa a livre só no valor", () => {
+		expect(preview.items.map((item) => [item.kind, item.title])).toEqual([
+			["service", "Ajuste de cava"],
+			["custom", "Vestido de festa"],
+			["material", "Zíper · 20 cm"],
+		]);
+		expect(preview.freeLines).toEqual(["Taxa de urgência"]);
+		expect(
+			preview.items.map((item) =>
+				item.measurements.map((snapshot) => snapshot.templateName)
+			)
+		).toEqual([
+			["Blazer e paletó", "Vestido"],
+			["Blazer e paletó", "Vestido"],
+			[],
+		]);
+		expect(preview.items[0]?.measurements[1]).toEqual({
+			fields: [{ fieldId: id(201), label: "Busto", valueMm: 880 }],
+			measurementId: id(301),
+			notes: null,
+			takenOn: "2026-09-01",
+			templateId: id(401),
+			templateName: "Vestido",
+			templateVersion: 1,
+		});
+		expect(preview.items.map((item) => item.missingMeasurements)).toEqual([
+			false,
+			false,
+			false,
+		]);
+	});
+
+	test("reserva pelo disponível e mostra a falta, com o total a receber", () => {
+		expect(
+			preview.items.map((item) =>
+				item.reservations.map((reservation) => [
+					reservation.label,
+					reservation.plannedMicros,
+					reservation.reservedMicros,
+					reservation.shortageMicros,
+				])
+			)
+		).toEqual([
+			[],
+			[
+				["Crepe · Preto", 3_400_000n, 1_500_000n, 1_900_000n],
+				["Zíper · 20 cm", 1_000_000n, 1_000_000n, 0n],
+			],
+			[["Zíper · 20 cm", 2_000_000n, 2_000_000n, 0n]],
+		]);
+		expect(preview.shortage).toBe(true);
+		expect(preview.receivableCents).toBe(120_600n);
+	});
+
+	test("avisa o perfil sem medida e ignora medição arquivada", () => {
+		const archived = measurements.map((item) => ({
+			...item,
+			archivedAt: "2026-09-20T12:00:00.000Z",
+		}));
+		const lonely = approvalPreview(revision, archived, stock);
+		expect(lonely.items.map((item) => item.missingMeasurements)).toEqual([
+			true,
+			true,
+			false,
+		]);
+		expect(lonely.items[0]?.measurements).toEqual([]);
+	});
+
+	test("sem a leitura das medidas não afirma que o perfil está sem medida", () => {
+		const unknown = approvalPreview(revision, null, stock);
+		expect(unknown.items.map((item) => item.missingMeasurements)).toEqual([
+			false,
+			false,
+			false,
+		]);
+		expect(unknown.items.map((item) => item.measurements)).toEqual([
+			[],
+			[],
+			[],
+		]);
+	});
+});
+
+describe("leitura das medidas para aprovar", () => {
+	test("só libera com as medidas lidas depois de abrir o diálogo", () => {
+		expect(approvalBlocker({ failed: false, fresh: false })).toBe(
+			"Conferindo as medidas atuais do cliente."
+		);
+		expect(approvalBlocker({ failed: true, fresh: false })).toBe(
+			"Não foi possível ler as medidas atuais do cliente. Tente de novo."
+		);
+		expect(approvalBlocker({ failed: false, fresh: true })).toBeNull();
+	});
+});
+
+describe("rascunho e erros da aprovação", () => {
+	test("a dica da data diz a janela do aceite, ou o dia único", () => {
+		expect(acceptanceHint(revision, "2026-09-24")).toBe(
+			"Entre 20/09/2026 e 24/09/2026."
+		);
+		expect(acceptanceHint(revision, "2026-10-20")).toBe(
+			"Entre 20/09/2026 e 05/10/2026."
+		);
+		expect(acceptanceHint(revision, "2026-09-20")).toBe(
+			"Só 20/09/2026, o dia da emissão."
+		);
+	});
+
+	test("sugere o aceite de hoje limitado à validade e o prazo pela revisão", () => {
+		expect(approvalDraft(revision, "2026-09-22")).toEqual({
+			approvedOn: "2026-09-22",
+			channel: null,
+			dueOn: "2026-10-12",
+			note: "",
+		});
+		expect(approvalDraft(revision, "2026-10-20").approvedOn).toBe("2026-10-05");
+		expect(
+			approvalDraft(
+				{ ...revision, content: { ...revision.content, leadTimeDays: null } },
+				"2026-09-22"
+			).dueOn
+		).toBe("");
+	});
+
+	test("explica cada campo errado", () => {
+		const ok = {
+			approvedOn: "2026-09-22",
+			channel: "whatsapp" as const,
+			dueOn: "2026-10-12",
+			note: "",
+		};
+		expect(approvalErrors(ok, revision, "2026-09-24")).toEqual({});
+		expect(
+			approvalErrors(
+				{ ...ok, approvedOn: "2026-02-30" },
+				revision,
+				"2026-09-24"
+			).approvedOn
+		).toBe("Data inválida");
+		expect(
+			approvalErrors(
+				{ ...ok, approvedOn: "2026-09-25" },
+				revision,
+				"2026-09-24"
+			).approvedOn
+		).toBe("Use uma data até hoje");
+		expect(
+			approvalErrors(
+				{ ...ok, approvedOn: "2026-09-19" },
+				revision,
+				"2026-09-24"
+			).approvedOn
+		).toBe("O aceite não pode ser antes da emissão da revisão");
+		expect(
+			approvalErrors(
+				{ ...ok, approvedOn: "2026-10-06" },
+				revision,
+				"2026-10-10"
+			).approvedOn
+		).toBe(
+			"A revisão valia até 05/10/2026. Emita uma revisão nova para registrar este aceite."
+		);
+		expect(
+			approvalErrors({ ...ok, channel: null }, revision, "2026-09-24").channel
+		).toBe("Escolha o canal");
+		expect(
+			approvalErrors({ ...ok, note: "a".repeat(201) }, revision, "2026-09-24")
+				.note
+		).toBe("Use até 200 caracteres");
+		expect(
+			approvalErrors({ ...ok, dueOn: "2026-09-21" }, revision, "2026-09-24")
+				.dueOn
+		).toBe("O prazo não pode ser antes do aceite");
+		expect(
+			approvalErrors({ ...ok, dueOn: "12/10/2026" }, revision, "2026-09-24")
+				.dueOn
+		).toBe("Data inválida");
+		expect(
+			approvalErrors({ ...ok, dueOn: " " }, revision, "2026-09-24").dueOn
+		).toBeUndefined();
+	});
+});
+
+describe("ids e payload da aprovação", () => {
+	test("sorteia um id por subitem e por reserva prevista", () => {
+		const ids = approvalIds(revision, sequence(1000));
+		expect([...ids.items.keys()]).toEqual([id(1), id(2), id(3)]);
+		expect([...(ids.items.get(id(2))?.reservations.keys() ?? [])]).toEqual([
+			crepe,
+			zipper,
+		]);
+		expect(ids.items.get(id(1))?.reservations.size).toBe(0);
+		const all = [
+			ids.approvalId,
+			ids.receivableId,
+			ids.serviceOrderId,
+			...[...ids.items.values()].flatMap((item) => [
+				item.itemId,
+				...item.reservations.values(),
+			]),
+		];
+		expect(new Set(all).size).toBe(all.length);
+	});
+
+	test("monta o payload com a nota aparada, o prazo vazio como nulo e os subitens na ordem", () => {
+		const ids = approvalIds(revision, sequence(1000));
+		const preview = approvalPreview(revision, measurements, stock);
+		const fields = approvalFields({
+			draft: {
+				approvedOn: "2026-09-22",
+				channel: "phone",
+				dueOn: "",
+				note: "   ",
+			},
+			ids,
+			preview,
+			quoteId: revision.quoteId,
+			revisionId: revision.id,
+		});
+		expect(fields).toMatchObject({
+			approvalId: ids.approvalId,
+			approvedOn: "2026-09-22",
+			channel: "phone",
+			dueOn: null,
+			note: null,
+			quoteId: revision.quoteId,
+			receivableId: ids.receivableId,
+			revisionId: revision.id,
+			serviceOrderId: ids.serviceOrderId,
+		});
+		expect(fields.items.map((item) => item.lineId)).toEqual([
+			id(1),
+			id(2),
+			id(3),
+		]);
+		expect(fields.items[1]?.reservations).toEqual([
+			{
+				reservationId: ids.items.get(id(2))?.reservations.get(crepe) ?? "",
+				variantId: crepe,
+			},
+			{
+				reservationId: ids.items.get(id(2))?.reservations.get(zipper) ?? "",
+				variantId: zipper,
+			},
+		]);
+		expect(
+			approvalFields({
+				draft: {
+					approvedOn: "2026-09-22",
+					channel: "phone",
+					dueOn: "2026-10-12",
+					note: " Aceitou ",
+				},
+				ids,
+				preview,
+				quoteId: revision.quoteId,
+				revisionId: revision.id,
+			})
+		).toMatchObject({ dueOn: "2026-10-12", note: "Aceitou" });
+	});
+
+	test("rótulos dos canais", () => {
+		expect(approvalChannelLabels).toEqual({
+			email: "E-mail",
+			inPerson: "Presencial",
+			other: "Outro",
+			phone: "Telefone",
+			whatsapp: "WhatsApp",
+		});
+	});
+});
+
+function detailOf(
+	overrides: Partial<ServiceOrderDetailView> = {}
+): ServiceOrderDetailView {
+	return {
+		approval: {
+			approvedOn: "2026-09-22",
+			channel: "whatsapp",
+			createdAt: "2026-09-22T12:00:00.000Z",
+			id: id(500),
+			note: null,
+			quoteId: revision.quoteId,
+			revisionId: revision.id,
+			serviceOrderId: id(600),
+			version: 1,
+		},
+		client: { anonymized: false, archived: false, id: id(700), name: "Maria" },
+		items: [service, piece, material].map((line, position) => ({
+			createdAt: "2026-09-22T12:00:00.000Z",
+			dueOn: "2026-10-12",
+			id: id(800 + position),
+			kind: line.kind === "free" ? "service" : line.kind,
+			line: line as ServiceOrderDetailView["items"][number]["line"],
+			lineId: line.id,
+			measurements: [],
+			position,
+			reservations:
+				position === 1
+					? [
+							{ reservedMicros: "1500000", variantId: crepe },
+							{ reservedMicros: "1000000", variantId: zipper },
+						]
+					: [],
+			serviceOrderId: id(600),
+			version: 1,
+		})),
+		quote: { code: "ORC-2026-PC-0001", id: revision.quoteId },
+		receivable: {
+			amountCents: "120600",
+			clientId: id(700),
+			createdAt: "2026-09-22T12:00:00.000Z",
+			id: id(900),
+			kind: "serviceOrder",
+			occurredOn: "2026-09-22",
+			serviceOrderId: id(600),
+			version: 1,
+		},
+		revision: {
+			costCents: "62350",
+			discountCents: "0",
+			emittedOn: "2026-09-20",
+			grossCents: "120600",
+			id: revision.id,
+			number: 1,
+			targetMarginBasisPoints: 4000,
+			totalCents: "120600",
+			validUntil: "2026-10-05",
+		},
+		serviceOrder: {
+			clientId: id(700),
+			code: "OS-2026-PC-0001",
+			createdAt: "2026-09-22T12:00:00.000Z",
+			id: id(600),
+			openedOn: "2026-09-22",
+			quoteId: revision.quoteId,
+			updatedAt: "2026-09-22T12:00:00.000Z",
+			version: 1,
+		},
+		...overrides,
+	};
+}
+
+describe("estados e valores da OS", () => {
+	test("materiais de cada subitem com o reservado e a falta", () => {
+		const detail = detailOf();
+		expect(
+			detail.items.map((item) =>
+				itemMaterials(item).map((row) => [
+					row.label,
+					row.plannedMicros,
+					row.reservedMicros,
+					row.shortageMicros,
+				])
+			)
+		).toEqual([
+			[],
+			[
+				["Crepe · Preto", 3_400_000n, 1_500_000n, 1_900_000n],
+				["Zíper · 20 cm", 1_000_000n, 1_000_000n, 0n],
+			],
+			[["Zíper · 20 cm", 2_000_000n, 0n, 2_000_000n]],
+		]);
+	});
+
+	test("resume produção, entrega e financeiro", () => {
+		const detail = detailOf();
+		expect(productionSummary(detail.items)).toBe("não iniciada");
+		expect(productionSummary([])).toBe("sem produção");
+		expect(
+			productionSummary(detail.items.filter((item) => item.kind === "material"))
+		).toBe("sem produção");
+		expect(deliverySummary(detail.items)).toBe("0 de 3 entregues");
+		expect(deliverySummary(detail.items.slice(0, 1))).toBe("0 de 1 entregue");
+		expect(deliverySummary([])).toBe("nada a entregar");
+		expect(financialSummary(detail.receivable)).toBe("a receber · R$ 1.206,00");
+		expect(financialSummary(null)).toBe("sem cobrança");
+	});
+
+	test("prazo a combinar, no dia e vencido", () => {
+		expect(dueLabel(null, "2026-09-24")).toEqual({
+			late: false,
+			text: "a combinar",
+		});
+		expect(dueLabel("2026-10-12", "2026-10-12")).toEqual({
+			late: false,
+			text: "12/10/2026",
+		});
+		expect(dueLabel("2026-10-12", "2026-10-13")).toEqual({
+			late: true,
+			text: "12/10/2026",
+		});
+	});
+
+	test("margem estimada na aprovação, sem margem com custo incompleto", () => {
+		const detail = detailOf();
+		expect(estimatedMargin(detail.revision)).toMatchObject({
+			belowCost: false,
+			marginBasisPoints: 4830,
+		});
+		expect(estimatedMargin({ ...detail.revision, costCents: null })).toBeNull();
+	});
+});
+
+describe("textos da lista e do encerramento da OS", () => {
+	test("conta os subitens e mostra a cobrança", () => {
+		expect(subitemsLabel(0)).toBe("sem subitens");
+		expect(subitemsLabel(1)).toBe("1 subitem");
+		expect(subitemsLabel(3)).toBe("3 subitens");
+		expect(receivableLabel("120600")).toBe("R$ 1.206,00");
+		expect(receivableLabel("0")).toBe("sem cobrança");
+	});
+
+	test("encerramento pendente, com o que não existe já resolvido", () => {
+		expect(closingSteps(detailOf())).toEqual([
+			{ label: "Todos os subitens reconciliados", state: "pending" },
+			{ label: "Todos entregues ou cancelados", state: "pending" },
+			{ label: "Financeiro resolvido", state: "pending" },
+		]);
+		expect(
+			closingSteps({ items: [], receivable: null }).map((step) => step.state)
+		).toEqual(["done", "done", "done"]);
+	});
+});

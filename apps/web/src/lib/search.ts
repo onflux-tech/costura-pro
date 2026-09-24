@@ -4,7 +4,9 @@ import { searchLimits } from "@costura-pro/domain/search";
 import type { BaseUnitCode } from "@costura-pro/domain/unit";
 
 import { moneyLabel } from "./finance";
+import { formatDay } from "./measurements";
 import { statusLabels } from "./quotes";
+import { receivableLabel, subitemsLabel } from "./service-orders";
 import { balanceQuantity } from "./stock";
 
 type Group<T> = { items: T[]; total: number };
@@ -56,6 +58,7 @@ export type ParentHitView<V> = {
 };
 
 export type QuoteHitView = {
+	approved: boolean;
 	archived: boolean;
 	clientName: string;
 	code: string;
@@ -64,6 +67,15 @@ export type QuoteHitView = {
 	revisionNumber: number | null;
 	totalCents: string;
 	validUntil: string | null;
+};
+
+export type ServiceOrderHitView = {
+	clientName: string;
+	code: string;
+	dueOn: string | null;
+	id: string;
+	itemCount: number;
+	totalCents: string;
 };
 
 export type ServiceHitView = {
@@ -81,6 +93,7 @@ export type SearchView = {
 	products: Group<ParentHitView<ProductVariantHitView>>;
 	profiles: Group<ProfileHitView>;
 	quotes: Group<QuoteHitView>;
+	serviceOrders: Group<ServiceOrderHitView>;
 	services: Group<ServiceHitView>;
 };
 
@@ -97,6 +110,7 @@ export const searchGroupOrder = [
 	"clients",
 	"profiles",
 	"quotes",
+	"serviceOrders",
 	"products",
 	"materials",
 	"services",
@@ -108,6 +122,7 @@ export const groupParamValues = [
 	"clientes",
 	"perfis",
 	"orcamentos",
+	"os",
 	"produtos",
 	"materiais",
 	"servicos",
@@ -121,19 +136,46 @@ export const groupParams: Record<SearchGroupKey, GroupParam> = {
 	products: "produtos",
 	profiles: "perfis",
 	quotes: "orcamentos",
+	serviceOrders: "os",
 	services: "servicos",
 };
 
 const groupNames: Record<
 	SearchGroupKey,
-	{ label: string; many: string; one: string }
+	{ article: "as" | "os"; label: string; many: string; one: string }
 > = {
-	clients: { label: "Clientes", many: "clientes", one: "cliente" },
-	materials: { label: "Materiais", many: "materiais", one: "material" },
-	products: { label: "Produtos", many: "produtos", one: "produto" },
-	profiles: { label: "Perfis", many: "perfis", one: "perfil" },
-	quotes: { label: "Orçamentos", many: "orçamentos", one: "orçamento" },
-	services: { label: "Serviços", many: "serviços", one: "serviço" },
+	clients: {
+		article: "os",
+		label: "Clientes",
+		many: "clientes",
+		one: "cliente",
+	},
+	materials: {
+		article: "os",
+		label: "Materiais",
+		many: "materiais",
+		one: "material",
+	},
+	products: {
+		article: "os",
+		label: "Produtos",
+		many: "produtos",
+		one: "produto",
+	},
+	profiles: { article: "os", label: "Perfis", many: "perfis", one: "perfil" },
+	quotes: {
+		article: "os",
+		label: "Orçamentos",
+		many: "orçamentos",
+		one: "orçamento",
+	},
+	serviceOrders: { article: "as", label: "OS", many: "OS", one: "OS" },
+	services: {
+		article: "os",
+		label: "Serviços",
+		many: "serviços",
+		one: "serviço",
+	},
 };
 
 export type PaletteOption =
@@ -152,6 +194,12 @@ export type PaletteOption =
 			label: string;
 	  }
 	| { hit: QuoteHitView; id: string; kind: "quotes"; label: string }
+	| {
+			hit: ServiceOrderHitView;
+			id: string;
+			kind: "serviceOrders";
+			label: string;
+	  }
 	| { hit: ServiceHitView; id: string; kind: "services"; label: string }
 	| { id: "all"; kind: "all"; label: string }
 	| { id: "archived"; kind: "archived"; label: string };
@@ -243,16 +291,27 @@ export function moreVariants(
 export function quoteDetail(
 	hit: Pick<
 		QuoteHitView,
-		"clientName" | "refused" | "totalCents" | "validUntil"
+		"approved" | "clientName" | "refused" | "totalCents" | "validUntil"
 	>,
 	today: string
 ): string {
 	const status = quoteStatus({
+		approved: hit.approved,
 		refused: hit.refused,
 		today,
 		validUntil: hit.validUntil,
 	});
 	return `${hit.clientName} · ${statusLabels[status]} · ${moneyLabel(hit.totalCents)}`;
+}
+
+export function serviceOrderDetail(
+	hit: Pick<
+		ServiceOrderHitView,
+		"clientName" | "dueOn" | "itemCount" | "totalCents"
+	>
+): string {
+	const due = hit.dueOn === null ? "a combinar" : formatDay(hit.dueOn);
+	return `${hit.clientName} · ${subitemsLabel(hit.itemCount)} · prazo ${due} · ${receivableLabel(hit.totalCents)}`;
 }
 
 export function serviceDetail(
@@ -301,6 +360,12 @@ function optionsOf(
 			hit,
 			id: `quotes:${hit.id}`,
 			kind: "quotes",
+			label: hit.code,
+		})),
+		serviceOrders: firstOf(result.serviceOrders.items).map((hit) => ({
+			hit,
+			id: `serviceOrders:${hit.id}`,
+			kind: "serviceOrders",
 			label: hit.code,
 		})),
 		services: firstOf(result.services.items).map((hit) => ({
@@ -358,7 +423,8 @@ export function groupOfParam(param: string | undefined): SearchGroupKey | null {
 }
 
 export function seeGroupLabel(key: SearchGroupKey, total: number): string {
-	return `Ver os ${total} ${groupNames[key].many}`;
+	const { article, many } = groupNames[key];
+	return `Ver ${article} ${total} ${many}`;
 }
 
 function listed(parts: readonly string[]): string {

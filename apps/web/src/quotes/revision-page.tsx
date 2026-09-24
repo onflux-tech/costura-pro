@@ -42,7 +42,11 @@ function marginText(margin: number | null): string {
 	return margin === null ? "sem preço" : formatMarginPercent(margin);
 }
 
-function RevisionInternal({ revision }: { revision: QuoteRevisionView }) {
+export function RevisionInternal({
+	revision,
+}: {
+	revision: QuoteRevisionView;
+}) {
 	const pricing =
 		revision.costCents === null
 			? null
@@ -84,6 +88,41 @@ function RevisionInternal({ revision }: { revision: QuoteRevisionView }) {
 							: "sem custo completo"
 					}
 				/>
+			</PanelContent>
+		</Panel>
+	);
+}
+
+export function RevisionTotals({ revision }: { revision: QuoteRevisionView }) {
+	const { content } = revision;
+	return (
+		<Panel>
+			<PanelHeader>
+				<PanelTitle>Totais e condições</PanelTitle>
+			</PanelHeader>
+			<PanelContent className="flex flex-col gap-3">
+				<Stat
+					hint={`Valor dos itens ${moneyLabel(revision.grossCents)}`}
+					label="Total ao cliente"
+					value={moneyLabel(revision.totalCents)}
+				/>
+				<Text size="xs" tone="subtle">
+					{BigInt(revision.discountCents) > 0n
+						? `Descontos ${signedMoney(String(-BigInt(revision.discountCents)))}`
+						: "Sem desconto"}
+				</Text>
+				<Text size="xs" tone="subtle">
+					{`Validade de ${days(content.validityDays)} · ${
+						content.leadTimeDays === null
+							? "prazo a combinar"
+							: `prazo de ${days(content.leadTimeDays)} após a aprovação`
+					}`}
+				</Text>
+				{content.notes ? (
+					<Text size="xs" tone="subtle">
+						{content.notes}
+					</Text>
+				) : null}
 			</PanelContent>
 		</Panel>
 	);
@@ -141,35 +180,7 @@ function RevisionView({
 				</Panel>
 			</div>
 			<div className="flex min-w-0 flex-col gap-4">
-				<Panel>
-					<PanelHeader>
-						<PanelTitle>Totais e condições</PanelTitle>
-					</PanelHeader>
-					<PanelContent className="flex flex-col gap-3">
-						<Stat
-							hint={`Valor dos itens ${moneyLabel(revision.grossCents)}`}
-							label="Total ao cliente"
-							value={moneyLabel(revision.totalCents)}
-						/>
-						<Text size="xs" tone="subtle">
-							{BigInt(revision.discountCents) > 0n
-								? `Descontos ${signedMoney(String(-BigInt(revision.discountCents)))}`
-								: "Sem desconto"}
-						</Text>
-						<Text size="xs" tone="subtle">
-							{`Validade de ${days(content.validityDays)} · ${
-								content.leadTimeDays === null
-									? "prazo a combinar"
-									: `prazo de ${days(content.leadTimeDays)} após a aprovação`
-							}`}
-						</Text>
-						{content.notes ? (
-							<Text size="xs" tone="subtle">
-								{content.notes}
-							</Text>
-						) : null}
-					</PanelContent>
-				</Panel>
+				<RevisionTotals revision={revision} />
 				<RevisionInternal revision={revision} />
 			</div>
 		</div>

@@ -308,26 +308,44 @@ describe("estado e revisões", () => {
 		expect(latestRevisionOf([older, newer])?.number).toBe(2);
 		expect(latestRevisionOf([newer, older])?.number).toBe(2);
 		expect(
-			quoteStatusOf({ refusedOn: null }, [older, newer], "2026-09-24")
+			quoteStatusOf({ refusedOn: null }, [older, newer], "2026-09-24", false)
 		).toBe("expired");
 		expect(
-			quoteStatusOf({ refusedOn: "2026-09-25" }, [older, newer], "2026-09-24")
+			quoteStatusOf(
+				{ refusedOn: "2026-09-25" },
+				[older, newer],
+				"2026-09-24",
+				false
+			)
 		).toBe("refused");
-		expect(quoteStatusOf({ refusedOn: null }, [], "2026-09-24")).toBe("draft");
-		expect(quoteStatusOf({ refusedOn: null }, [older], "2026-10-01")).toBe(
-			"emitted"
+		expect(
+			quoteStatusOf(
+				{ refusedOn: "2026-09-25" },
+				[older, newer],
+				"2026-09-24",
+				true
+			)
+		).toBe("approved");
+		expect(quoteStatusOf({ refusedOn: null }, [], "2026-09-24", false)).toBe(
+			"draft"
 		);
+		expect(
+			quoteStatusOf({ refusedOn: null }, [older], "2026-10-01", false)
+		).toBe("emitted");
 		expect(nextRevisionNumber([])).toBe(1);
 		expect(nextRevisionNumber([newer, older])).toBe(3);
 		expect(statusLabels).toEqual({
+			approved: "aprovado",
 			draft: "rascunho",
 			emitted: "emitido",
 			expired: "vencido",
 			refused: "recusado",
 		});
 		expect(
-			(["draft", "emitted", "expired", "refused"] as const).map(statusTone)
-		).toEqual(["neutral", "success", "warning", "danger"]);
+			(["approved", "draft", "emitted", "expired", "refused"] as const).map(
+				statusTone
+			)
+		).toEqual(["success", "neutral", "success", "warning", "danger"]);
 	});
 
 	test("sameContent ignora os valores calculados e acusa qualquer mudança de entrada", () => {
@@ -358,35 +376,61 @@ describe("materiais previstos e avisos", () => {
 		const rows = plannedMaterialsView(
 			[doubleDress, zipper, { ...zipper, id: id(6) }],
 			[
-				{ quantityMicros: "2000000", variantId: id(81) },
-				{ quantityMicros: "5000000", variantId: id(89) },
+				{
+					quantityMicros: "2000000",
+					reservedMicros: "500000",
+					variantId: id(81),
+				},
+				{ quantityMicros: "5000000", reservedMicros: "0", variantId: id(89) },
 			]
 		);
 		expect(rows).toEqual([
 			{
+				availableMicros: 1_500_000n,
 				baseUnit: "m",
 				code: "TEC-1",
 				displayPrecision: 2,
 				label: "Crepe georgette · Verde musgo",
 				plannedMicros: 2_800_000n,
-				shortageMicros: 800_000n,
+				reservedMicros: 500_000n,
+				shortageMicros: 1_300_000n,
 				stockMicros: 2_000_000n,
 				variantId: id(81),
 			},
 			{
+				availableMicros: 5_000_000n,
 				baseUnit: "un",
 				code: "ZIP-20",
 				displayPrecision: 0,
 				label: "Zíper invisível · 20 cm preto",
 				plannedMicros: 2_000_000n,
+				reservedMicros: 0n,
 				shortageMicros: 0n,
 				stockMicros: 5_000_000n,
 				variantId: id(89),
 			},
 		]);
 		expect(plannedMaterialsView([zipper], [])[0]).toMatchObject({
+			availableMicros: 0n,
 			shortageMicros: 1_000_000n,
 			stockMicros: 0n,
+		});
+	});
+
+	test("a falta nunca passa do previsto, com o reservado acima do físico ou o físico negativo", () => {
+		const shortage = (quantityMicros: string, reservedMicros: string) =>
+			plannedMaterialsView(
+				[zipper],
+				[{ quantityMicros, reservedMicros, variantId: id(89) }]
+			)[0];
+		expect(shortage("1000000", "1500000")).toMatchObject({
+			availableMicros: -500_000n,
+			plannedMicros: 1_000_000n,
+			shortageMicros: 1_000_000n,
+		});
+		expect(shortage("-2000000", "0")).toMatchObject({
+			availableMicros: -2_000_000n,
+			shortageMicros: 1_000_000n,
 		});
 	});
 

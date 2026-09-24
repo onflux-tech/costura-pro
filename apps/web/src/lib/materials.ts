@@ -50,6 +50,7 @@ export type VariantView = {
 
 export type VariantWithBalance = VariantView & {
 	quantityMicros: string;
+	reservedMicros: string;
 	valueCents: string;
 };
 

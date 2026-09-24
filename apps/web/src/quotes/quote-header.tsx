@@ -101,7 +101,12 @@ export function QuoteHeader({
 }) {
 	const [discarding, setDiscarding] = useState(false);
 	const { client, quote, revisions } = detail;
-	const status = quoteStatusOf(quote, revisions, localDay(new Date()));
+	const status = quoteStatusOf(
+		quote,
+		revisions,
+		localDay(new Date()),
+		detail.approval !== null
+	);
 	const latest = latestRevisionOf(revisions);
 	const changed = latest !== undefined && !sameContent(quote, latest);
 	return (

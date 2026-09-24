@@ -18,6 +18,7 @@ import {
 	type QuoteHitView,
 	quoteDetail,
 	type SearchView,
+	type ServiceOrderHitView,
 	type ShortcutEvent,
 	searchReady,
 	searchStatus,
@@ -25,6 +26,7 @@ import {
 	seeAllLabel,
 	seeGroupLabel,
 	serviceDetail,
+	serviceOrderDetail,
 } from "../src/lib/search";
 import { globalSearchParams } from "../src/search/search-params";
 
@@ -45,9 +47,11 @@ const nothingFound: SearchView = {
 	products: none,
 	profiles: none,
 	quotes: none,
+	serviceOrders: none,
 	services: none,
 };
 const quoteHit = (overrides: Partial<QuoteHitView> = {}): QuoteHitView => ({
+	approved: false,
 	archived: false,
 	clientName: "Maria Beatriz Alencar",
 	code: "ORC-2026-PC-0001",
@@ -56,6 +60,17 @@ const quoteHit = (overrides: Partial<QuoteHitView> = {}): QuoteHitView => ({
 	revisionNumber: 1,
 	totalCents: "88200",
 	validUntil: "2026-10-09",
+	...overrides,
+});
+const orderHit = (
+	overrides: Partial<ServiceOrderHitView> = {}
+): ServiceOrderHitView => ({
+	clientName: "Maria Beatriz Alencar",
+	code: "OS-2026-PC-0002",
+	dueOn: "2026-10-12",
+	id: "os2",
+	itemCount: 3,
+	totalCents: "124400",
 	...overrides,
 });
 const cru: MaterialVariantHitView = {
@@ -102,6 +117,10 @@ const found: SearchView = {
 	profiles: { items: [bia], total: 1 },
 	quotes: {
 		items: [quoteHit(), quoteHit({ code: "ORC-2026-PC-0002", id: "orc2" })],
+		total: 2,
+	},
+	serviceOrders: {
+		items: [orderHit(), orderHit({ code: "OS-2026-PC-0003", id: "os3" })],
 		total: 2,
 	},
 };
@@ -222,6 +241,25 @@ describe("linhas do resultado", () => {
 		expect(
 			quoteDetail(quoteHit({ revisionNumber: null, validUntil: null }), today)
 		).toBe("Maria Beatriz Alencar · rascunho · R$ 882,00");
+		expect(
+			quoteDetail(
+				quoteHit({ approved: true, refused: true, validUntil: "2026-09-20" }),
+				today
+			)
+		).toBe("Maria Beatriz Alencar · aprovado · R$ 882,00");
+	});
+
+	test("OS mostra o cliente, os subitens, o prazo e o total a receber", () => {
+		expect(serviceOrderDetail(orderHit())).toBe(
+			"Maria Beatriz Alencar · 3 subitens · prazo 12/10/2026 · R$ 1.244,00"
+		);
+		expect(
+			serviceOrderDetail(
+				orderHit({ dueOn: null, itemCount: 1, totalCents: "0" })
+			)
+		).toBe(
+			"Maria Beatriz Alencar · 1 subitem · prazo a combinar · sem cobrança"
+		);
 	});
 
 	test("serviço mostra a categoria e o preço praticado", () => {
@@ -247,10 +285,15 @@ describe("diálogo de busca", () => {
 			["clients", "Clientes · 6", ["clients:a", "clients:b", "clients:c"]],
 			["profiles", "Perfis · 1", ["profiles:bia"]],
 			["quotes", "Orçamentos · 2", ["quotes:orc1", "quotes:orc2"]],
+			["serviceOrders", "OS · 2", ["serviceOrders:os2", "serviceOrders:os3"]],
 			["materials", "Materiais · 1", ["materials:linho"]],
 			["more", null, ["all"]],
 		]);
-		expect(groups.at(-1)?.items[0]?.label).toBe("Ver todos os 10 resultados");
+		expect(groups.at(-1)?.items[0]?.label).toBe("Ver todos os 12 resultados");
+		expect(groups[3]?.items.map((option) => option.label)).toEqual([
+			"OS-2026-PC-0002",
+			"OS-2026-PC-0003",
+		]);
 	});
 
 	test("sem resultado, oferece buscar nos arquivados", () => {
@@ -270,10 +313,11 @@ describe("diálogo de busca", () => {
 describe("abas da página", () => {
 	test("tudo com a soma e uma aba por grupo com resultado", () => {
 		expect(searchTabs(found)).toEqual([
-			{ count: 10, group: null, id: "tudo", label: "Tudo" },
+			{ count: 12, group: null, id: "tudo", label: "Tudo" },
 			{ count: 6, group: "clients", id: "clientes", label: "Clientes" },
 			{ count: 1, group: "profiles", id: "perfis", label: "Perfis" },
 			{ count: 2, group: "quotes", id: "orcamentos", label: "Orçamentos" },
+			{ count: 2, group: "serviceOrders", id: "os", label: "OS" },
 			{ count: 1, group: "materials", id: "materiais", label: "Materiais" },
 		]);
 		expect(searchTabs(nothingFound)).toEqual([
@@ -285,6 +329,7 @@ describe("abas da página", () => {
 		expect(groupOfParam("materiais")).toBe("materials");
 		expect(groupOfParam("servicos")).toBe("services");
 		expect(groupOfParam("orcamentos")).toBe("quotes");
+		expect(groupOfParam("os")).toBe("serviceOrders");
 		expect(groupOfParam("tudo")).toBeNull();
 		expect(groupOfParam(undefined)).toBeNull();
 	});
@@ -292,14 +337,22 @@ describe("abas da página", () => {
 	test("o atalho da aba diz quantos o grupo tem", () => {
 		expect(seeGroupLabel("clients", 6)).toBe("Ver os 6 clientes");
 		expect(seeGroupLabel("services", 12)).toBe("Ver os 12 serviços");
+		expect(seeGroupLabel("serviceOrders", 3)).toBe("Ver as 3 OS");
 	});
 });
 
 describe("status e vazio", () => {
 	test("anuncia os totais por grupo na ordem da tela", () => {
 		expect(searchStatus(found, "linho", false)).toBe(
-			"6 clientes, 1 perfil, 2 orçamentos e 1 material para linho"
+			"6 clientes, 1 perfil, 2 orçamentos, 2 OS e 1 material para linho"
 		);
+		expect(
+			searchStatus(
+				{ ...nothingFound, serviceOrders: { items: [orderHit()], total: 1 } },
+				"os",
+				false
+			)
+		).toBe("1 OS para os");
 		expect(searchStatus(nothingFound, "zzz", false)).toBe(
 			"Nada encontrado para zzz"
 		);
@@ -337,6 +390,11 @@ describe("parâmetros da página", () => {
 				grupo: "materiais",
 			})
 		).toEqual({ arquivados: 1, busca: "linho", grupo: "materiais" });
+		expect(globalSearchParams.parse({ grupo: "os" })).toEqual({
+			arquivados: undefined,
+			busca: undefined,
+			grupo: "os",
+		});
 		expect(
 			globalSearchParams.parse({
 				arquivados: 2,

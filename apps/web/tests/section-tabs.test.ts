@@ -127,6 +127,11 @@ describe("abas por destino", () => {
 					label: "Rascunhos",
 				},
 				{ href: "/orcamentos/emitidos", id: "emitidos", label: "Emitidos" },
+				{
+					href: "/orcamentos/aprovados",
+					id: "aprovados",
+					label: "Aprovados",
+				},
 				{ href: "/orcamentos/vencidos", id: "vencidos", label: "Vencidos" },
 				{
 					href: "/orcamentos/recusados",
@@ -140,6 +145,9 @@ describe("abas por destino", () => {
 		).toBe("rascunhos");
 		expect(sectionTabsFor("orcamentos", "/orcamentos/vencidos").activeId).toBe(
 			"vencidos"
+		);
+		expect(sectionTabsFor("orcamentos", "/orcamentos/aprovados").activeId).toBe(
+			"aprovados"
 		);
 		for (const path of [
 			"/orcamentos/3f1c",

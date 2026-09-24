@@ -14,6 +14,7 @@ import {
 	QuoteRow,
 	ResultPanel,
 	SearchFailure,
+	ServiceOrderRow,
 	ServiceRow,
 } from "./search-results";
 
@@ -30,6 +31,10 @@ function PageRows({ page, query }: { page: GroupPageView; query: string }) {
 		case "quotes":
 			return page.items.map((hit) => (
 				<QuoteRow hit={hit} key={hit.id} query={query} />
+			));
+		case "serviceOrders":
+			return page.items.map((hit) => (
+				<ServiceOrderRow hit={hit} key={hit.id} query={query} />
 			));
 		case "products":
 			return page.items.map((hit) => (

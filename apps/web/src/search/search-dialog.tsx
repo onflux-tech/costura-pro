@@ -34,6 +34,7 @@ import {
 	searchReady,
 	searchStatus,
 	serviceDetail,
+	serviceOrderDetail,
 } from "@/lib/search";
 import { orpc } from "@/utils/orpc";
 
@@ -94,6 +95,15 @@ function OptionContent({
 							query={query}
 							text={quoteDetail(option.hit, localDay(new Date()))}
 						/>
+					</Line>
+				</>
+			);
+		case "serviceOrders":
+			return (
+				<>
+					<Title query={query} text={option.hit.code} />
+					<Line>
+						<Marked query={query} text={serviceOrderDetail(option.hit)} />
 					</Line>
 				</>
 			);
@@ -230,6 +240,11 @@ export function SearchDialog({
 				return navigate({
 					params: { orcamentoId: option.hit.id },
 					to: "/orcamentos/$orcamentoId",
+				});
+			case "serviceOrders":
+				return navigate({
+					params: { osId: option.hit.id },
+					to: "/os/$osId",
 				});
 			case "products":
 				return navigate({

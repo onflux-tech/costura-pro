@@ -48,6 +48,7 @@ export const sectionTabs = {
 	orcamentos: [
 		{ href: "/orcamentos/rascunhos", id: "rascunhos", label: "Rascunhos" },
 		{ href: "/orcamentos/emitidos", id: "emitidos", label: "Emitidos" },
+		{ href: "/orcamentos/aprovados", id: "aprovados", label: "Aprovados" },
 		{ href: "/orcamentos/vencidos", id: "vencidos", label: "Vencidos" },
 		{ href: "/orcamentos/recusados", id: "recusados", label: "Recusados" },
 	],

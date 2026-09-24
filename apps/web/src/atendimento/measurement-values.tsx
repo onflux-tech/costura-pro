@@ -12,8 +12,8 @@ export function MeasurementValues({
 	current,
 	previous,
 }: {
-	current: MeasurementView;
-	previous: MeasurementView | null;
+	current: Pick<MeasurementView, "fields">;
+	previous: Pick<MeasurementView, "fields"> | null;
 }) {
 	return (
 		<div className="grid grid-cols-2 gap-x-4 gap-y-3 md:grid-cols-4">

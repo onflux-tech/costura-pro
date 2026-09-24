@@ -39,6 +39,7 @@ export type BalanceItemView = {
 	materialName: string;
 	quantityMicros: string;
 	referenceCostCents: string | null;
+	reservedMicros: string;
 	tracksLots: boolean;
 	valueCents: string;
 	variantId: string;
@@ -323,6 +324,49 @@ export function pointQuantity(
 	precision: number
 ): string {
 	return `${formatQuantity(BigInt(micros), precision)} ${unitAbbreviation(unit)}`;
+}
+
+export function availabilityOf(item: {
+	quantityMicros: string;
+	reservedMicros: string;
+}): { availableMicros: bigint; reservedMicros: bigint } {
+	const reservedMicros = BigInt(item.reservedMicros);
+	return {
+		availableMicros: BigInt(item.quantityMicros) - reservedMicros,
+		reservedMicros,
+	};
+}
+
+export type ReservationNote = {
+	available: string | null;
+	reserved: string;
+	short: boolean;
+};
+
+export function reservationNote(
+	item: Pick<
+		BalanceItemView,
+		"baseUnit" | "displayPrecision" | "quantityMicros" | "reservedMicros"
+	>,
+	allLocations: boolean
+): ReservationNote | null {
+	const { availableMicros, reservedMicros } = availabilityOf(item);
+	if (reservedMicros === 0n) {
+		return null;
+	}
+	const reserved = `reservado ${pointQuantity(reservedMicros.toString(), item.baseUnit, item.displayPrecision)}`;
+	if (!allLocations) {
+		return {
+			available: null,
+			reserved: `${reserved} em todos os locais`,
+			short: false,
+		};
+	}
+	return {
+		available: `disponível ${pointQuantity(availableMicros.toString(), item.baseUnit, item.displayPrecision)}`,
+		reserved,
+		short: availableMicros < 0n,
+	};
 }
 
 export function movementQuantity(

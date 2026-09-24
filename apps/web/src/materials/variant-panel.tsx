@@ -15,7 +15,7 @@ import { LayersIcon } from "lucide-react";
 
 import { type VariantWithBalance, variantSummary } from "@/lib/materials";
 import { photoUrl } from "@/lib/media";
-import { balanceQuantity, balanceValue } from "@/lib/stock";
+import { balanceQuantity, balanceValue, reservationNote } from "@/lib/stock";
 
 function VariantRow({
 	materialId,
@@ -24,6 +24,7 @@ function VariantRow({
 	materialId: string;
 	variant: VariantWithBalance;
 }) {
+	const note = reservationNote(variant, true);
 	return (
 		<DataListRow>
 			<div className="flex min-w-0 items-start gap-3">
@@ -73,6 +74,14 @@ function VariantRow({
 					>
 						{`Saldo ${balanceQuantity(variant)} · ${balanceValue(variant.valueCents)}`}
 					</ButtonLink>
+					{note ? (
+						<Text size="xs" tone="muted">
+							{`${note.reserved} · `}
+							<Text inline size="xs" tone={note.short ? "warning" : "muted"}>
+								{note.available}
+							</Text>
+						</Text>
+					) : null}
 					{variant.archivedAt ? <Badge tone="warning">arquivada</Badge> : null}
 				</div>
 			</div>

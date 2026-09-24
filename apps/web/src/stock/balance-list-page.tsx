@@ -30,6 +30,7 @@ import {
 	type BalanceItemView,
 	balanceQuantity,
 	balanceValue,
+	reservationNote,
 } from "@/lib/stock";
 import { usePageHeader } from "@/shell/page-header";
 import { orpc } from "@/utils/orpc";
@@ -42,6 +43,33 @@ import { VariantBalancePanel } from "./variant-balance-panel";
 const route = getRouteApi("/_app/estoque/saldos");
 
 const allLocations = "*";
+
+function BalanceQuantity({
+	allLocations: everywhere,
+	item,
+}: {
+	allLocations: boolean;
+	item: BalanceItemView;
+}) {
+	const note = reservationNote(item, everywhere);
+	return (
+		<div className="flex flex-col gap-0.5">
+			<Text inline numeric>
+				{balanceQuantity(item)}
+			</Text>
+			{note ? (
+				<Text size="xs" tone="muted">
+					{note.reserved}
+				</Text>
+			) : null}
+			{note?.available ? (
+				<Text size="xs" tone={note.short ? "warning" : "muted"}>
+					{note.available}
+				</Text>
+			) : null}
+		</div>
+	);
+}
 
 export function BalanceListPage() {
 	const { busca = "", local } = route.useSearch();
@@ -203,9 +231,7 @@ export function BalanceListPage() {
 									</div>
 								</DataListCell>
 								<DataListCell align="end" label="Saldo">
-									<Text inline numeric>
-										{balanceQuantity(item)}
-									</Text>
+									<BalanceQuantity allLocations={!local} item={item} />
 								</DataListCell>
 								<DataListCell align="end" label="Valor">
 									<Text inline numeric>

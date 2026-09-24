@@ -4,6 +4,7 @@ import {
 	type AdjustmentFormValues,
 	adjustmentFields,
 	adjustmentFormErrors,
+	availabilityOf,
 	balanceValue,
 	locationFormErrors,
 	lotFormErrors,
@@ -11,6 +12,7 @@ import {
 	movementQuantity,
 	openingValueCents,
 	pointQuantity,
+	reservationNote,
 	type TransferFormValues,
 	transferFormErrors,
 } from "../src/lib/stock";
@@ -157,5 +159,44 @@ describe("balanceValue and movementQuantity", () => {
 		expect(movementQuantity("-1000000", "m", 2)).toBe("-1,00 m");
 		expect(movementQuantity("1000000", "m", 2)).toBe("+1,00 m");
 		expect(pointQuantity("-1000000", "m", 2)).toBe("-1,00 m");
+	});
+});
+
+describe("reservado e disponível", () => {
+	test("disponível é o físico menos o reservado e pode ficar negativo", () => {
+		expect(
+			availabilityOf({ quantityMicros: "2500000", reservedMicros: "1500000" })
+		).toEqual({ availableMicros: 1_000_000n, reservedMicros: 1_500_000n });
+		expect(
+			availabilityOf({ quantityMicros: "1000000", reservedMicros: "1500000" })
+				.availableMicros
+		).toBe(-500_000n);
+	});
+
+	test("nota do saldo com reserva, com filtro de local e sem reserva", () => {
+		const crepe = {
+			baseUnit: "m" as const,
+			displayPrecision: 2,
+			quantityMicros: "2500000",
+			reservedMicros: "1500000",
+		};
+		expect(reservationNote(crepe, true)).toEqual({
+			available: "disponível 1,00 m",
+			reserved: "reservado 1,50 m",
+			short: false,
+		});
+		expect(
+			reservationNote({ ...crepe, quantityMicros: "1000000" }, true)
+		).toEqual({
+			available: "disponível -0,50 m",
+			reserved: "reservado 1,50 m",
+			short: true,
+		});
+		expect(reservationNote(crepe, false)).toEqual({
+			available: null,
+			reserved: "reservado 1,50 m em todos os locais",
+			short: false,
+		});
+		expect(reservationNote({ ...crepe, reservedMicros: "0" }, true)).toBeNull();
 	});
 });

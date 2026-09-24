@@ -13,7 +13,9 @@ import {
 	quoteStatus,
 	quoteTotalsOfText,
 } from "@costura-pro/domain/quote";
+import { planReservation } from "@costura-pro/domain/reservation";
 import { formatMinutes } from "@costura-pro/domain/service";
+import type { ApprovalChannel } from "@costura-pro/domain/service-order";
 import type { BaseUnitCode } from "@costura-pro/domain/unit";
 
 import { moneyLabel } from "./finance";
@@ -169,14 +171,31 @@ export type QuoteRevisionView = {
 	version: number;
 };
 
+export type QuoteApprovalView = {
+	approvedOn: string;
+	channel: ApprovalChannel;
+	id: string;
+	note: string | null;
+	revisionId: string;
+	revisionNumber: number;
+	serviceOrderCode: string;
+	serviceOrderId: string;
+};
+
 export type QuoteDetailView = {
+	approval: QuoteApprovalView | null;
 	client: { anonymized: boolean; archived: boolean; id: string; name: string };
 	quote: QuoteView;
 	revisions: readonly QuoteRevisionView[];
-	stock: readonly { quantityMicros: string; variantId: string }[];
+	stock: readonly {
+		quantityMicros: string;
+		reservedMicros: string;
+		variantId: string;
+	}[];
 };
 
 export type QuoteListItemView = {
+	approvedOn: string | null;
 	archivedAt: string | null;
 	clientId: string;
 	clientName: string;
@@ -187,6 +206,7 @@ export type QuoteListItemView = {
 	lineCount: number;
 	refusedOn: string | null;
 	revisionNumber: number | null;
+	serviceOrderCode: string | null;
 	status: QuoteStatus;
 	totalCents: string;
 	validUntil: string | null;
@@ -284,9 +304,11 @@ export function latestRevisionOf(
 export function quoteStatusOf(
 	quote: Pick<QuoteView, "refusedOn">,
 	revisions: readonly QuoteRevisionView[],
-	today: string
+	today: string,
+	approved: boolean
 ): QuoteStatus {
 	return quoteStatus({
+		approved,
 		refused: quote.refusedOn !== null,
 		today,
 		validUntil: latestRevisionOf(revisions)?.validUntil ?? null,
@@ -294,6 +316,7 @@ export function quoteStatusOf(
 }
 
 export const statusLabels: Record<QuoteStatus, string> = {
+	approved: "aprovado",
 	draft: "rascunho",
 	emitted: "emitido",
 	expired: "vencido",
@@ -301,6 +324,7 @@ export const statusLabels: Record<QuoteStatus, string> = {
 };
 
 const statusTones = {
+	approved: "success",
 	draft: "neutral",
 	emitted: "success",
 	expired: "warning",
@@ -443,11 +467,13 @@ export function sameContent(
 }
 
 export type PlannedMaterialView = {
+	availableMicros: bigint;
 	baseUnit: BaseUnitCode;
 	code: string | null;
 	displayPrecision: number;
 	label: string;
 	plannedMicros: bigint;
+	reservedMicros: bigint;
 	shortageMicros: bigint;
 	stockMicros: bigint;
 	variantId: string;
@@ -485,6 +511,9 @@ export function plannedMaterialsView(
 	const balances = new Map(
 		stock.map((row) => [row.variantId, BigInt(row.quantityMicros)])
 	);
+	const reservations = new Map(
+		stock.map((row) => [row.variantId, BigInt(row.reservedMicros)])
+	);
 	return [...plannedMaterials(lines.map(quoteLineOfText))].flatMap(
 		([variantId, plannedMicros]) => {
 			const citation = citations.find(
@@ -494,15 +523,22 @@ export function plannedMaterialsView(
 				return [];
 			}
 			const stockMicros = balances.get(variantId) ?? 0n;
-			const shortageMicros = plannedMicros - stockMicros;
+			const reservedMicros = reservations.get(variantId) ?? 0n;
+			const { shortageMicros } = planReservation(
+				stockMicros,
+				reservedMicros,
+				plannedMicros
+			);
 			return [
 				{
+					availableMicros: stockMicros - reservedMicros,
 					baseUnit: citation.baseUnit,
 					code: citation.code,
 					displayPrecision: citation.displayPrecision,
 					label: materialTitle(citation),
 					plannedMicros,
-					shortageMicros: shortageMicros > 0n ? shortageMicros : 0n,
+					reservedMicros,
+					shortageMicros,
 					stockMicros,
 					variantId,
 				},
