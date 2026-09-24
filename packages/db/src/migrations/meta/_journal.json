@@ -127,6 +127,20 @@
       "when": 1790252090866,
       "tag": "0017_quote_revision_append_only",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "6",
+      "when": 1790279828300,
+      "tag": "0018_service_orders_approvals_reservations",
+      "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "6",
+      "when": 1790279835694,
+      "tag": "0019_service_order_facts_append_only",
+      "breakpoints": true
     }
   ]
 }
