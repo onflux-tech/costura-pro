@@ -42,6 +42,7 @@ Documentação curada e versionada do Costura Pro. Todo doc novo em `docs/` entr
 | [0019](adr/0019-compra-e-obrigacao-como-fatos-imutaveis.md) | Compra, obrigação e estorno como fatos imutáveis, com estado derivado |
 | [0020](adr/0020-servico-versionado-e-preco-sugerido-na-leitura.md) | Serviço versionado pelo próprio agregado e preço sugerido calculado na leitura |
 | [0021](adr/0021-ficha-tecnica-no-produto-base-e-ajustes-por-variante.md) | Ficha técnica no produto base, ajustes por item na variante e custo estimado na leitura |
+| [0022](adr/0022-sessao-de-inventario-como-fato-com-esperado-da-contagem.md) | Sessão de inventário como fato gravado na finalização, com o esperado da hora da contagem |
 
 ## Agentes e harness
 
@@ -60,7 +61,7 @@ Quando uma área acumular conhecimento que não cabe numa rule, o `/entrega-fech
 | [Agregados](areas/agregados.md) | Antes de criar ou mudar um agregado de negócio: tabela, store, snapshot, comandos nos dois caminhos, decisões por caminho, redação de dado pessoal e testes mínimos |
 | [Mídia](areas/midia.md) | Antes de mexer em foto, upload, arquivo em disco, coleta ou remoção de mídia: parâmetros de captura, rotas, gravação atômica, coleta, anonimização e armadilhas |
 | [Catálogo de materiais](areas/catalogo.md) | Antes de mexer em material, variante, unidade base, dinheiro ou quantidade: como o valor inteiro atravessa as camadas, campos dos dois agregados, foto da variante e armadilhas |
-| [Estoque](areas/estoque.md) | Antes de mexer em local, lote, movimento ou saldo: agregados e projeção, tipos de movimento, valor de saída pela média, lote por variante, estorno e armadilhas |
+| [Estoque](areas/estoque.md) | Antes de mexer em local, lote, movimento, saldo ou sessão de inventário: agregados e projeção, tipos de movimento, valor de saída pela média, lote por variante, estorno, contagem com rascunho no aparelho e armadilhas |
 | [Compras](areas/compras.md) | Antes de mexer em fornecedor, compra, conversão de embalagem, rateio de frete e desconto, obrigação ou estorno de compra: agregados, contas do custo de aquisição, comandos, telas e armadilhas |
 | [Finanças](areas/financas.md) | Antes de mexer em conta financeira, movimento financeiro, saldo de conta, transferência, pagamento ou estado da obrigação: agregados, tipos de movimento, obrigação a pagar, telas e armadilhas |
 | [Serviços](areas/servicos.md) | Antes de mexer em serviço, custo, preço praticado, meta de margem ou preço sugerido: agregado, meta do ateliê na instalação, a conta do preço, comandos, telas e armadilhas |

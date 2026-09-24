@@ -228,7 +228,7 @@ Fator que transforma a embalagem comprada, como rolo, cone ou pacote, na unidade
 Armário, prateleira ou área com saldo físico próprio. Lista plana, sem hierarquia.
 
 **Movimento de estoque**:
-Registro imutável de uma variação de saldo num ponto, com quantidade e valor assinados. Nasce por saldo de abertura, ajuste, transferência, compra ou estorno, e nunca é editado nem apagado.
+Registro imutável de uma variação de saldo num ponto, com quantidade e valor assinados. Nasce por saldo de abertura, ajuste, transferência, compra, sessão de inventário ou estorno, e nunca é editado nem apagado.
 _Evitar_: lançamento, entrada e saída
 
 **Ponto de saldo**:
@@ -305,7 +305,14 @@ Custo da unidade fixado no momento da venda; é ele que volta ao estoque numa de
 Custo de uma OP atribuído às unidades boas em estoque e reconhecido no resultado quando elas são vendidas.
 
 **Sessão de inventário**:
-Contagem física em lote com prévia das divergências, que gera ajustes auditados ao finalizar.
+Contagem física às cegas dos pontos de um ou mais locais, feita num rascunho do aparelho e finalizada de uma vez com motivo e data. Guarda o que foi contado e o saldo esperado de cada linha, inclusive as que bateram, e gera um movimento de inventário por ponto com sobra ou falta. O que não foi contado fica como está. Na tela aparece como contagem.
+_Evitar_: balanço, ajuste em lote
+
+**Saldo esperado**:
+Saldo que o sistema conhecia num ponto na hora em que a contagem dele foi digitada. A diferença entre o contado e o esperado é o ajuste, somado ao saldo que o ponto tiver na finalização.
+
+**Sobra e falta**:
+Diferença de uma linha da contagem. Sobra é o contado acima do esperado e entra pelo valor informado; falta é o contado abaixo do esperado e sai pela média do ponto.
 
 **Ajuste rápido**:
 Correção pontual de saldo de um item, com motivo obrigatório.
