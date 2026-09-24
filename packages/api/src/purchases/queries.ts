@@ -10,12 +10,12 @@ import {
 	supplier,
 } from "@costura-pro/db/schema/purchases";
 import { stockLocation, stockLot } from "@costura-pro/db/schema/stock";
-import { searchTokens } from "@costura-pro/domain/client";
 import {
 	type ObligationStatus,
 	obligationStatus,
 	obligationStatuses,
 } from "@costura-pro/domain/finance";
+import { searchTokens } from "@costura-pro/domain/search";
 import type { BaseUnitCode } from "@costura-pro/domain/unit";
 import { ORPCError } from "@orpc/server";
 import {

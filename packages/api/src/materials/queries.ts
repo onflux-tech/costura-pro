@@ -1,9 +1,19 @@
 import type { Database } from "@costura-pro/db";
 import { material, materialVariant } from "@costura-pro/db/schema/materials";
-import { searchTokens } from "@costura-pro/domain/client";
+import { searchTokens } from "@costura-pro/domain/search";
 import type { BaseUnitCode } from "@costura-pro/domain/unit";
 import { ORPCError } from "@orpc/server";
-import { and, asc, eq, inArray, isNotNull, isNull, or, sql } from "drizzle-orm";
+import {
+	and,
+	asc,
+	eq,
+	inArray,
+	isNotNull,
+	isNull,
+	or,
+	type SQL,
+	sql,
+} from "drizzle-orm";
 import z from "zod";
 
 import { commandMessages } from "../command-messages";
@@ -37,6 +47,26 @@ export type MaterialListItem = {
 
 type Reader = Pick<Database, "select" | "selectDistinct">;
 
+export function materialMatches(
+	db: Reader,
+	tokens: readonly string[]
+): (SQL | undefined)[] {
+	return tokens.map((token) =>
+		or(
+			sql`${material.searchText} LIKE ${containing(token)} ESCAPE '\\'`,
+			inArray(
+				material.id,
+				db
+					.select({ id: materialVariant.materialId })
+					.from(materialVariant)
+					.where(
+						sql`${materialVariant.searchText} LIKE ${containing(token)} ESCAPE '\\'`
+					)
+			)
+		)
+	);
+}
+
 export function listMaterials(
 	db: Reader,
 	{ archived, category, offset, query }: z.output<typeof materialListInput>
@@ -50,20 +80,7 @@ export function listMaterials(
 						? isNull(material.category)
 						: eq(material.category, category),
 				]),
-		...searchTokens(query ?? "").map((token) =>
-			or(
-				sql`${material.searchText} LIKE ${containing(token)} ESCAPE '\\'`,
-				inArray(
-					material.id,
-					db
-						.select({ id: materialVariant.materialId })
-						.from(materialVariant)
-						.where(
-							sql`${materialVariant.searchText} LIKE ${containing(token)} ESCAPE '\\'`
-						)
-				)
-			)
-		),
+		...materialMatches(db, searchTokens(query ?? "")),
 	];
 	const rows = db
 		.select({

@@ -6,6 +6,7 @@ import {
 	financialAccountsRouter,
 	financialMovementsRouter,
 } from "../finance/router";
+import { searchRouter } from "../global-search/router";
 import { publicProcedure, readyProcedure } from "../index";
 import { installationRouter } from "../installation/router";
 import { inventorySessionsRouter } from "../inventory/router";
@@ -55,6 +56,7 @@ export const appRouter = {
 	purchases: purchasesRouter,
 	receivedItems: receivedItemsRouter,
 	recovery: recoveryRouter,
+	search: searchRouter,
 	services: servicesRouter,
 	stockBalances: stockBalancesRouter,
 	stockLocations: stockLocationsRouter,

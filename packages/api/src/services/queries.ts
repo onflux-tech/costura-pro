@@ -1,9 +1,9 @@
 import type { Database } from "@costura-pro/db";
 import { service } from "@costura-pro/db/schema/services";
-import { searchTokens } from "@costura-pro/domain/client";
+import { searchTokens } from "@costura-pro/domain/search";
 import { serviceLimits } from "@costura-pro/domain/service";
 import { ORPCError } from "@orpc/server";
-import { and, asc, eq, isNotNull, isNull, sql } from "drizzle-orm";
+import { and, asc, eq, isNotNull, isNull, type SQL, sql } from "drizzle-orm";
 import z from "zod";
 
 import { commandMessages } from "../command-messages";
@@ -33,6 +33,12 @@ function serviceItem(row: ServiceRow): ServiceListItem {
 	return { ...serviceSnapshot(row), updatedAt: row.updatedAt.toISOString() };
 }
 
+export function serviceMatches(tokens: readonly string[]): SQL[] {
+	return tokens.map(
+		(token) => sql`${service.searchText} LIKE ${containing(token)} ESCAPE '\\'`
+	);
+}
+
 export function listServices(
 	db: Reader,
 	{ archived, category, offset, query }: z.output<typeof serviceListInput>
@@ -46,10 +52,7 @@ export function listServices(
 						? isNull(service.category)
 						: eq(service.category, category),
 				]),
-		...searchTokens(query ?? "").map(
-			(token) =>
-				sql`${service.searchText} LIKE ${containing(token)} ESCAPE '\\'`
-		),
+		...serviceMatches(searchTokens(query ?? "")),
 	];
 	const rows = db
 		.select()

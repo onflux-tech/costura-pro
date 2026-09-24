@@ -1,8 +1,9 @@
 import type { Database } from "@costura-pro/db";
 import { client } from "@costura-pro/db/schema/clients";
-import { type ClientKind, searchTokens } from "@costura-pro/domain/client";
+import type { ClientKind } from "@costura-pro/domain/client";
+import { searchTokens } from "@costura-pro/domain/search";
 import { ORPCError } from "@orpc/server";
-import { and, asc, isNotNull, isNull, sql } from "drizzle-orm";
+import { and, asc, isNotNull, isNull, type SQL, sql } from "drizzle-orm";
 import z from "zod";
 
 import { commandMessages } from "../command-messages";
@@ -36,15 +37,19 @@ export type ClientListItem = {
 
 type Reader = Pick<Database, "select">;
 
+export function clientMatches(tokens: readonly string[]): SQL[] {
+	return tokens.map(
+		(token) => sql`${client.searchText} LIKE ${containing(token)} ESCAPE '\\'`
+	);
+}
+
 export function listClients(
 	db: Reader,
 	{ archived, offset, query }: z.output<typeof clientListInput>
 ): { items: ClientListItem[]; nextOffset: number | null } {
 	const filters = [
 		archived ? isNotNull(client.archivedAt) : isNull(client.archivedAt),
-		...searchTokens(query ?? "").map(
-			(token) => sql`${client.searchText} LIKE ${containing(token)} ESCAPE '\\'`
-		),
+		...clientMatches(searchTokens(query ?? "")),
 	];
 	const rows = db
 		.select({

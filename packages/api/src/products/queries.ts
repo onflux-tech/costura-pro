@@ -6,11 +6,21 @@ import {
 	type SheetItemRow,
 } from "@costura-pro/db/schema/products";
 import { service } from "@costura-pro/db/schema/services";
-import { searchTokens } from "@costura-pro/domain/client";
 import { productLimits } from "@costura-pro/domain/product";
+import { searchTokens } from "@costura-pro/domain/search";
 import type { BaseUnitCode } from "@costura-pro/domain/unit";
 import { ORPCError } from "@orpc/server";
-import { and, asc, eq, inArray, isNotNull, isNull, or, sql } from "drizzle-orm";
+import {
+	and,
+	asc,
+	eq,
+	inArray,
+	isNotNull,
+	isNull,
+	or,
+	type SQL,
+	sql,
+} from "drizzle-orm";
 import z from "zod";
 
 import { commandMessages } from "../command-messages";
@@ -78,6 +88,26 @@ export type ProductDetail = {
 
 type Reader = Pick<Database, "select" | "selectDistinct">;
 
+export function productMatches(
+	db: Reader,
+	tokens: readonly string[]
+): (SQL | undefined)[] {
+	return tokens.map((token) =>
+		or(
+			sql`${product.searchText} LIKE ${containing(token)} ESCAPE '\\'`,
+			inArray(
+				product.id,
+				db
+					.select({ id: productVariant.productId })
+					.from(productVariant)
+					.where(
+						sql`${productVariant.searchText} LIKE ${containing(token)} ESCAPE '\\'`
+					)
+			)
+		)
+	);
+}
+
 export function listProducts(
 	db: Reader,
 	{ archived, category, offset, query }: z.output<typeof productListInput>
@@ -91,20 +121,7 @@ export function listProducts(
 						? isNull(product.category)
 						: eq(product.category, category),
 				]),
-		...searchTokens(query ?? "").map((token) =>
-			or(
-				sql`${product.searchText} LIKE ${containing(token)} ESCAPE '\\'`,
-				inArray(
-					product.id,
-					db
-						.select({ id: productVariant.productId })
-						.from(productVariant)
-						.where(
-							sql`${productVariant.searchText} LIKE ${containing(token)} ESCAPE '\\'`
-						)
-				)
-			)
-		),
+		...productMatches(db, searchTokens(query ?? "")),
 	];
 	const rows = db
 		.select({

@@ -6,7 +6,7 @@ import {
 	stockLot,
 	stockMovement,
 } from "@costura-pro/db/schema/stock";
-import { searchTokens } from "@costura-pro/domain/client";
+import { searchTokens } from "@costura-pro/domain/search";
 import { inventoryLimits } from "@costura-pro/domain/stock";
 import type { BaseUnitCode } from "@costura-pro/domain/unit";
 import {
