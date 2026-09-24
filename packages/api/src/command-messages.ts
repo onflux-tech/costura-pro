@@ -6,6 +6,7 @@ export const commandMessages = {
 	financialMovementNotFound: "Movimento não encontrado",
 	financialMovementReversed: "Movimento já estornado",
 	installationNotFound: "Instalação não encontrada",
+	inventorySessionNotFound: "Contagem não encontrada",
 	materialNotFound: "Material não encontrado",
 	materialVariantNotFound: "Variante não encontrada",
 	measurementNotFound: "Medição não encontrada",

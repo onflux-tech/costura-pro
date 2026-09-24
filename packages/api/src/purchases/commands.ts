@@ -150,6 +150,7 @@ const createPurchase: CreateDefinition = {
 				db,
 				item.movementId,
 				{
+					inventorySessionId: null,
 					kind: "purchase",
 					locationId: item.locationId,
 					lotId: item.lotId,
@@ -242,6 +243,7 @@ const reversePurchase: CreateDefinition = {
 				db,
 				fields.movementIds[index] ?? "",
 				{
+					inventorySessionId: null,
 					kind: "reversal",
 					locationId: item.locationId,
 					lotId: item.lotId,

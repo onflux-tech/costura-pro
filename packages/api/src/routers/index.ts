@@ -8,6 +8,7 @@ import {
 } from "../finance/router";
 import { publicProcedure, readyProcedure } from "../index";
 import { installationRouter } from "../installation/router";
+import { inventorySessionsRouter } from "../inventory/router";
 import { materialsRouter, materialVariantsRouter } from "../materials/router";
 import {
 	measurementsRouter,
@@ -37,6 +38,7 @@ export const appRouter = {
 	financialMovements: financialMovementsRouter,
 	healthCheck: publicProcedure.handler(() => "OK"),
 	installation: installationRouter,
+	inventorySessions: inventorySessionsRouter,
 	materials: materialsRouter,
 	materialVariants: materialVariantsRouter,
 	measurements: measurementsRouter,

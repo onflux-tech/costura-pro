@@ -8,6 +8,7 @@ export type AggregateType =
 	| "financialAccount"
 	| "financialMovement"
 	| "installation"
+	| "inventorySession"
 	| "material"
 	| "materialVariant"
 	| "measurement"

@@ -7,12 +7,14 @@ import {
 	stockMovement,
 } from "@costura-pro/db/schema/stock";
 import { searchTokens } from "@costura-pro/domain/client";
+import { inventoryLimits } from "@costura-pro/domain/stock";
 import type { BaseUnitCode } from "@costura-pro/domain/unit";
 import {
 	and,
 	asc,
 	desc,
 	eq,
+	inArray,
 	isNotNull,
 	isNull,
 	ne,
@@ -164,6 +166,93 @@ export function getVariantBalance(
 			.map((row) => ({
 				...row,
 				quantityMicros: row.quantityMicros.toString(),
+				valueCents: row.valueCents.toString(),
+			})),
+	};
+}
+
+export const stockPointsInput = z.object({
+	locationIds: z
+		.array(z.uuid())
+		.min(inventoryLimits.locations.min)
+		.max(inventoryLimits.locations.max),
+});
+
+export type StockPointItem = {
+	archived: boolean;
+	baseUnit: BaseUnitCode;
+	code: string | null;
+	displayPrecision: number;
+	locationId: string;
+	locationName: string;
+	lotId: string | null;
+	lotLabel: string | null;
+	materialId: string;
+	materialName: string;
+	quantityMicros: string;
+	referenceCostCents: string | null;
+	tracksLots: boolean;
+	valueCents: string;
+	variantId: string;
+	variantName: string;
+};
+
+export function listStockPoints(
+	db: Reader,
+	{ locationIds }: z.output<typeof stockPointsInput>
+): { items: StockPointItem[] } {
+	return {
+		items: db
+			.select({
+				baseUnit: materialVariant.baseUnit,
+				code: materialVariant.code,
+				displayPrecision: materialVariant.displayPrecision,
+				locationId: stockBalance.locationId,
+				locationName: stockLocation.name,
+				lotId: stockBalance.lotId,
+				lotLabel: stockLot.label,
+				materialArchivedAt: material.archivedAt,
+				materialId: material.id,
+				materialName: material.name,
+				quantityMicros: stockBalance.quantityMicros,
+				referenceCostCents: materialVariant.referenceCostCents,
+				tracksLots: materialVariant.tracksLots,
+				valueCents: stockBalance.valueCents,
+				variantArchivedAt: materialVariant.archivedAt,
+				variantId: materialVariant.id,
+				variantName: materialVariant.name,
+			})
+			.from(stockBalance)
+			.innerJoin(
+				materialVariant,
+				eq(materialVariant.id, stockBalance.variantId)
+			)
+			.innerJoin(material, eq(material.id, materialVariant.materialId))
+			.innerJoin(stockLocation, eq(stockLocation.id, stockBalance.locationId))
+			.leftJoin(stockLot, eq(stockLot.id, stockBalance.lotId))
+			.where(
+				and(
+					inArray(stockBalance.locationId, locationIds),
+					or(
+						ne(stockBalance.quantityMicros, 0n),
+						ne(stockBalance.valueCents, 0n)
+					)
+				)
+			)
+			.orderBy(
+				asc(stockLocation.name),
+				asc(stockLocation.id),
+				asc(material.searchText),
+				asc(materialVariant.searchText),
+				asc(stockLot.label),
+				asc(stockBalance.id)
+			)
+			.all()
+			.map(({ materialArchivedAt, variantArchivedAt, ...row }) => ({
+				...row,
+				archived: materialArchivedAt !== null || variantArchivedAt !== null,
+				quantityMicros: row.quantityMicros.toString(),
+				referenceCostCents: row.referenceCostCents?.toString() ?? null,
 				valueCents: row.valueCents.toString(),
 			})),
 	};

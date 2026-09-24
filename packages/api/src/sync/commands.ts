@@ -16,6 +16,7 @@ import {
 	readInstallation,
 	updateInstallation,
 } from "../installation/store";
+import { inventoryCommands } from "../inventory/commands";
 import { materialCommands } from "../materials/commands";
 import { measurementCommands } from "../measurements/commands";
 import { productCommands } from "../products/commands";
@@ -118,6 +119,7 @@ const setAtelierName: UpdateDefinition = {
 export const syncCommands = {
 	...clientCommands,
 	...financeCommands,
+	...inventoryCommands,
 	...materialCommands,
 	...measurementCommands,
 	...productCommands,

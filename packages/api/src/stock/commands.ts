@@ -80,7 +80,7 @@ export function checkPlace(
 		: notFound(commandMessages.stockLotNotFound);
 }
 
-function exitCents(
+export function exitCents(
 	db: CommandExecutor,
 	place: Place,
 	exitMicros: bigint
@@ -154,6 +154,7 @@ const createMovement: CreateDefinition = {
 			db,
 			id,
 			{
+				inventorySessionId: null,
 				kind: fields.kind,
 				locationId: fields.locationId,
 				lotId: fields.lotId,
@@ -195,6 +196,7 @@ const transferMovement: CreateDefinition = {
 		const quantity = BigInt(fields.quantityMicros);
 		const moved = exitCents(db, source, quantity);
 		const shared = {
+			inventorySessionId: null,
 			lotId: fields.lotId,
 			occurredOn: fields.occurredOn,
 			purchaseId: null,
@@ -273,6 +275,7 @@ const reverseMovement: CreateDefinition = {
 		}
 		const pairId = counterpart ? id : null;
 		const reversalOf = (row: typeof original): StockMovementFields => ({
+			inventorySessionId: null,
 			kind: "reversal",
 			locationId: row.locationId,
 			lotId: row.lotId,

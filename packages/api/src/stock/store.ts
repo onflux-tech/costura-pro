@@ -32,6 +32,7 @@ export type StockLotPatch = Partial<
 >;
 
 export type StockMovementFields = {
+	inventorySessionId: string | null;
 	kind: StockMovementKind;
 	locationId: string;
 	lotId: string | null;
@@ -67,6 +68,7 @@ export type StockLotSnapshot = {
 export type StockMovementSnapshot = {
 	createdAt: string;
 	id: string;
+	inventorySessionId: string | null;
 	kind: StockMovementKind;
 	locationId: string;
 	lotId: string | null;
@@ -116,6 +118,7 @@ export function stockMovementSnapshot(
 	return {
 		createdAt: row.createdAt.toISOString(),
 		id: row.id,
+		inventorySessionId: row.inventorySessionId,
 		kind: row.kind,
 		locationId: row.locationId,
 		lotId: row.lotId,

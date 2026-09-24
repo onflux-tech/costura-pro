@@ -10,7 +10,9 @@ import {
 	listStockLocations,
 	listStockLots,
 	listStockMovements,
+	listStockPoints,
 	stockBalanceListInput,
+	stockPointsInput,
 } from "./queries";
 import {
 	stockLocationCreatePayload,
@@ -244,4 +246,7 @@ export const stockBalancesRouter = {
 	list: readyProcedure
 		.input(stockBalanceListInput)
 		.handler(({ context, input }) => listStockBalances(context.db, input)),
+	points: readyProcedure
+		.input(stockPointsInput)
+		.handler(({ context, input }) => listStockPoints(context.db, input)),
 };
