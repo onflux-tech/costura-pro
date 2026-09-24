@@ -4,6 +4,7 @@ import { runCreateCommand, runUpdateCommand } from "../aggregate-command";
 import { commandMessages } from "../command-messages";
 import { readyProcedure } from "../index";
 import { opIdSchema } from "../schemas";
+import { quoteApprovePayload } from "../service-orders/schemas";
 import { getQuote, listQuotes, quoteListInput } from "./queries";
 import {
 	quoteContentPayload,
@@ -44,6 +45,24 @@ function quoteToggle(
 }
 
 export const quotesRouter = {
+	approve: readyProcedure
+		.input(
+			z.intersection(
+				quoteApprovePayload,
+				z.object({ approvalId: z.uuid(), opId: opIdSchema })
+			)
+		)
+		.handler(({ context, input }) => {
+			const { approvalId, opId, ...values } = input;
+			return runCreateCommand(context, {
+				aggregateId: approvalId,
+				command: "quote.approve",
+				messages: quoteMessages,
+				opId,
+				values,
+			});
+		}),
+
 	archive: quoteToggle("quote.archive"),
 
 	create: readyProcedure

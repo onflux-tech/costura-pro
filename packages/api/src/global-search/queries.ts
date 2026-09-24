@@ -3,6 +3,7 @@ import { client, clientProfile } from "@costura-pro/db/schema/clients";
 import { material } from "@costura-pro/db/schema/materials";
 import { product } from "@costura-pro/db/schema/products";
 import { quote } from "@costura-pro/db/schema/quotes";
+import { serviceOrder } from "@costura-pro/db/schema/service-orders";
 import { service } from "@costura-pro/db/schema/services";
 import type { ClientKind } from "@costura-pro/domain/client";
 import {
@@ -23,10 +24,16 @@ import { listMaterialVariants } from "../materials/store";
 import { productMatches } from "../products/queries";
 import { listProductVariants } from "../products/store";
 import {
+	approvalExists,
 	draftTotalCents,
 	latestRevision,
 	quoteMatches,
 } from "../quotes/queries";
+import {
+	serviceOrderColumns,
+	serviceOrderMatches,
+	serviceOrderOrder,
+} from "../service-orders/queries";
 import { serviceMatches } from "../services/queries";
 import { variantBalanceTotals } from "../stock/queries";
 
@@ -43,6 +50,7 @@ export const searchGroupNames = [
 	"clients",
 	"profiles",
 	"quotes",
+	"serviceOrders",
 	"products",
 	"materials",
 	"services",
@@ -113,6 +121,7 @@ export type ServiceHit = {
 };
 
 export type QuoteHit = {
+	approved: boolean;
 	archived: boolean;
 	clientName: string;
 	code: string;
@@ -123,12 +132,22 @@ export type QuoteHit = {
 	validUntil: string | null;
 };
 
+export type ServiceOrderHit = {
+	clientName: string;
+	code: string;
+	dueOn: string | null;
+	id: string;
+	itemCount: number;
+	totalCents: string;
+};
+
 type GroupHits = {
 	clients: ClientHit;
 	materials: ParentHit<MaterialVariantHit>;
 	products: ParentHit<ProductVariantHit>;
 	profiles: ProfileHit;
 	quotes: QuoteHit;
+	serviceOrders: ServiceOrderHit;
 	services: ServiceHit;
 };
 
@@ -414,6 +433,7 @@ const quoteSource: SourceFactory<QuoteHit> = (db, tokens, archived) => {
 		page: (offset, limit) =>
 			db
 				.select({
+					approved: approvalExists,
 					archivedAt: quote.archivedAt,
 					clientName: client.name,
 					code: quote.code,
@@ -438,6 +458,7 @@ const quoteSource: SourceFactory<QuoteHit> = (db, tokens, archived) => {
 				.all()
 				.map(
 					({
+						approved,
 						archivedAt,
 						discount,
 						lines,
@@ -446,6 +467,7 @@ const quoteSource: SourceFactory<QuoteHit> = (db, tokens, archived) => {
 						...row
 					}) => ({
 						...row,
+						approved: Boolean(approved),
 						archived: archivedAt !== null,
 						refused: refusedOn !== null,
 						totalCents: revisionTotalCents ?? draftTotalCents(lines, discount),
@@ -461,12 +483,43 @@ const quoteSource: SourceFactory<QuoteHit> = (db, tokens, archived) => {
 	};
 };
 
+const serviceOrderSource: SourceFactory<ServiceOrderHit> = (db, tokens) => {
+	const where = and(
+		isNull(client.anonymizedAt),
+		...serviceOrderMatches(db, tokens)
+	);
+	return {
+		page: (offset, limit) =>
+			db
+				.select(serviceOrderColumns)
+				.from(serviceOrder)
+				.innerJoin(client, eq(client.id, serviceOrder.clientId))
+				.where(where)
+				.orderBy(...serviceOrderOrder)
+				.limit(limit)
+				.offset(offset)
+				.all()
+				.map(({ clientId, openedOn, totalCents, ...row }) => ({
+					...row,
+					totalCents: totalCents ?? "0",
+				})),
+		total: () =>
+			db
+				.select({ total: count() })
+				.from(serviceOrder)
+				.innerJoin(client, eq(client.id, serviceOrder.clientId))
+				.where(where)
+				.get()?.total ?? 0,
+	};
+};
+
 const sources: { [G in SearchGroupName]: SourceFactory<GroupHits[G]> } = {
 	clients: clientSource,
 	materials: materialSource,
 	products: productSource,
 	profiles: profileSource,
 	quotes: quoteSource,
+	serviceOrders: serviceOrderSource,
 	services: serviceSource,
 };
 
@@ -493,6 +546,7 @@ export function globalSearch(
 			products: nothing(),
 			profiles: nothing(),
 			quotes: nothing(),
+			serviceOrders: nothing(),
 			services: nothing(),
 		};
 	}
@@ -502,6 +556,7 @@ export function globalSearch(
 		products: firstPage(sources.products(db, tokens, archived)),
 		profiles: firstPage(sources.profiles(db, tokens, archived)),
 		quotes: firstPage(sources.quotes(db, tokens, archived)),
+		serviceOrders: firstPage(sources.serviceOrders(db, tokens, archived)),
 		services: firstPage(sources.services(db, tokens, archived)),
 	};
 }
@@ -566,6 +621,12 @@ export function groupSearch(
 			return pageOf(
 				group,
 				ready ? sources.quotes(db, tokens, archived) : null,
+				offset
+			);
+		case "serviceOrders":
+			return pageOf(
+				group,
+				ready ? sources.serviceOrders(db, tokens, archived) : null,
 				offset
 			);
 		case "services":

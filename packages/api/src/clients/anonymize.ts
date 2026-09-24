@@ -48,6 +48,7 @@ import {
 	updateReceivedItem,
 } from "../received-items/store";
 import { type RedactionStamp, redactHistory } from "../redaction";
+import { clientHasOpenWork } from "../service-orders/store";
 import {
 	clientSnapshot,
 	listProfiles,
@@ -195,6 +196,38 @@ function removeFilesWithoutRow(
 	}, Promise.resolve(0));
 }
 
+function anonymizable(
+	tx: Executor & Querier,
+	input: { baseVersion: number; clientId: string }
+) {
+	const current = readClient(tx, input.clientId);
+	if (!current) {
+		throw new ORPCError("NOT_FOUND", {
+			message: commandMessages.clientNotFound,
+		});
+	}
+	if (current.anonymizedAt) {
+		throw new ORPCError("PRECONDITION_FAILED", {
+			message: commandMessages.clientAnonymized,
+		});
+	}
+	if (current.version !== input.baseVersion) {
+		throw new ORPCError("CONFLICT", {
+			data: {
+				current: clientSnapshot(current),
+				currentVersion: current.version,
+			},
+			message: commandMessages.staleVersion,
+		});
+	}
+	if (clientHasOpenWork(tx, current.id)) {
+		throw new ORPCError("PRECONDITION_FAILED", {
+			message: commandMessages.clientHasOpenWork,
+		});
+	}
+	return current;
+}
+
 export async function anonymizeClient(
 	context: Pick<Context, "access" | "db" | "log" | "mediaRoot" | "now">,
 	input: { baseVersion: number; clientId: string; opId: string }
@@ -211,26 +244,7 @@ export async function anonymizeClient(
 		(record) => {
 			const now = context.now();
 			return context.db.transaction((tx) => {
-				const current = readClient(tx, input.clientId);
-				if (!current) {
-					throw new ORPCError("NOT_FOUND", {
-						message: commandMessages.clientNotFound,
-					});
-				}
-				if (current.anonymizedAt) {
-					throw new ORPCError("PRECONDITION_FAILED", {
-						message: commandMessages.clientAnonymized,
-					});
-				}
-				if (current.version !== input.baseVersion) {
-					throw new ORPCError("CONFLICT", {
-						data: {
-							current: clientSnapshot(current),
-							currentVersion: current.version,
-						},
-						message: commandMessages.staleVersion,
-					});
-				}
+				const current = anonymizable(tx, input);
 				const stamp = {
 					epoch: readInstallation(tx).epoch,
 					now,

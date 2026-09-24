@@ -47,7 +47,7 @@ export const templatePatchPayload = z
 	})
 	.refine(hasChange, "Nada para alterar");
 
-const measurementFieldsPayload = z
+export const measurementFieldsPayload = z
 	.array(
 		z.object({
 			fieldId: z.uuid(),

@@ -7,8 +7,8 @@ import {
 } from "@costura-pro/db/schema/quotes";
 import {
 	documentCode,
+	documentSearchKey,
 	quoteCodePrefix,
-	quoteSearchKey,
 	serverDeviceCode,
 } from "@costura-pro/domain/quote";
 import { ORPCError } from "@orpc/server";
@@ -213,7 +213,10 @@ export function insertQuote(
 			codeYear: year,
 			createdAt: stamp.now,
 			id,
-			searchText: quoteSearchKey({ code, titles: searchTitles(fields.lines) }),
+			searchText: documentSearchKey({
+				code,
+				titles: searchTitles(fields.lines),
+			}),
 			updatedAt: stamp.now,
 			version: 1,
 		})
@@ -233,7 +236,7 @@ export function updateQuote(
 		.update(quote)
 		.set({
 			...patch,
-			searchText: quoteSearchKey({
+			searchText: documentSearchKey({
 				code: current.code,
 				titles: searchTitles(patch.lines ?? current.lines),
 			}),

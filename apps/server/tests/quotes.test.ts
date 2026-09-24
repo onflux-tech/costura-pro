@@ -237,6 +237,7 @@ describe("quotes", () => {
 			"ORC-2027-PC-0001",
 		]);
 		expect(await owner.quotes.get({ quoteId: first })).toEqual({
+			approval: null,
 			client: {
 				anonymized: false,
 				archived: false,
@@ -856,8 +857,26 @@ describe("quote emission", () => {
 			],
 		});
 		expect((await owner.quotes.get({ quoteId })).stock).toEqual([
-			{ quantityMicros: "3000000", variantId },
-			{ quantityMicros: "0", variantId: lace.materialVariantId },
+			{ quantityMicros: "3000000", reservedMicros: "0", variantId },
+			{
+				quantityMicros: "0",
+				reservedMicros: "0",
+				variantId: lace.materialVariantId,
+			},
+		]);
+		await emitRevision(owner, quoteId, {
+			content: {
+				...exampleContent(),
+				discount: null,
+				lines: [materialLine({ materialVariantId: variantId })],
+			},
+		});
+		await updateWith(owner, quoteId, 2, {
+			discount: null,
+			lines: [freeLine()],
+		});
+		expect((await owner.quotes.get({ quoteId })).stock).toEqual([
+			{ quantityMicros: "3000000", reservedMicros: "0", variantId },
 		]);
 	});
 });
@@ -934,6 +953,7 @@ describe("quote list", () => {
 		await emitRevision(owner, emitted);
 		expect((await listOf(owner, "draft")).items).toEqual([
 			{
+				approvedOn: null,
 				archivedAt: null,
 				clientId,
 				clientName: "Maria Beatriz Alencar",
@@ -944,6 +964,7 @@ describe("quote list", () => {
 				lineCount: 2,
 				refusedOn: null,
 				revisionNumber: null,
+				serviceOrderCode: null,
 				status: "draft",
 				totalCents: "19400",
 				validUntil: null,
@@ -951,6 +972,7 @@ describe("quote list", () => {
 		]);
 		expect((await listOf(owner, "emitted")).items).toEqual([
 			{
+				approvedOn: null,
 				archivedAt: null,
 				clientId,
 				clientName: "Maria Beatriz Alencar",
@@ -961,6 +983,7 @@ describe("quote list", () => {
 				lineCount: 0,
 				refusedOn: null,
 				revisionNumber: 1,
+				serviceOrderCode: null,
 				status: "emitted",
 				totalCents: "88200",
 				validUntil: "2026-10-09",
@@ -1026,7 +1049,7 @@ describe("quote list", () => {
 		expect(
 			await outcome(
 				owner.quotes.list({
-					status: "approved" as "draft",
+					status: "cancelled" as "draft",
 					today: "2026-09-24",
 				})
 			)

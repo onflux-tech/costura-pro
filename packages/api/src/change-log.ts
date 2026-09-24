@@ -20,12 +20,17 @@ export type AggregateType =
 	| "purchase"
 	| "purchaseReversal"
 	| "quote"
+	| "quoteApproval"
 	| "quoteRevision"
+	| "receivable"
 	| "receivedItem"
 	| "service"
+	| "serviceOrder"
+	| "serviceOrderItem"
 	| "stockLocation"
 	| "stockLot"
 	| "stockMovement"
+	| "stockReservation"
 	| "supplier";
 
 export type ChangeInput = {

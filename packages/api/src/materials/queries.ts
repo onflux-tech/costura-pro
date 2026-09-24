@@ -19,6 +19,7 @@ import z from "zod";
 import { commandMessages } from "../command-messages";
 import { containing } from "../search";
 import { variantBalanceTotals } from "../stock/queries";
+import { reservedByVariant } from "../stock/reservations";
 import {
 	listMaterialVariants,
 	materialSnapshot,
@@ -129,16 +130,22 @@ export function getMaterial(db: Reader, materialId: string) {
 		});
 	}
 	const totals = variantBalanceTotals(db, materialId);
+	const variants = listMaterialVariants(db, materialId);
+	const reserved = reservedByVariant(
+		db,
+		variants.map((variant) => variant.id)
+	);
 	return {
 		material: {
 			...materialSnapshot(row),
 			updatedAt: row.updatedAt.toISOString(),
 		},
-		variants: listMaterialVariants(db, materialId).map((variant) => {
+		variants: variants.map((variant) => {
 			const balance = totals.get(variant.id);
 			return {
 				...materialVariantSnapshot(variant),
 				quantityMicros: balance?.quantityMicros ?? "0",
+				reservedMicros: (reserved.get(variant.id) ?? 0n).toString(),
 				updatedAt: variant.updatedAt.toISOString(),
 				valueCents: balance?.valueCents ?? "0",
 			};

@@ -10,6 +10,7 @@ import { readClient } from "../clients/store";
 import { commandMessages } from "../command-messages";
 import { readInstallation } from "../installation/store";
 import { emptyPayload } from "../schemas";
+import { readApprovalOfQuote } from "../service-orders/store";
 import type { CreateDefinition } from "../sync/commands";
 import {
 	archivePatch,
@@ -98,6 +99,12 @@ const emitQuote: CreateDefinition = {
 		}
 		if (isQuoteAnonymized(db, target)) {
 			return { reason: "aggregateAnonymized" };
+		}
+		if (readApprovalOfQuote(db, target.id)) {
+			return {
+				message: commandMessages.quoteApproved,
+				reason: "aggregateExists",
+			};
 		}
 		const totals = quoteTotalsOfText(
 			fields.content.lines,

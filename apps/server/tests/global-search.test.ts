@@ -453,6 +453,7 @@ describe("search.global", () => {
 			products: empty,
 			profiles: empty,
 			quotes: empty,
+			serviceOrders: empty,
 			services: empty,
 		});
 		expect(await owner.search.group({ group: "clients", query: "--" })).toEqual(
@@ -1002,6 +1003,7 @@ describe("quotes in the global search", () => {
 		expect(await quotes("0002")).toEqual({
 			items: [
 				{
+					approved: false,
 					archived: false,
 					clientName: "Márta Albuquerque",
 					code: "ORC-2026-PC-0002",
@@ -1026,6 +1028,7 @@ describe("quotes in the global search", () => {
 		expect(await quotes("noiva")).toEqual({
 			items: [
 				{
+					approved: false,
 					archived: false,
 					clientName: "Tereza Nogueira",
 					code: "ORC-2026-PC-0003",
@@ -1150,5 +1153,131 @@ describe("quotes in the global search", () => {
 			)
 		).toEqual([]);
 		expect(body).toContain('"totalCents":"16000"');
+	});
+});
+
+async function approvedOrder(
+	owner: Owner,
+	clientId: string,
+	description: string
+): Promise<{ quoteId: string; serviceOrderId: string }> {
+	const quoteId = crypto.randomUUID();
+	const lineId = crypto.randomUUID();
+	const content = {
+		lines: [
+			{
+				components: [],
+				description,
+				id: lineId,
+				kind: "custom" as const,
+				quantity: 1,
+				unitPriceCents: "98000",
+			},
+		],
+	};
+	await owner.quotes.create({
+		...content,
+		clientId,
+		createdOn: "2026-09-20",
+		opId: newOpId(),
+		quoteId,
+	});
+	const revisionId = crypto.randomUUID();
+	await owner.quotes.emit({
+		content,
+		emittedOn: "2026-09-20",
+		opId: newOpId(),
+		quoteId,
+		revisionId,
+	});
+	const serviceOrderId = crypto.randomUUID();
+	await owner.quotes.approve({
+		approvalId: crypto.randomUUID(),
+		approvedOn: "2026-09-22",
+		channel: "inPerson",
+		dueOn: "2026-10-10",
+		items: [
+			{
+				itemId: crypto.randomUUID(),
+				lineId,
+				measurements: [],
+				reservations: [],
+			},
+		],
+		opId: newOpId(),
+		quoteId,
+		receivableId: crypto.randomUUID(),
+		revisionId,
+		serviceOrderId,
+	});
+	return { quoteId, serviceOrderId };
+}
+
+describe("service orders in the global search", () => {
+	test("finds orders by code, code digits, client name and item title", async () => {
+		const clock = manualClock();
+		const { owner } = await ownerSetup({ now: clock.now });
+		const marta = await createClient(owner, "Márta Albuquerque");
+		const tereza = await createClient(owner, "Tereza Nogueira");
+		const first = await approvedOrder(owner, marta, "Saia plissada");
+		clock.advance(60_000);
+		const bride = await approvedOrder(owner, tereza, "Vestido de noiva");
+		const orders = async (query: string) =>
+			(await owner.search.global({ query })).serviceOrders;
+		expect(await orders("noiva")).toEqual({
+			items: [
+				{
+					clientName: "Tereza Nogueira",
+					code: "OS-2026-PC-0002",
+					dueOn: "2026-10-10",
+					id: bride.serviceOrderId,
+					itemCount: 1,
+					totalCents: "98000",
+				},
+			],
+			total: 1,
+		});
+		expect(
+			await inSequence(
+				["os-2026-pc-0001", "20260001", "marta", "saia plissada"],
+				async (query) => (await orders(query)).items.map((item) => item.id)
+			)
+		).toEqual([
+			[first.serviceOrderId],
+			[first.serviceOrderId],
+			[first.serviceOrderId],
+			[first.serviceOrderId],
+		]);
+		expect(
+			(await owner.search.global({ archived: true, query: "noiva" }))
+				.serviceOrders.total
+		).toBe(1);
+		const { quotes } = await owner.search.global({ query: "noiva" });
+		expect(quotes.items.map((item) => [item.id, item.approved])).toEqual([
+			[bride.quoteId, true],
+		]);
+	});
+
+	test("pages the order group with the same first items as the global search and the list", async () => {
+		const clock = manualClock();
+		const { owner } = await ownerSetup({ now: clock.now });
+		const clientId = await createClient(owner, "Lima Souza");
+		await inSequence(times(7), async (index) => {
+			clock.advance(60_000);
+			await approvedOrder(owner, clientId, `Barra ${index}`);
+		});
+		const global = (await owner.search.global({ query: "lima" })).serviceOrders;
+		expect(global.total).toBe(7);
+		const page = await owner.search.group({
+			group: "serviceOrders",
+			query: "lima",
+		});
+		expect(page.items.slice(0, 5)).toEqual(global.items);
+		expect(page.items).toHaveLength(7);
+		expect(page.nextOffset).toBeNull();
+		const list = await owner.serviceOrders.list({ query: "lima" });
+		expect(global.items.map((item) => item.id)).toEqual(
+			list.items.slice(0, 5).map((item) => item.id)
+		);
 	});
 });

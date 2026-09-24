@@ -1,7 +1,6 @@
 import type { Database } from "@costura-pro/db";
 import { client } from "@costura-pro/db/schema/clients";
 import { quote } from "@costura-pro/db/schema/quotes";
-import { stockBalance } from "@costura-pro/db/schema/stock";
 import {
 	plannedMaterials,
 	type QuoteStatus,
@@ -10,6 +9,7 @@ import {
 	quoteTotalsOfText,
 } from "@costura-pro/domain/quote";
 import { searchTokens } from "@costura-pro/domain/search";
+import type { ApprovalChannel } from "@costura-pro/domain/service-order";
 import { ORPCError } from "@orpc/server";
 import {
 	and,
@@ -18,6 +18,7 @@ import {
 	inArray,
 	isNotNull,
 	isNull,
+	not,
 	or,
 	type SQL,
 	sql,
@@ -27,6 +28,8 @@ import z from "zod";
 import { clientMatches } from "../clients/queries";
 import { commandMessages } from "../command-messages";
 import { containing } from "../search";
+import { readApprovalOfQuote, readServiceOrder } from "../service-orders/store";
+import { physicalByVariant, reservedByVariant } from "../stock/reservations";
 import {
 	listQuoteRevisions,
 	type QuoteRevisionSnapshot,
@@ -42,6 +45,7 @@ type Reader = Pick<Database, "select">;
 export const quotePageSize = 50;
 
 export const quoteStatusValues = [
+	"approved",
 	"draft",
 	"emitted",
 	"expired",
@@ -71,6 +75,16 @@ export const latestRevision = {
 	>`(SELECT revision.valid_until FROM quote_revision AS revision WHERE revision.quote_id = "quote"."id" ORDER BY revision.number DESC LIMIT 1)`,
 };
 
+export const approvalExists = sql<number>`EXISTS (SELECT 1 FROM quote_approval AS approval WHERE approval.quote_id = "quote"."id")`;
+
+const serviceOrderCode = sql<
+	string | null
+>`(SELECT so.code FROM service_order AS so WHERE so.quote_id = "quote"."id")`;
+
+const approvedOn = sql<
+	string | null
+>`(SELECT approval.approved_on FROM quote_approval AS approval WHERE approval.quote_id = "quote"."id")`;
+
 export function quoteMatches(
 	db: Reader,
 	tokens: readonly string[]
@@ -97,21 +111,27 @@ export function draftTotalCents(
 }
 
 function statusFilter(status: QuoteStatus, today: string): SQL | undefined {
+	const pending = not(approvalExists);
 	switch (status) {
+		case "approved":
+			return approvalExists;
 		case "refused":
-			return isNotNull(quote.refusedOn);
+			return and(pending, isNotNull(quote.refusedOn));
 		case "draft":
 			return and(
+				pending,
 				isNull(quote.refusedOn),
 				sql`${latestRevision.validUntil} IS NULL`
 			);
 		case "expired":
 			return and(
+				pending,
 				isNull(quote.refusedOn),
 				sql`${latestRevision.validUntil} < ${today}`
 			);
 		case "emitted":
 			return and(
+				pending,
 				isNull(quote.refusedOn),
 				sql`${latestRevision.validUntil} >= ${today}`
 			);
@@ -121,6 +141,7 @@ function statusFilter(status: QuoteStatus, today: string): SQL | undefined {
 }
 
 export type QuoteListItem = {
+	approvedOn: string | null;
 	archivedAt: string | null;
 	clientId: string;
 	clientName: string;
@@ -131,6 +152,7 @@ export type QuoteListItem = {
 	lineCount: number;
 	refusedOn: string | null;
 	revisionNumber: number | null;
+	serviceOrderCode: string | null;
 	status: QuoteStatus;
 	totalCents: string;
 	validUntil: string | null;
@@ -142,6 +164,8 @@ export function listQuotes(
 ): { items: QuoteListItem[]; nextOffset: number | null } {
 	const rows = db
 		.select({
+			approved: approvalExists,
+			approvedOn,
 			archivedAt: quote.archivedAt,
 			clientId: quote.clientId,
 			clientName: client.name,
@@ -154,6 +178,7 @@ export function listQuotes(
 			refusedOn: quote.refusedOn,
 			revisionNumber: latestRevision.number,
 			revisionTotalCents: latestRevision.totalCents,
+			serviceOrderCode,
 			validUntil: latestRevision.validUntil,
 		})
 		.from(quote)
@@ -172,11 +197,12 @@ export function listQuotes(
 	return {
 		items: rows
 			.slice(0, quotePageSize)
-			.map(({ discount, lines, revisionTotalCents, ...row }) => ({
+			.map(({ approved, discount, lines, revisionTotalCents, ...row }) => ({
 				...row,
 				archivedAt: row.archivedAt?.toISOString() ?? null,
 				lineCount: lines.length,
 				status: quoteStatus({
+					approved: Boolean(approved),
 					refused: row.refusedOn !== null,
 					today,
 					validUntil: row.validUntil,
@@ -187,33 +213,62 @@ export function listQuotes(
 	};
 }
 
+export type QuoteApprovalView = {
+	approvedOn: string;
+	channel: ApprovalChannel;
+	id: string;
+	note: string | null;
+	revisionId: string;
+	revisionNumber: number;
+	serviceOrderCode: string;
+	serviceOrderId: string;
+};
+
 export type QuoteDetail = {
+	approval: QuoteApprovalView | null;
 	client: { anonymized: boolean; archived: boolean; id: string; name: string };
 	quote: QuoteSnapshot & { updatedAt: string };
 	revisions: QuoteRevisionSnapshot[];
-	stock: { quantityMicros: string; variantId: string }[];
+	stock: {
+		quantityMicros: string;
+		reservedMicros: string;
+		variantId: string;
+	}[];
 };
 
 function stockOf(db: Reader, variantIds: readonly string[]) {
-	if (variantIds.length === 0) {
-		return [];
-	}
-	const totals = new Map(
-		db
-			.select({
-				quantityMicros: sql<string>`cast(sum(${stockBalance.quantityMicros}) as text)`,
-				variantId: stockBalance.variantId,
-			})
-			.from(stockBalance)
-			.where(inArray(stockBalance.variantId, [...variantIds]))
-			.groupBy(stockBalance.variantId)
-			.all()
-			.map((row) => [row.variantId, row.quantityMicros])
-	);
+	const physical = physicalByVariant(db, variantIds);
+	const reserved = reservedByVariant(db, variantIds);
 	return variantIds.map((variantId) => ({
-		quantityMicros: totals.get(variantId) ?? "0",
+		quantityMicros: (physical.get(variantId) ?? 0n).toString(),
+		reservedMicros: (reserved.get(variantId) ?? 0n).toString(),
 		variantId,
 	}));
+}
+
+function approvalOf(
+	db: Reader,
+	quoteId: string,
+	revisions: readonly QuoteRevisionSnapshot[]
+): QuoteApprovalView | null {
+	const approval = readApprovalOfQuote(db, quoteId);
+	const order = approval
+		? readServiceOrder(db, approval.serviceOrderId)
+		: undefined;
+	const revision = revisions.find((item) => item.id === approval?.revisionId);
+	if (!(approval && order && revision)) {
+		return null;
+	}
+	return {
+		approvedOn: approval.approvedOn,
+		channel: approval.channel,
+		id: approval.id,
+		note: approval.note,
+		revisionId: approval.revisionId,
+		revisionNumber: revision.number,
+		serviceOrderCode: order.code,
+		serviceOrderId: order.id,
+	};
 }
 
 export function getQuote(db: Reader, quoteId: string): QuoteDetail {
@@ -226,8 +281,13 @@ export function getQuote(db: Reader, quoteId: string): QuoteDetail {
 			message: commandMessages.quoteNotFound,
 		});
 	}
-	const planned = plannedMaterials(row.lines.map(quoteLineOfText));
+	const revisions = listQuoteRevisions(db, row.id).map(quoteRevisionSnapshot);
+	const latest = revisions[0]?.content.lines ?? [];
+	const planned = plannedMaterials(
+		[...row.lines, ...latest].map(quoteLineOfText)
+	);
 	return {
+		approval: approvalOf(db, row.id, revisions),
 		client: {
 			anonymized: owner.anonymizedAt !== null,
 			archived: owner.archivedAt !== null,
@@ -235,7 +295,7 @@ export function getQuote(db: Reader, quoteId: string): QuoteDetail {
 			name: owner.name,
 		},
 		quote: { ...quoteSnapshot(row), updatedAt: row.updatedAt.toISOString() },
-		revisions: listQuoteRevisions(db, row.id).map(quoteRevisionSnapshot),
+		revisions,
 		stock: stockOf(db, [...planned.keys()]),
 	};
 }

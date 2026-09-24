@@ -24,6 +24,7 @@ import { purchaseCommands } from "../purchases/commands";
 import { quoteCommands } from "../quotes/commands";
 import { receivedItemCommands } from "../received-items/commands";
 import { atelierNameSchema, deviceNameSchema } from "../schemas";
+import { serviceOrderCommands } from "../service-orders/commands";
 import { serviceCommands } from "../services/commands";
 import { stockCommands } from "../stock/commands";
 
@@ -128,6 +129,7 @@ export const syncCommands = {
 	...quoteCommands,
 	...receivedItemCommands,
 	...serviceCommands,
+	...serviceOrderCommands,
 	...stockCommands,
 	"device.rename": renameDevice,
 	"installation.setAtelierName": setAtelierName,

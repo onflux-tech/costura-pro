@@ -24,6 +24,7 @@ import {
 import { quotesRouter } from "../quotes/router";
 import { receivedItemsRouter } from "../received-items/router";
 import { recoveryRouter } from "../recovery/router";
+import { serviceOrdersRouter } from "../service-orders/router";
 import { pricingRouter, servicesRouter } from "../services/router";
 import {
 	stockBalancesRouter,
@@ -59,6 +60,7 @@ export const appRouter = {
 	receivedItems: receivedItemsRouter,
 	recovery: recoveryRouter,
 	search: searchRouter,
+	serviceOrders: serviceOrdersRouter,
 	services: servicesRouter,
 	stockBalances: stockBalancesRouter,
 	stockLocations: stockLocationsRouter,
