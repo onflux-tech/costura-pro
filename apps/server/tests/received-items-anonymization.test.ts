@@ -277,7 +277,14 @@ describe("received items anonymization", () => {
 				.all()
 				.map((row) => JSON.parse(row.details))
 		).toEqual([
-			{ clientId: maria, measurements: 0, profiles: 0, receivedItems: 2 },
+			{
+				clientId: maria,
+				measurements: 0,
+				profiles: 0,
+				quoteRevisions: 0,
+				quotes: 0,
+				receivedItems: 2,
+			},
 		]);
 		expect(
 			await local.clients.anonymize({

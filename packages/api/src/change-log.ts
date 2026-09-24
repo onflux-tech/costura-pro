@@ -19,6 +19,8 @@ export type AggregateType =
 	| "profile"
 	| "purchase"
 	| "purchaseReversal"
+	| "quote"
+	| "quoteRevision"
 	| "receivedItem"
 	| "service"
 	| "stockLocation"

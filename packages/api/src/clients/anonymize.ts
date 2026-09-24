@@ -1,9 +1,15 @@
 import { truncateWal } from "@costura-pro/db";
+import type {
+	QuoteDiscountRow,
+	QuoteLineRow,
+	QuoteRevisionContentRow,
+} from "@costura-pro/db/schema/quotes";
 import {
 	anonymizedClientName,
 	anonymizedProfileName,
 } from "@costura-pro/domain/client";
 import type { MediaType } from "@costura-pro/domain/media";
+import { anonymizedQuoteItemDescription } from "@costura-pro/domain/quote";
 import { anonymizedReceivedItemDescription } from "@costura-pro/domain/received-item";
 import { ORPCError } from "@orpc/server";
 
@@ -27,6 +33,14 @@ import {
 	readMediaFile,
 } from "../media/store";
 import { runDirectCommand } from "../operations";
+import {
+	listQuoteRevisions,
+	listQuotesOfClient,
+	quoteRevisionSnapshot,
+	quoteSnapshot,
+	redactQuoteRevision,
+	updateQuote,
+} from "../quotes/store";
 import {
 	listReceivedItemsOfClient,
 	receivedItemHistoryValues,
@@ -89,6 +103,75 @@ function anonymizeReceivedItems(
 		return [{ hash, mime: media.mime }];
 	});
 	return { count: items.length, removed };
+}
+
+function redactedDiscount(
+	discount: QuoteDiscountRow | null
+): QuoteDiscountRow | null {
+	return discount === null ? null : { ...discount, reason: null };
+}
+
+function redactedLine<T extends QuoteLineRow>(line: T): T {
+	return {
+		...line,
+		discount: redactedDiscount(line.discount),
+		note: null,
+		...(line.kind === "custom" || line.kind === "free"
+			? { description: anonymizedQuoteItemDescription }
+			: {}),
+	};
+}
+
+function anonymizeQuotes(
+	tx: Executor & Querier,
+	clientId: string,
+	stamp: RedactionStamp
+): { quotes: number; revisions: number } {
+	const quotes = listQuotesOfClient(tx, clientId);
+	let revisions = 0;
+	for (const row of quotes) {
+		const anonymized = updateQuote(
+			tx,
+			row,
+			{
+				archivedAt: row.archivedAt ?? stamp.now,
+				discount: redactedDiscount(row.discount),
+				lines: row.lines.map(redactedLine),
+				notes: null,
+				refusalReason: null,
+			},
+			stamp
+		);
+		redactHistory(
+			tx,
+			{ current: quoteSnapshot(anonymized), id: anonymized.id, type: "quote" },
+			stamp
+		);
+		for (const revision of listQuoteRevisions(tx, row.id)) {
+			const content: QuoteRevisionContentRow = {
+				...revision.content,
+				discount: redactedDiscount(revision.content.discount),
+				lines: revision.content.lines.map(redactedLine),
+				notes: null,
+			};
+			redactHistory(
+				tx,
+				{
+					current: quoteRevisionSnapshot({
+						...revision,
+						content,
+						reason: null,
+					}),
+					id: revision.id,
+					type: "quoteRevision",
+				},
+				stamp
+			);
+			redactQuoteRevision(tx, revision, content, stamp);
+			revisions += 1;
+		}
+	}
+	return { quotes: quotes.length, revisions };
 }
 
 function removeFilesWithoutRow(
@@ -222,6 +305,7 @@ export async function anonymizeClient(
 				}
 				const receivedItems = anonymizeReceivedItems(tx, current.id, stamp);
 				removedFiles.push(...receivedItems.removed);
+				const quotes = anonymizeQuotes(tx, current.id, stamp);
 				appendAudit(
 					tx,
 					now,
@@ -231,6 +315,8 @@ export async function anonymizeClient(
 							clientId: next.id,
 							measurements: measurements.length,
 							profiles: profiles.length,
+							quoteRevisions: quotes.revisions,
+							quotes: quotes.quotes,
 							receivedItems: receivedItems.count,
 						},
 						outcome: "succeeded",

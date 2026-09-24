@@ -19,6 +19,7 @@ export const commandMessages = {
 	profileNotFound: "Perfil não encontrado",
 	purchaseNotFound: "Compra não encontrada",
 	purchaseReversed: "Compra já estornada",
+	quoteNotFound: "Orçamento não encontrado",
 	receivedItemNotFound: "Peça recebida não encontrada",
 	reversalNotReversible: "Estorno não se estorna",
 	serviceNotFound: "Serviço não encontrado",

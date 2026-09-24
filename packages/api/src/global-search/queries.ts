@@ -2,6 +2,7 @@ import type { Database } from "@costura-pro/db";
 import { client, clientProfile } from "@costura-pro/db/schema/clients";
 import { material } from "@costura-pro/db/schema/materials";
 import { product } from "@costura-pro/db/schema/products";
+import { quote } from "@costura-pro/db/schema/quotes";
 import { service } from "@costura-pro/db/schema/services";
 import type { ClientKind } from "@costura-pro/domain/client";
 import {
@@ -12,7 +13,7 @@ import {
 	searchTokens,
 } from "@costura-pro/domain/search";
 import type { BaseUnitCode } from "@costura-pro/domain/unit";
-import { and, asc, count, eq, isNull, type SQL, sql } from "drizzle-orm";
+import { and, asc, count, desc, eq, isNull, type SQL, sql } from "drizzle-orm";
 import type { AnySQLiteColumn } from "drizzle-orm/sqlite-core";
 import z from "zod";
 
@@ -21,6 +22,11 @@ import { materialMatches } from "../materials/queries";
 import { listMaterialVariants } from "../materials/store";
 import { productMatches } from "../products/queries";
 import { listProductVariants } from "../products/store";
+import {
+	draftTotalCents,
+	latestRevision,
+	quoteMatches,
+} from "../quotes/queries";
 import { serviceMatches } from "../services/queries";
 import { variantBalanceTotals } from "../stock/queries";
 
@@ -36,6 +42,7 @@ export const globalSearchInput = z.object({
 export const searchGroupNames = [
 	"clients",
 	"profiles",
+	"quotes",
 	"products",
 	"materials",
 	"services",
@@ -105,11 +112,23 @@ export type ServiceHit = {
 	priceCents: string;
 };
 
+export type QuoteHit = {
+	archived: boolean;
+	clientName: string;
+	code: string;
+	id: string;
+	refused: boolean;
+	revisionNumber: number | null;
+	totalCents: string;
+	validUntil: string | null;
+};
+
 type GroupHits = {
 	clients: ClientHit;
 	materials: ParentHit<MaterialVariantHit>;
 	products: ParentHit<ProductVariantHit>;
 	profiles: ProfileHit;
+	quotes: QuoteHit;
 	services: ServiceHit;
 };
 
@@ -385,11 +404,69 @@ const serviceSource: SourceFactory<ServiceHit> = (db, tokens, archived) => {
 	};
 };
 
+const quoteSource: SourceFactory<QuoteHit> = (db, tokens, archived) => {
+	const where = and(
+		onlyActive(archived, quote.archivedAt),
+		isNull(client.anonymizedAt),
+		...quoteMatches(db, tokens)
+	);
+	return {
+		page: (offset, limit) =>
+			db
+				.select({
+					archivedAt: quote.archivedAt,
+					clientName: client.name,
+					code: quote.code,
+					discount: quote.discount,
+					id: quote.id,
+					lines: quote.lines,
+					refusedOn: quote.refusedOn,
+					revisionNumber: latestRevision.number,
+					revisionTotalCents: latestRevision.totalCents,
+					validUntil: latestRevision.validUntil,
+				})
+				.from(quote)
+				.innerJoin(client, eq(client.id, quote.clientId))
+				.where(where)
+				.orderBy(
+					activeFirst(quote.archivedAt),
+					desc(quote.createdAt),
+					desc(quote.id)
+				)
+				.limit(limit)
+				.offset(offset)
+				.all()
+				.map(
+					({
+						archivedAt,
+						discount,
+						lines,
+						refusedOn,
+						revisionTotalCents,
+						...row
+					}) => ({
+						...row,
+						archived: archivedAt !== null,
+						refused: refusedOn !== null,
+						totalCents: revisionTotalCents ?? draftTotalCents(lines, discount),
+					})
+				),
+		total: () =>
+			db
+				.select({ total: count() })
+				.from(quote)
+				.innerJoin(client, eq(client.id, quote.clientId))
+				.where(where)
+				.get()?.total ?? 0,
+	};
+};
+
 const sources: { [G in SearchGroupName]: SourceFactory<GroupHits[G]> } = {
 	clients: clientSource,
 	materials: materialSource,
 	products: productSource,
 	profiles: profileSource,
+	quotes: quoteSource,
 	services: serviceSource,
 };
 
@@ -415,6 +492,7 @@ export function globalSearch(
 			materials: nothing(),
 			products: nothing(),
 			profiles: nothing(),
+			quotes: nothing(),
 			services: nothing(),
 		};
 	}
@@ -423,6 +501,7 @@ export function globalSearch(
 		materials: firstPage(sources.materials(db, tokens, archived)),
 		products: firstPage(sources.products(db, tokens, archived)),
 		profiles: firstPage(sources.profiles(db, tokens, archived)),
+		quotes: firstPage(sources.quotes(db, tokens, archived)),
 		services: firstPage(sources.services(db, tokens, archived)),
 	};
 }
@@ -481,6 +560,12 @@ export function groupSearch(
 			return pageOf(
 				group,
 				ready ? sources.profiles(db, tokens, archived) : null,
+				offset
+			);
+		case "quotes":
+			return pageOf(
+				group,
+				ready ? sources.quotes(db, tokens, archived) : null,
 				offset
 			);
 		case "services":

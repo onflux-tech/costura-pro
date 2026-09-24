@@ -269,6 +269,12 @@ describe("products", () => {
 				},
 			],
 		});
+		await owner.services.update({
+			baseVersion: 1,
+			opId: newOpId(),
+			patch: { estimatedMinutes: 90 },
+			serviceId: catalog.sewing,
+		});
 		const { references } = await owner.products.get({ productId: id });
 		expect(references.materialVariants.map((item) => item.id).sort()).toEqual(
 			[catalog.blue, catalog.button].sort()
@@ -297,10 +303,15 @@ describe("products", () => {
 		).toEqual({
 			archived: false,
 			costCents: "1500",
+			estimatedMinutes: null,
 			id: catalog.embroidery,
 			name: "Bordado",
 			outsourced: true,
+			version: 1,
 		});
+		expect(
+			references.services.find((item) => item.id === catalog.sewing)
+		).toMatchObject({ estimatedMinutes: 90, version: 2 });
 		await owner.materials.archive({
 			baseVersion: 1,
 			materialId: catalog.buttonMaterial,

@@ -462,7 +462,14 @@ describe("client anonymization", () => {
 				.all()
 				.map((row) => JSON.parse(row.details))
 		).toEqual([
-			{ clientId: id, measurements: 3, profiles: 2, receivedItems: 0 },
+			{
+				clientId: id,
+				measurements: 3,
+				profiles: 2,
+				quoteRevisions: 0,
+				quotes: 0,
+				receivedItems: 0,
+			},
 		]);
 		const bytes = ["atelier.db", "atelier.db-wal"]
 			.map((file) => join(server.directory, file))

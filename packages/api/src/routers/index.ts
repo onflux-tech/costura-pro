@@ -21,6 +21,7 @@ import {
 	purchasesRouter,
 	suppliersRouter,
 } from "../purchases/router";
+import { quotesRouter } from "../quotes/router";
 import { receivedItemsRouter } from "../received-items/router";
 import { recoveryRouter } from "../recovery/router";
 import { pricingRouter, servicesRouter } from "../services/router";
@@ -54,6 +55,7 @@ export const appRouter = {
 	productVariants: productVariantsRouter,
 	profiles: profilesRouter,
 	purchases: purchasesRouter,
+	quotes: quotesRouter,
 	receivedItems: receivedItemsRouter,
 	recovery: recoveryRouter,
 	search: searchRouter,

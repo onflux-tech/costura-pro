@@ -72,9 +72,11 @@ export type MaterialVariantReference = {
 export type ServiceReference = {
 	archived: boolean;
 	costCents: string;
+	estimatedMinutes: number | null;
 	id: string;
 	name: string;
 	outsourced: boolean;
+	version: number;
 };
 
 export type ProductDetail = {
@@ -238,9 +240,11 @@ function serviceReferences(
 		.select({
 			archivedAt: service.archivedAt,
 			costCents: service.costCents,
+			estimatedMinutes: service.estimatedMinutes,
 			id: service.id,
 			name: service.name,
 			outsourced: service.outsourced,
+			version: service.version,
 		})
 		.from(service)
 		.where(inArray(service.id, [...ids]))

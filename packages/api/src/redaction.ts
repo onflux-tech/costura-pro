@@ -17,6 +17,8 @@ export const personalDataAggregates: ReadonlySet<AggregateType> = new Set([
 	"client",
 	"measurement",
 	"profile",
+	"quote",
+	"quoteRevision",
 	"receivedItem",
 ]);
 

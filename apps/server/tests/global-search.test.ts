@@ -452,6 +452,7 @@ describe("search.global", () => {
 			materials: empty,
 			products: empty,
 			profiles: empty,
+			quotes: empty,
 			services: empty,
 		});
 		expect(await owner.search.group({ group: "clients", query: "--" })).toEqual(
@@ -930,5 +931,224 @@ describe("search.global", () => {
 				secondaryPhone: "81998887766",
 			},
 		]);
+	});
+});
+
+async function createQuote(
+	owner: Owner,
+	clientId: string,
+	description: string | null = null
+): Promise<string> {
+	const quoteId = crypto.randomUUID();
+	await owner.quotes.create({
+		clientId,
+		createdOn: "2026-09-24",
+		opId: newOpId(),
+		quoteId,
+	});
+	if (description !== null) {
+		await owner.quotes.update({
+			baseVersion: 1,
+			content: {
+				lines: [
+					{
+						components: [],
+						description,
+						id: crypto.randomUUID(),
+						kind: "custom",
+						quantity: 1,
+						unitPriceCents: "98000",
+					},
+				],
+			},
+			opId: newOpId(),
+			quoteId,
+		});
+	}
+	return quoteId;
+}
+
+describe("quotes in the global search", () => {
+	test("finds quotes by code fragments, client name and a line description", async () => {
+		const clock = manualClock();
+		const { owner } = await ownerSetup({ now: clock.now });
+		const marta = await createClient(owner, "Márta Albuquerque");
+		const tereza = await createClient(owner, "Tereza Nogueira");
+		const first = await createQuote(owner, marta);
+		clock.advance(60_000);
+		const second = await createQuote(owner, marta);
+		await owner.quotes.emit({
+			content: {
+				lines: [
+					{
+						components: [],
+						description: "Saia plissada",
+						id: crypto.randomUUID(),
+						kind: "custom",
+						quantity: 1,
+						unitPriceCents: "45000",
+					},
+				],
+			},
+			emittedOn: "2026-09-24",
+			opId: newOpId(),
+			quoteId: second,
+			revisionId: crypto.randomUUID(),
+		});
+		clock.advance(60_000);
+		const bride = await createQuote(owner, tereza, "Vestido de noiva");
+		const quotes = async (query: string) =>
+			(await owner.search.global({ query })).quotes;
+		expect(await quotes("0002")).toEqual({
+			items: [
+				{
+					archived: false,
+					clientName: "Márta Albuquerque",
+					code: "ORC-2026-PC-0002",
+					id: second,
+					refused: false,
+					revisionNumber: 1,
+					totalCents: "45000",
+					validUntil: "2026-10-09",
+				},
+			],
+			total: 1,
+		});
+		expect(
+			await inSequence(["pc-0002", "20260002", "2026-0002"], async (query) =>
+				(await quotes(query)).items.map((item) => item.id)
+			)
+		).toEqual([[second], [second], [second]]);
+		expect((await quotes("marta")).items.map((item) => item.id)).toEqual([
+			second,
+			first,
+		]);
+		expect(await quotes("noiva")).toEqual({
+			items: [
+				{
+					archived: false,
+					clientName: "Tereza Nogueira",
+					code: "ORC-2026-PC-0003",
+					id: bride,
+					refused: false,
+					revisionNumber: null,
+					totalCents: "98000",
+					validUntil: null,
+				},
+			],
+			total: 1,
+		});
+	});
+
+	test("never shows a quote of an anonymized client, not even by code or with archived ones", async () => {
+		const { owner } = await ownerSetup();
+		const rita = await createClient(owner, "Rita de Cássia");
+		await createQuote(owner, rita, "Vestido azul");
+		await owner.clients.anonymize({
+			baseVersion: 1,
+			clientId: rita,
+			opId: newOpId(),
+		});
+		expect((await owner.search.global({ query: "0001" })).quotes).toEqual(
+			empty
+		);
+		expect(
+			(await owner.search.global({ archived: true, query: "0001" })).quotes
+		).toEqual(empty);
+	});
+
+	test("leaves archived quotes out unless asked, with active ones first and then the newest", async () => {
+		const clock = manualClock();
+		const { owner } = await ownerSetup({ now: clock.now });
+		const clientId = await createClient(owner, "Sônia Albuquerque");
+		const ids = await inSequence(times(3), async () => {
+			clock.advance(60_000);
+			return await createQuote(owner, clientId);
+		});
+		const [oldest = "", middle = "", newest = ""] = ids;
+		await inSequence([oldest, middle], async (quoteId) => {
+			clock.advance(60_000);
+			await owner.quotes.archive({
+				baseVersion: 1,
+				opId: newOpId(),
+				quoteId,
+			});
+		});
+		const found = async (archived: boolean) =>
+			(
+				await owner.search.global({ archived, query: "albuquerque" })
+			).quotes.items.map((item) => [item.id, item.archived]);
+		expect(await found(false)).toEqual([[newest, false]]);
+		expect(await found(true)).toEqual([
+			[newest, false],
+			[middle, true],
+			[oldest, true],
+		]);
+	});
+
+	test("pages quotes fifty at a time, starting with the same five as the global search and the list", async () => {
+		const clock = manualClock();
+		const { owner } = await ownerSetup({ now: clock.now });
+		const clientId = await createClient(owner, "Lima Souza");
+		await inSequence(times(55), async () => {
+			clock.advance(60_000);
+			await createQuote(owner, clientId);
+		});
+		const global = (await owner.search.global({ query: "lima" })).quotes;
+		expect(global.total).toBe(55);
+		const first = await owner.search.group({ group: "quotes", query: "lima" });
+		expect(first.items.slice(0, 5)).toEqual(global.items);
+		expect(first.items).toHaveLength(50);
+		expect(first.nextOffset).toBe(50);
+		const list = await owner.quotes.list({
+			query: "lima",
+			status: "draft",
+			today: "2026-09-24",
+		});
+		expect(global.items.map((item) => item.id)).toEqual(
+			list.items.slice(0, 5).map((item) => item.id)
+		);
+		const rest = await owner.search.group({
+			group: "quotes",
+			offset: 50,
+			query: "lima",
+		});
+		expect(rest.items).toHaveLength(5);
+		expect(rest.nextOffset).toBeNull();
+	});
+
+	test("never returns cost or margin in the quotes group", async () => {
+		const { owner } = await ownerSetup();
+		const clientId = await createClient(owner, "Helena Prado");
+		const quoteId = await createQuote(owner, clientId, "Blazer sob medida");
+		await owner.quotes.emit({
+			content: {
+				lines: [
+					{
+						catalogPriceCents: "16000",
+						id: crypto.randomUUID(),
+						kind: "service",
+						outsourced: false,
+						quantity: 1,
+						serviceId: crypto.randomUUID(),
+						serviceName: "Ajuste de cava",
+						serviceVersion: 1,
+						unitCostCents: "6000",
+						unitPriceCents: "16000",
+					},
+				],
+			},
+			emittedOn: "2026-09-24",
+			opId: newOpId(),
+			quoteId,
+			revisionId: crypto.randomUUID(),
+		});
+		const body = JSON.stringify(await owner.search.global({ query: "helena" }));
+		expect(
+			["costCents", "targetMarginBasisPoints", "unitCostCents"].filter((key) =>
+				body.includes(`"${key}"`)
+			)
+		).toEqual([]);
+		expect(body).toContain('"totalCents":"16000"');
 	});
 });
