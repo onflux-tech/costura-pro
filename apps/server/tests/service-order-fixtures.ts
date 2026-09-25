@@ -505,3 +505,20 @@ export function reconcileInput(
 		...overrides,
 	} as Parameters<Owner["serviceOrderItems"]["reconcile"]>[0];
 }
+
+export function reverseInput(
+	reconciled: ReturnType<typeof reconcileInput>,
+	overrides: Record<string, unknown> = {}
+) {
+	return {
+		movementIds: reconciled.lines.flatMap((line) =>
+			line.parts.map(() => crypto.randomUUID())
+		),
+		occurredOn: "2026-09-26",
+		opId: newOpId(),
+		reason: "Peça voltou para ajuste",
+		reconciliationId: reconciled.reconciliationId,
+		reversalId: crypto.randomUUID(),
+		...overrides,
+	} as Parameters<Owner["serviceOrderItems"]["reverseReconciliation"]>[0];
+}

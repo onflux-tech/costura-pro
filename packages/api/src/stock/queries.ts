@@ -24,7 +24,11 @@ import {
 import z from "zod";
 
 import { containing } from "../search";
-import { reservationsOfVariant, type VariantReservation } from "./reservations";
+import {
+	reservationsOfVariant,
+	unreleasedReservation,
+	type VariantReservation,
+} from "./reservations";
 import {
 	type StockLocationSnapshot,
 	type StockLotSnapshot,
@@ -96,7 +100,7 @@ export function listStockBalances(
 			materialName: material.name,
 			quantityMicros: sql<string>`cast(coalesce(sum(${stockBalance.quantityMicros}), 0) as text)`,
 			referenceCostCents: materialVariant.referenceCostCents,
-			reservedMicros: sql<string>`cast(coalesce((SELECT sum(reservation.quantity_micros) FROM stock_reservation AS reservation WHERE reservation.variant_id = "material_variant"."id"), 0) as text)`,
+			reservedMicros: sql<string>`cast(coalesce((SELECT sum(reservation.quantity_micros) FROM stock_reservation AS reservation WHERE reservation.variant_id = "material_variant"."id" AND ${unreleasedReservation("reservation")}), 0) as text)`,
 			searchText: materialVariant.searchText,
 			tracksLots: materialVariant.tracksLots,
 			valueCents: sql<string>`cast(coalesce(sum(${stockBalance.valueCents}), 0) as text)`,

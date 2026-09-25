@@ -246,6 +246,9 @@ const reverseMovement: CreateDefinition = {
 		if (!original) {
 			return notFound(commandMessages.stockMovementNotFound);
 		}
+		if (original.materialReconciliationId !== null) {
+			return notFound(commandMessages.stockMovementFromReconciliation);
+		}
 		if (original.purchaseId !== null) {
 			return notFound(commandMessages.stockMovementFromPurchase);
 		}

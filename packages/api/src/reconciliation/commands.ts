@@ -36,11 +36,15 @@ import type {
 import {
 	type ReconciliationCreateValues,
 	reconciliationCreatePayload,
+	reconciliationReversePayload,
 } from "./schemas";
 import {
 	insertMaterialReconciliation,
+	insertMaterialReconciliationReversal,
 	readActiveReconciliation,
 	readMaterialReconciliation,
+	readMaterialReconciliationReversal,
+	readReversalOfReconciliation,
 } from "./store";
 
 type ReconciliationLine = ReconciliationCreateValues["lines"][number];
@@ -265,6 +269,100 @@ const createReconciliation: CreateDefinition = {
 	payload: reconciliationCreatePayload,
 };
 
+const reverseReconciliation: CreateDefinition = {
+	aggregateType: "materialReconciliationReversal",
+	create: (db, id, values, stamp) => {
+		const fields = reconciliationReversePayload.parse(values);
+		const reconciliation = readMaterialReconciliation(
+			db,
+			fields.reconciliationId
+		);
+		const item = reconciliation
+			? readServiceOrderItem(db, reconciliation.serviceOrderItemId)
+			: undefined;
+		const order = item ? readServiceOrder(db, item.serviceOrderId) : undefined;
+		if (!(reconciliation && item && order)) {
+			return notFound(commandMessages.reconciliationNotFound);
+		}
+		if (isServiceOrderAnonymized(db, order)) {
+			return { reason: "aggregateAnonymized" };
+		}
+		if (readReversalOfReconciliation(db, reconciliation.id)) {
+			return {
+				message: commandMessages.reconciliationReversed,
+				reason: "aggregateExists",
+			};
+		}
+		const parts = reconciliation.lines.flatMap((line) =>
+			line.parts.map((part) => ({ part, variantId: line.variantId }))
+		);
+		if (parts.length !== fields.movementIds.length) {
+			return notFound(commandMessages.reconciliationNotFound);
+		}
+		if (
+			fields.movementIds.some(
+				(movementId) =>
+					movementId === id || readStockMovement(db, movementId) !== undefined
+			)
+		) {
+			return { reason: "aggregateExists" };
+		}
+		const created = insertMaterialReconciliationReversal(
+			db,
+			id,
+			{
+				occurredOn: fields.occurredOn,
+				reason: fields.reason,
+				reconciliationId: reconciliation.id,
+			},
+			stamp
+		);
+		const returns = parts.flatMap((entry, index) => {
+			const movementId = fields.movementIds[index];
+			return movementId ? [{ ...entry, movementId }] : [];
+		});
+		for (const { movementId, part, variantId } of returns) {
+			insertStockMovement(
+				db,
+				movementId,
+				{
+					inventorySessionId: null,
+					kind: "reversal",
+					locationId: part.locationId,
+					lotId: part.lotId,
+					materialReconciliationId: reconciliation.id,
+					occurredOn: fields.occurredOn,
+					purchaseId: null,
+					quantityMicros: part.quantityMicros,
+					reason: fields.reason,
+					reversesMovementId: part.movementId,
+					transferId: null,
+					valueCents: part.valueCents,
+					variantId,
+				},
+				stamp
+			);
+		}
+		if (item.productionStatus === "ready") {
+			updateServiceOrderItem(
+				db,
+				item,
+				{
+					productionStatus: "inProgress",
+					stageId: item.stageIds?.at(-1) ?? null,
+					stageIds: item.stageIds,
+				},
+				stamp
+			);
+		}
+		return created.version;
+	},
+	exists: (db, id) => readMaterialReconciliationReversal(db, id) !== undefined,
+	kind: "create",
+	payload: reconciliationReversePayload,
+};
+
 export const reconciliationCommands = {
 	"materialReconciliation.create": createReconciliation,
+	"materialReconciliation.reverse": reverseReconciliation,
 };

@@ -92,3 +92,26 @@ export const reconciliationCreatePayload = z
 export type ReconciliationCreateValues = z.infer<
 	typeof reconciliationCreatePayload
 >;
+
+export const reconciliationReversePayload = z
+	.object({
+		movementIds: z
+			.array(z.uuid())
+			.min(1)
+			.max(reconciliationLimits.lines.max * reconciliationLimits.parts.max),
+		occurredOn: occurredOnField,
+		reason: z
+			.string()
+			.trim()
+			.min(reconciliationLimits.reason.min)
+			.max(reconciliationLimits.reason.max),
+		reconciliationId: z.uuid(),
+	})
+	.refine(
+		(values) => new Set(values.movementIds).size === values.movementIds.length,
+		{ ...whenShapeIsValid, message: "Id repetido" }
+	);
+
+export type ReconciliationReverseValues = z.infer<
+	typeof reconciliationReversePayload
+>;

@@ -23,6 +23,7 @@ import {
 } from "../finance/receivables";
 import { readCurrentProductionFlow } from "../production/store";
 import { readQuote, readQuoteRevision } from "../quotes/store";
+import { reconciledItemIds } from "../reconciliation/store";
 import { containing } from "../search";
 import { reservationsOfItems } from "../stock/reservations";
 import {
@@ -115,23 +116,24 @@ export function shortageOf(
 		.from(serviceOrderItem)
 		.where(inArray(serviceOrderItem.serviceOrderId, [...serviceOrderIds]))
 		.all();
+	const itemIds = items.map((item) => item.id);
 	const reserved = new Map(
-		reservationsOfItems(
-			db,
-			items.map((item) => item.id)
-		).map((row) => [
+		reservationsOfItems(db, itemIds).map((row) => [
 			`${row.itemId}|${row.variantId}`,
 			BigInt(row.reservedMicros),
 		])
 	);
+	const reconciled = reconciledItemIds(db, itemIds);
 	return new Set(
 		items
-			.filter((item) =>
-				linePlannedMaterials(quoteLineOfText(item.line)).some(
-					(material) =>
-						material.quantityMicros >
-						(reserved.get(`${item.id}|${material.variantId}`) ?? 0n)
-				)
+			.filter(
+				(item) =>
+					!reconciled.has(item.id) &&
+					linePlannedMaterials(quoteLineOfText(item.line)).some(
+						(material) =>
+							material.quantityMicros >
+							(reserved.get(`${item.id}|${material.variantId}`) ?? 0n)
+					)
 			)
 			.map((item) => item.serviceOrderId)
 	);

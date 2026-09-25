@@ -3,7 +3,10 @@ import z from "zod";
 import { runCreateCommand, runUpdateCommand } from "../aggregate-command";
 import { commandMessages } from "../command-messages";
 import { readyProcedure } from "../index";
-import { reconciliationCreatePayload } from "../reconciliation/schemas";
+import {
+	reconciliationCreatePayload,
+	reconciliationReversePayload,
+} from "../reconciliation/schemas";
 import { opIdSchema } from "../schemas";
 import {
 	boardOf,
@@ -99,6 +102,27 @@ export const serviceOrderItemsRouter = {
 				aggregateId: reconciliationId,
 				command: "materialReconciliation.create",
 				messages: itemMessages,
+				opId,
+				values,
+			});
+		}),
+
+	reverseReconciliation: readyProcedure
+		.input(
+			z.intersection(
+				reconciliationReversePayload,
+				z.object({ opId: opIdSchema, reversalId: z.uuid() })
+			)
+		)
+		.handler(({ context, input }) => {
+			const { opId, reversalId, ...values } = input;
+			return runCreateCommand(context, {
+				aggregateId: reversalId,
+				command: "materialReconciliation.reverse",
+				messages: {
+					anonymized: commandMessages.clientAnonymized,
+					notFound: commandMessages.reconciliationNotFound,
+				},
 				opId,
 				values,
 			});

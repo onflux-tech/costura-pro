@@ -1,5 +1,8 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { reconciliationCreatePayload } from "@costura-pro/api/reconciliation/schemas";
+import {
+	reconciliationCreatePayload,
+	reconciliationReversePayload,
+} from "@costura-pro/api/reconciliation/schemas";
 
 import {
 	approvedQuote,
@@ -13,6 +16,7 @@ import {
 	readyToReconcile,
 	reconcileInput,
 	reconcileLine,
+	reverseInput,
 	type Stock,
 	seedPerson,
 	seedStock,
@@ -735,6 +739,420 @@ describe("material reconciliation", () => {
 		const { server, target } = await readySetup();
 		await expect(
 			rpc(server).serviceOrderItems.reconcile(reconcileInput(target))
+		).rejects.toMatchObject({ code: "UNAUTHORIZED" });
+	});
+});
+
+type ReversalMovementRow = {
+	id: string;
+	occurred_on: string;
+	quantity_micros: number;
+	reason: string | null;
+	reverses_movement_id: string | null;
+	value_cents: number;
+	variant_id: string;
+};
+
+function reversalMovementsOf(server: TestServer, reconciliationId: string) {
+	return server
+		.native()
+		.query<ReversalMovementRow, [string]>(
+			"SELECT id, variant_id, quantity_micros, value_cents, reverses_movement_id, reason, occurred_on FROM stock_movement WHERE material_reconciliation_id = ? AND kind = 'reversal' ORDER BY rowid"
+		)
+		.all(reconciliationId)
+		.map((row) => ({
+			id: row.id,
+			occurredOn: row.occurred_on,
+			quantityMicros: String(row.quantity_micros),
+			reason: row.reason,
+			reversesMovementId: row.reverses_movement_id,
+			valueCents: String(row.value_cents),
+			variantId: row.variant_id,
+		}));
+}
+
+function reversalFactsOf(server: TestServer, reconciliationId: string) {
+	return server
+		.native()
+		.query<
+			{ id: string; occurred_on: string; reason: string; version: number },
+			[string]
+		>(
+			"SELECT id, occurred_on, reason, version FROM material_reconciliation_reversal WHERE reconciliation_id = ?"
+		)
+		.all(reconciliationId);
+}
+
+function reversalChanges(server: TestServer, reversalId: string) {
+	return server
+		.native()
+		.query<{ op_id: string | null; version: number }, [string]>(
+			"SELECT op_id, version FROM change_log WHERE aggregate_type = 'materialReconciliationReversal' AND aggregate_id = ?"
+		)
+		.all(reversalId);
+}
+
+function reservationsOf(server: TestServer, itemId: string) {
+	return server
+		.native()
+		.query<{ quantity: number; variant_id: string }, [string]>(
+			"SELECT variant_id, quantity_micros AS quantity FROM stock_reservation WHERE service_order_item_id = ? ORDER BY rowid"
+		)
+		.all(itemId)
+		.map((row) => [row.variant_id, String(row.quantity)]);
+}
+
+function crepeMaterialLine(stock: Stock, quantityMicros: string) {
+	return {
+		...materialLine(stock.crepeId, quantityMicros, {
+			materialName: "Crepe",
+			variantName: "Preto",
+		}),
+		baseUnit: "m" as const,
+		displayPrecision: 2,
+		unitCostCents: "3000",
+	};
+}
+
+async function crepeMaterialId(owner: Owner, stock: Stock) {
+	const { items } = await owner.materialVariants.search({ query: "crepe" });
+	return items.find((item) => item.id === stock.crepeId)?.materialId ?? "";
+}
+
+describe("material reconciliation reversal", () => {
+	test("returns the consumption at the output value and takes the piece out of ready", async () => {
+		const { items, owner, server, stages, stock, target } = await readySetup();
+		const reconciled = reconcileInput(target);
+		await owner.serviceOrderItems.reconcile(reconciled);
+		const input = reverseInput(reconciled);
+		expect(await owner.serviceOrderItems.reverseReconciliation(input)).toEqual({
+			id: input.reversalId,
+			version: 1,
+		});
+		expect(pointOf(server, stock.crepeId, stock.locationId)).toEqual([
+			"2500000",
+			"7500",
+		]);
+		expect(pointOf(server, stock.zipperId, stock.locationId)).toEqual([
+			"5000000",
+			"1850",
+		]);
+		const [crepePart, zipperPart] = reconciled.lines.map(
+			(line) => line.parts[0]
+		);
+		expect(reversalMovementsOf(server, reconciled.reconciliationId)).toEqual([
+			{
+				id: input.movementIds[0] ?? "",
+				occurredOn: "2026-09-26",
+				quantityMicros: "3400000",
+				reason: "Peça voltou para ajuste",
+				reversesMovementId: crepePart?.movementId ?? "",
+				valueCents: "10200",
+				variantId: stock.crepeId,
+			},
+			{
+				id: input.movementIds[1] ?? "",
+				occurredOn: "2026-09-26",
+				quantityMicros: "1000000",
+				reason: "Peça voltou para ajuste",
+				reversesMovementId: zipperPart?.movementId ?? "",
+				valueCents: "370",
+				variantId: stock.zipperId,
+			},
+		]);
+		expect(reversalFactsOf(server, reconciled.reconciliationId)).toEqual([
+			{
+				id: input.reversalId,
+				occurred_on: "2026-09-26",
+				reason: "Peça voltou para ajuste",
+				version: 1,
+			},
+		]);
+		expect(reversalChanges(server, input.reversalId)).toEqual([
+			{ op_id: input.opId, version: 1 },
+		]);
+		expect(productionOf(server, items.piece)).toEqual({
+			stageId: stages.acabamento,
+			stageIds: [stages.corte, stages.acabamento],
+			status: "inProgress",
+			version: 5,
+		});
+		expect(itemChanges(server, items.piece).at(-1)).toEqual({
+			op_id: input.opId,
+			version: 5,
+		});
+		expectBalancesFromMovements(server);
+	});
+
+	test("refuses a partial reversal, an unknown reconciliation and a second reversal", async () => {
+		const { owner, server, target } = await readySetup();
+		const reconciled = reconcileInput(target);
+		await owner.serviceOrderItems.reconcile(reconciled);
+		const moved = movementCount(server);
+		const notFound = {
+			code: "NOT_FOUND",
+			message: "Reconciliação não encontrada",
+		};
+		const input = reverseInput(reconciled);
+		await expect(
+			owner.serviceOrderItems.reverseReconciliation({
+				...input,
+				movementIds: input.movementIds.slice(1),
+			})
+		).rejects.toMatchObject(notFound);
+		await expect(
+			owner.serviceOrderItems.reverseReconciliation(
+				reverseInput(reconciled, { reconciliationId: crypto.randomUUID() })
+			)
+		).rejects.toMatchObject(notFound);
+		expect(movementCount(server)).toBe(moved);
+		await owner.serviceOrderItems.reverseReconciliation(input);
+		await expect(
+			owner.serviceOrderItems.reverseReconciliation(reverseInput(reconciled))
+		).rejects.toMatchObject({
+			code: "CONFLICT",
+			message: "Reconciliação já estornada",
+		});
+		expect(movementCount(server)).toBe(moved + 2);
+		expect(reversalFactsOf(server, reconciled.reconciliationId)).toHaveLength(
+			1
+		);
+	});
+
+	test("refuses reversal movement ids that are taken, repeated or missing", async () => {
+		const { owner, server, target } = await readySetup();
+		const reconciled = reconcileInput(target);
+		await owner.serviceOrderItems.reconcile(reconciled);
+		const moved = movementCount(server);
+		const base = reverseInput(reconciled);
+		const [first = "", second = ""] = base.movementIds;
+		const consumed = reconciled.lines[0]?.parts[0]?.movementId ?? "";
+		await inSequence([base.reversalId, consumed], async (movementId) => {
+			await expect(
+				owner.serviceOrderItems.reverseReconciliation({
+					...base,
+					movementIds: [movementId, second],
+					opId: newOpId(),
+				})
+			).rejects.toMatchObject({
+				code: "CONFLICT",
+				message: "Registro já existe",
+			});
+		});
+		const { opId: _opId, reversalId: _reversalId, ...values } = base;
+		expect(
+			reconciliationReversePayload.safeParse({
+				...values,
+				movementIds: [first, first],
+			}).error?.issues[0]?.message
+		).toBe("Id repetido");
+		await inSequence(
+			[{ movementIds: [first, first] }, { movementIds: [] }, { reason: "  " }],
+			async (change) => {
+				await expect(
+					owner.serviceOrderItems.reverseReconciliation({
+						...base,
+						...change,
+						opId: newOpId(),
+					})
+				).rejects.toMatchObject({ code: "BAD_REQUEST" });
+			}
+		);
+		expect(movementCount(server)).toBe(moved);
+	});
+
+	test("reversing after going back keeps the piece where it is", async () => {
+		const { items, owner, server, stages, target } = await readySetup();
+		const reconciled = reconcileInput(target);
+		await owner.serviceOrderItems.reconcile(reconciled);
+		await owner.serviceOrderItems.back({
+			baseVersion: 4,
+			itemId: items.piece,
+			opId: newOpId(),
+		});
+		const changes = itemChanges(server, items.piece).length;
+		await owner.serviceOrderItems.reverseReconciliation(
+			reverseInput(reconciled)
+		);
+		expect(productionOf(server, items.piece)).toMatchObject({
+			stageId: stages.acabamento,
+			status: "inProgress",
+			version: 5,
+		});
+		expect(itemChanges(server, items.piece)).toHaveLength(changes);
+	});
+
+	test("a reversed piece can be reconciled again", async () => {
+		const { items, owner, server, stock, target } = await readySetup();
+		const reconciled = reconcileInput(target);
+		await owner.serviceOrderItems.reconcile(reconciled);
+		await owner.serviceOrderItems.reverseReconciliation(
+			reverseInput(reconciled)
+		);
+		const again = reconcileInput(target);
+		expect(await owner.serviceOrderItems.reconcile(again)).toEqual({
+			id: again.reconciliationId,
+			version: 1,
+		});
+		expect(productionOf(server, items.piece)).toMatchObject({
+			stageId: null,
+			status: "ready",
+			version: 6,
+		});
+		expect(pointOf(server, stock.crepeId, stock.locationId)).toEqual([
+			"-900000",
+			"-2700",
+		]);
+		expectBalancesFromMovements(server);
+	});
+
+	test("a reconciliation movement is reversed only through the order", async () => {
+		const { owner, server, stock, target } = await readySetup();
+		const reconciled = reconcileInput(target);
+		await owner.serviceOrderItems.reconcile(reconciled);
+		const fromReconciliation = {
+			code: "NOT_FOUND",
+			message: "Movimento de reconciliação se estorna pela OS",
+		};
+		const reverseMovement = (reversesMovementId: string) =>
+			owner.stockMovements.reverse({
+				movementId: crypto.randomUUID(),
+				occurredOn: "2026-09-26",
+				opId: newOpId(),
+				reason: "Lançado errado",
+				reversesMovementId,
+			});
+		await expect(
+			reverseMovement(reconciled.lines[0]?.parts[0]?.movementId ?? "")
+		).rejects.toMatchObject(fromReconciliation);
+		const adjustment = await owner.stockMovements.create({
+			kind: "adjustment",
+			locationId: stock.locationId,
+			lotId: null,
+			movementId: crypto.randomUUID(),
+			occurredOn: "2026-09-26",
+			opId: newOpId(),
+			quantityMicros: "-100000",
+			reason: "Perda no corte",
+			variantId: stock.crepeId,
+		});
+		expect(await reverseMovement(adjustment.id)).toMatchObject({ version: 1 });
+		const reversal = reverseInput(reconciled);
+		await owner.serviceOrderItems.reverseReconciliation(reversal);
+		const moved = movementCount(server);
+		await expect(
+			reverseMovement(reversal.movementIds[0] ?? "")
+		).rejects.toMatchObject(fromReconciliation);
+		expect(movementCount(server)).toBe(moved);
+		expectBalancesFromMovements(server);
+	});
+
+	test("releases the reservation of a reconciled piece everywhere and returns it on reversal", async () => {
+		const { clientId, items, owner, stock, target } = await readySetup();
+		const quoteId = crypto.randomUUID();
+		await owner.quotes.create({
+			clientId,
+			createdOn: "2026-09-24",
+			discount: null,
+			leadTimeDays: 20,
+			lines: [crepeMaterialLine(stock, "1000000")],
+			notes: null,
+			opId: newOpId(),
+			quoteId,
+			validityDays: 15,
+		} as Parameters<Owner["quotes"]["create"]>[0]);
+		const materialId = await crepeMaterialId(owner, stock);
+		const reservedEverywhere = async () => {
+			const balances = await owner.stockBalances.list({});
+			const detail = await owner.stockBalances.get({
+				variantId: stock.crepeId,
+			});
+			const { variants } = await owner.materials.get({ materialId });
+			const quote = await owner.quotes.get({ quoteId });
+			return {
+				balance: balances.items.find((item) => item.variantId === stock.crepeId)
+					?.reservedMicros,
+				detail: detail.reservations.map((reservation) => [
+					reservation.itemId,
+					reservation.reservedMicros,
+				]),
+				material: variants.find((variant) => variant.id === stock.crepeId)
+					?.reservedMicros,
+				quote: quote.stock.find((entry) => entry.variantId === stock.crepeId)
+					?.reservedMicros,
+			};
+		};
+		const held = {
+			balance: "2500000",
+			detail: [[items.piece, "2500000"]],
+			material: "2500000",
+			quote: "2500000",
+		};
+		expect(await reservedEverywhere()).toEqual(held);
+		const reconciled = reconcileInput(target);
+		await owner.serviceOrderItems.reconcile(reconciled);
+		expect(await reservedEverywhere()).toEqual({
+			balance: "0",
+			detail: [],
+			material: "0",
+			quote: "0",
+		});
+		await owner.serviceOrderItems.reverseReconciliation(
+			reverseInput(reconciled)
+		);
+		expect(await reservedEverywhere()).toEqual(held);
+	});
+
+	test("an approval after the reconciliation reserves nothing from a negative point", async () => {
+		const { clientId, owner, server, stock, target } = await readySetup();
+		await owner.serviceOrderItems.reconcile(reconcileInput(target));
+		expect(pointOf(server, stock.crepeId, stock.locationId)).toEqual([
+			"-900000",
+			"-2700",
+		]);
+		const next = await approvedQuote(owner, clientId, [
+			crepeMaterialLine(stock, "1000000"),
+		]);
+		expect(reservationsOf(server, next.items[0]?.itemId ?? "")).toEqual([]);
+	});
+
+	test("an approval after the reconciliation reserves what the physical stock allows", async () => {
+		const { clientId, owner, server, stock, target } = await readySetup();
+		await owner.serviceOrderItems.reconcile(
+			reconcileInput(target, {
+				lines: [crepeLine(stock, "2000000"), zipperLine(stock)],
+			})
+		);
+		const next = await approvedQuote(owner, clientId, [
+			crepeMaterialLine(stock, "1000000"),
+		]);
+		expect(reservationsOf(server, next.items[0]?.itemId ?? "")).toEqual([
+			[stock.crepeId, "500000"],
+		]);
+	});
+
+	test("a reconciled piece stops the shortage until it is reversed", async () => {
+		const { owner, target } = await readySetup();
+		const shortage = async () =>
+			(await owner.serviceOrders.list({})).items.map((item) => item.shortage);
+		expect(await shortage()).toEqual([true]);
+		const reconciled = reconcileInput(target);
+		await owner.serviceOrderItems.reconcile(reconciled);
+		expect(await shortage()).toEqual([false]);
+		await owner.serviceOrderItems.reverseReconciliation(
+			reverseInput(reconciled)
+		);
+		expect(await shortage()).toEqual([true]);
+	});
+
+	test("needs a session to reverse a reconciliation", async () => {
+		const { owner, server, target } = await readySetup();
+		const reconciled = reconcileInput(target);
+		await owner.serviceOrderItems.reconcile(reconciled);
+		await expect(
+			rpc(server).serviceOrderItems.reverseReconciliation(
+				reverseInput(reconciled)
+			)
 		).rejects.toMatchObject({ code: "UNAUTHORIZED" });
 	});
 });

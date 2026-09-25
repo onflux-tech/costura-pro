@@ -5,7 +5,7 @@ import {
 	stockReservation,
 } from "@costura-pro/db/schema/service-orders";
 import { stockBalance } from "@costura-pro/db/schema/stock";
-import { asc, eq, inArray, ne, sql } from "drizzle-orm";
+import { and, asc, eq, inArray, ne, type SQL, sql } from "drizzle-orm";
 
 import { appendChange } from "../change-log";
 import type { ChangeStamp } from "../devices/store";
@@ -82,6 +82,12 @@ export function insertStockReservation(
 	return row;
 }
 
+export function unreleasedReservation(alias: string): SQL {
+	return sql.raw(
+		`NOT EXISTS (SELECT 1 FROM material_reconciliation AS rec WHERE rec.service_order_item_id = ${alias}.service_order_item_id AND NOT EXISTS (SELECT 1 FROM material_reconciliation_reversal AS rev WHERE rev.reconciliation_id = rec.id))`
+	);
+}
+
 function sumsBy(
 	rows: readonly { total: string | null; variantId: string }[]
 ): Map<string, bigint> {
@@ -126,7 +132,12 @@ export function reservedByVariant(
 				variantId: stockReservation.variantId,
 			})
 			.from(stockReservation)
-			.where(inArray(stockReservation.variantId, [...variantIds]))
+			.where(
+				and(
+					inArray(stockReservation.variantId, [...variantIds]),
+					unreleasedReservation("stock_reservation")
+				)
+			)
 			.groupBy(stockReservation.variantId)
 			.all()
 	);
@@ -181,7 +192,12 @@ export function reservationsOfVariant(
 			serviceOrder,
 			eq(serviceOrder.id, serviceOrderItem.serviceOrderId)
 		)
-		.where(eq(stockReservation.variantId, variantId))
+		.where(
+			and(
+				eq(stockReservation.variantId, variantId),
+				unreleasedReservation("stock_reservation")
+			)
+		)
 		.groupBy(stockReservation.serviceOrderItemId)
 		.having(ne(sql`sum(${stockReservation.quantityMicros})`, 0))
 		.orderBy(asc(serviceOrder.code), asc(serviceOrderItem.position))

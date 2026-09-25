@@ -7,6 +7,7 @@ import {
 	pieceLine,
 	readyToReconcile,
 	reconcileInput,
+	reverseInput,
 	seedPerson,
 	seedStock,
 	serviceLine,
@@ -43,7 +44,7 @@ async function readyOrder(setup: SyncSetup) {
 	]);
 	const [, piece = "", material = ""] = input.items.map((item) => item.itemId);
 	await readyToReconcile(setup.local, piece, [corte, acabamento]);
-	return { items: { material, piece }, stock };
+	return { acabamento, items: { material, piece }, stock };
 }
 
 function reconcileEnvelope(
@@ -170,5 +171,99 @@ describe("material reconciliation sync", () => {
 		expect(pushed.quarantined).toEqual([
 			{ opId: operation.opId, reason: "invalidPayload" },
 		]);
+	});
+});
+
+function reverseEnvelope(
+	setup: SyncSetup,
+	input: ReturnType<typeof reverseInput>
+) {
+	const { opId: _opId, reversalId, ...payload } = input;
+	return {
+		aggregateId: reversalId,
+		aggregateType: "materialReconciliationReversal",
+		baseVersion: null,
+		command: "materialReconciliation.reverse",
+		deviceId: setup.device.id,
+		epoch: setup.epoch,
+		occurredAt: "2026-09-26T12:00:00.000Z",
+		opId: newOpId(),
+		payload,
+	};
+}
+
+describe("material reconciliation reversal sync", () => {
+	test("reverses over push and pulls the reversal, the returned stock and the item", async () => {
+		const setup = await syncSetup(servers);
+		const { acabamento, items, stock } = await readyOrder(setup);
+		const reconciled = reconcileInput({ itemId: items.piece, stock });
+		await setup.local.serviceOrderItems.reconcile(reconciled);
+		const input = reverseInput(reconciled);
+		const operation = reverseEnvelope(setup, input);
+		const pushed = await setup.sync.sync.push({ operations: [operation] });
+		expect(pushed.accepted).toEqual([{ newVersion: 1, opId: operation.opId }]);
+		const changes = await pulledChanges(setup);
+		expect(
+			changes.find((change) => change.aggregateId === input.reversalId)
+		).toMatchObject({
+			aggregateType: "materialReconciliationReversal",
+			data: {
+				id: input.reversalId,
+				occurredOn: "2026-09-26",
+				reason: "Peça voltou para ajuste",
+				reconciliationId: reconciled.reconciliationId,
+				version: 1,
+			},
+			version: 1,
+		});
+		const returned = changes
+			.filter((change) => change.aggregateType === "stockMovement")
+			.map((change) => change.data)
+			.filter(
+				(data) =>
+					(data as { kind?: string; materialReconciliationId?: string | null })
+						.materialReconciliationId === reconciled.reconciliationId &&
+					(data as { kind?: string }).kind === "reversal"
+			);
+		expect(returned).toEqual([
+			expect.objectContaining({
+				id: input.movementIds[0],
+				quantityMicros: "3400000",
+				reversesMovementId: reconciled.lines[0]?.parts[0]?.movementId,
+				valueCents: "10200",
+				variantId: stock.crepeId,
+			}),
+			expect.objectContaining({
+				id: input.movementIds[1],
+				quantityMicros: "1000000",
+				reversesMovementId: reconciled.lines[1]?.parts[0]?.movementId,
+				valueCents: "370",
+				variantId: stock.zipperId,
+			}),
+		]);
+		expect(
+			changes.filter((change) => change.aggregateId === items.piece).at(-1)
+				?.data
+		).toMatchObject({
+			productionStatus: "inProgress",
+			stageId: acabamento,
+			version: 5,
+		});
+	});
+
+	test("quarantines a second reversal with the hash withheld", async () => {
+		const setup = await syncSetup(servers);
+		const { items, stock } = await readyOrder(setup);
+		const reconciled = reconcileInput({ itemId: items.piece, stock });
+		await setup.local.serviceOrderItems.reconcile(reconciled);
+		await setup.local.serviceOrderItems.reverseReconciliation(
+			reverseInput(reconciled)
+		);
+		const operation = reverseEnvelope(setup, reverseInput(reconciled));
+		const pushed = await setup.sync.sync.push({ operations: [operation] });
+		expect(pushed.quarantined).toEqual([
+			{ opId: operation.opId, reason: "aggregateExists" },
+		]);
+		expect(opHash(setup.server, operation.opId)).toBe("redacted");
 	});
 });
