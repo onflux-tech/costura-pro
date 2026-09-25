@@ -158,6 +158,7 @@ const createMovement: CreateDefinition = {
 				kind: fields.kind,
 				locationId: fields.locationId,
 				lotId: fields.lotId,
+				materialReconciliationId: null,
 				occurredOn: fields.occurredOn,
 				purchaseId: null,
 				quantityMicros: fields.quantityMicros,
@@ -198,6 +199,7 @@ const transferMovement: CreateDefinition = {
 		const shared = {
 			inventorySessionId: null,
 			lotId: fields.lotId,
+			materialReconciliationId: null,
 			occurredOn: fields.occurredOn,
 			purchaseId: null,
 			reason: fields.reason,
@@ -279,6 +281,7 @@ const reverseMovement: CreateDefinition = {
 			kind: "reversal",
 			locationId: row.locationId,
 			lotId: row.lotId,
+			materialReconciliationId: null,
 			occurredOn: fields.occurredOn,
 			purchaseId: null,
 			quantityMicros: (-row.quantityMicros).toString(),

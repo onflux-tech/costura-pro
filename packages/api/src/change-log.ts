@@ -10,6 +10,8 @@ export type AggregateType =
 	| "installation"
 	| "inventorySession"
 	| "material"
+	| "materialReconciliation"
+	| "materialReconciliationReversal"
 	| "materialVariant"
 	| "measurement"
 	| "measurementTemplate"

@@ -24,6 +24,7 @@ import { productCommands } from "../products/commands";
 import { purchaseCommands } from "../purchases/commands";
 import { quoteCommands } from "../quotes/commands";
 import { receivedItemCommands } from "../received-items/commands";
+import { reconciliationCommands } from "../reconciliation/commands";
 import { atelierNameSchema, deviceNameSchema } from "../schemas";
 import { serviceOrderCommands } from "../service-orders/commands";
 import { serviceCommands } from "../services/commands";
@@ -130,6 +131,7 @@ export const syncCommands = {
 	...purchaseCommands,
 	...quoteCommands,
 	...receivedItemCommands,
+	...reconciliationCommands,
 	...serviceCommands,
 	...serviceOrderCommands,
 	...stockCommands,

@@ -110,6 +110,7 @@ const createInventorySession: CreateDefinition = {
 					kind: "inventory",
 					locationId: line.locationId,
 					lotId: line.lotId,
+					materialReconciliationId: null,
 					occurredOn: fields.occurredOn,
 					purchaseId: null,
 					quantityMicros: (

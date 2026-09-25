@@ -15,6 +15,8 @@ export const redactedOpHash = "redacted";
 
 export const personalDataAggregates: ReadonlySet<AggregateType> = new Set([
 	"client",
+	"materialReconciliation",
+	"materialReconciliationReversal",
 	"measurement",
 	"profile",
 	"quote",

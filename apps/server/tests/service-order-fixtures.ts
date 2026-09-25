@@ -6,6 +6,7 @@ import {
 
 import {
 	completeWizard,
+	inSequence,
 	newOpId,
 	rpc,
 	type ServerOptions,
@@ -427,4 +428,80 @@ export function itemsOf(server: TestServer, serviceOrderId: string) {
 			measurements: JSON.parse(row.measurements) as Snapshot[],
 			position: row.position,
 		}));
+}
+
+export async function readyToReconcile(
+	owner: Owner,
+	itemId: string,
+	stageIds: string[]
+): Promise<number> {
+	const started = await owner.serviceOrderItems.start({
+		baseVersion: 1,
+		itemId,
+		opId: newOpId(),
+		stageIds,
+	});
+	const advanced = await inSequence(stageIds.slice(1), (_stage, index) =>
+		owner.serviceOrderItems.advance({
+			baseVersion: started.version + index,
+			itemId,
+			opId: newOpId(),
+		})
+	);
+	return advanced.at(-1)?.version ?? started.version;
+}
+
+type LineOptions = {
+	lostMicros?: string;
+	plannedVariantId?: string;
+	swapReason?: string | null;
+};
+
+export function reconcileLine(
+	variantId: string,
+	locationId: string,
+	consumedMicros: string,
+	{
+		lostMicros = "0",
+		plannedVariantId = variantId,
+		swapReason = null,
+	}: LineOptions = {}
+) {
+	return {
+		consumedMicros,
+		lostMicros,
+		parts: [
+			{
+				locationId,
+				lotId: null as string | null,
+				movementId: crypto.randomUUID(),
+				quantityMicros: (
+					BigInt(consumedMicros) + BigInt(lostMicros)
+				).toString(),
+			},
+		],
+		plannedVariantId,
+		swapReason,
+		variantId,
+	};
+}
+
+export type ReconcileTarget = { itemId: string; stock: Stock };
+
+export function reconcileInput(
+	{ itemId, stock }: ReconcileTarget,
+	overrides: Record<string, unknown> = {}
+) {
+	return {
+		itemId,
+		lines: [
+			reconcileLine(stock.crepeId, stock.locationId, "3400000"),
+			reconcileLine(stock.zipperId, stock.locationId, "1000000"),
+		],
+		note: null,
+		occurredOn: "2026-09-25",
+		opId: newOpId(),
+		reconciliationId: crypto.randomUUID(),
+		...overrides,
+	} as Parameters<Owner["serviceOrderItems"]["reconcile"]>[0];
 }

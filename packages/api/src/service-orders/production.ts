@@ -12,6 +12,7 @@ import {
 	type ProductionFlowRow,
 	readCurrentProductionFlow,
 } from "../production/store";
+import { readActiveReconciliation } from "../reconciliation/store";
 import { emptyPayload } from "../schemas";
 import type { CommandExecutor } from "../sync/commands";
 import { updateCommands } from "../update-command";
@@ -38,6 +39,7 @@ type FlowOrder = ServiceOrderRow & {
 type ProductionItem = ServiceOrderItemRow & {
 	anonymizedClient: boolean;
 	flowStages: FlowStageRow[] | null;
+	reconciled: boolean;
 };
 
 function readFlowOrder(db: CommandExecutor, id: string): FlowOrder | undefined {
@@ -68,6 +70,7 @@ function readProductionItem(
 		...row,
 		anonymizedClient: isServiceOrderAnonymized(db, order),
 		flowStages: order.flowStages,
+		reconciled: readActiveReconciliation(db, id) !== undefined,
 	};
 }
 
@@ -123,7 +126,8 @@ export const productionCommands = {
 		patchOf(
 			advanceProduction(
 				stateOf(row),
-				linePlannedMaterials(quoteLineOfText(row.line)).length > 0
+				linePlannedMaterials(quoteLineOfText(row.line)).length > 0 &&
+					!row.reconciled
 			)
 		)
 	),

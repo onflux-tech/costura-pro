@@ -1,8 +1,9 @@
 import z from "zod";
 
-import { runUpdateCommand } from "../aggregate-command";
+import { runCreateCommand, runUpdateCommand } from "../aggregate-command";
 import { commandMessages } from "../command-messages";
 import { readyProcedure } from "../index";
+import { reconciliationCreatePayload } from "../reconciliation/schemas";
 import { opIdSchema } from "../schemas";
 import {
 	boardOf,
@@ -84,6 +85,24 @@ export const serviceOrderItemsRouter = {
 	board: readyProcedure
 		.input(z.object({}))
 		.handler(({ context }) => boardOf(context.db)),
+
+	reconcile: readyProcedure
+		.input(
+			z.intersection(
+				reconciliationCreatePayload,
+				z.object({ opId: opIdSchema, reconciliationId: z.uuid() })
+			)
+		)
+		.handler(({ context, input }) => {
+			const { opId, reconciliationId, ...values } = input;
+			return runCreateCommand(context, {
+				aggregateId: reconciliationId,
+				command: "materialReconciliation.create",
+				messages: itemMessages,
+				opId,
+				values,
+			});
+		}),
 
 	start: readyProcedure
 		.input(
