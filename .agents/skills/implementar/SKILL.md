@@ -1,6 +1,6 @@
 ---
 name: implementar
-description: Executa o plano aprovado de uma entrega do Costura Pro despachando o papel implementer, um checkpoint por vez, e conferindo cada um. Use na sessão de execução aberta pelo handoff do /entrega-iniciar ou quando o dono pedir para executar um plano.
+description: Executa o plano aprovado de uma entrega do Costura Pro despachando o papel implementer, um checkpoint por vez, e conferindo cada um. Use depois do plano do /entrega-iniciar, na sessão que o dono escolheu (a mesma do design ou uma nova, aberta pelo handoff), ou quando o dono pedir para executar um plano.
 ---
 
 # Implementar

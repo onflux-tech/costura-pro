@@ -17,3 +17,10 @@ Você implementa um checkpoint de um plano que o dono já aprovou. Brainstorming
 - Você faz o checkpoint inteiro na própria sessão; a revisão vem do agente principal depois do relatório.
 - Dúvida que o plano não resolve vira `NEEDS_CONTEXT`, com a pergunta e as opções que você vê: o agente principal fala com o dono.
 - Plano que contradiz o código ou a si mesmo vira `BLOCKED`, com a evidência; desvio pequeno e óbvio (caminho de import, nome de auxiliar de teste) segue e entra no relatório.
+
+## Armadilhas conhecidas
+
+- Rode cada suíte em primeiro plano, com `timeout` de até 600000 ms, nunca com `run_in_background`: esperar a suíte em background encerra o seu turno, o agente principal recebe "aguardando a suíte" como resultado e o Stop dele dispara no meio do checkpoint.
+- Campo novo em tabela, snapshot ou payload quebra teste existente que compara a lista inteira (colunas do schema, snapshot do `sync.pull`, `toEqual` do payload na web) mesmo fora do mapa do plano: ajuste só a comparação e registre como desvio.
+- Script Python que regrava arquivo no Windows troca LF por CRLF e o `biome check` reprova o arquivo inteiro: grave com `newline="\n"` ou rode `pnpm exec biome check --write` depois (rule de harness).
+- O servidor de produção da verificação recusa `CANONICAL_ORIGIN` com `http`: na verificação local, deixe a variável fora e use o loopback.
