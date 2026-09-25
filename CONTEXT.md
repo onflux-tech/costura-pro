@@ -178,7 +178,7 @@ _Evitar_: pedido
 Peça ou serviço dentro da OS com medidas, materiais, etapas, prazo e entrega próprios. Nasce um por linha de serviço, peça sob medida ou material da revisão aprovada; o de material é só entrega, e a linha livre fica só no valor.
 
 **Estado de produção**:
-Posição de um subitem no fluxo de produção, independente de entrega e pagamento: A iniciar, numa etapa aplicável ou Pronto. "A iniciar" e "Pronto" ficam fixos nas pontas do fluxo; o Pronto de subitem com material planejado espera a reconciliação.
+Posição de um subitem no fluxo de produção, independente de entrega e pagamento: A iniciar, numa etapa aplicável ou Pronto. "A iniciar" e "Pronto" ficam fixos nas pontas do fluxo; a peça com material planejado chega ao Pronto pela reconciliação, e volta a ele direto enquanto a reconciliação estiver ativa.
 
 **Subitem atrasado**:
 Subitem de produção ainda não pronto com o prazo combinado antes de hoje.
@@ -217,7 +217,16 @@ Etapa do fluxo selecionada para um subitem ao iniciar a produção, congelada na
 Visão da produção com uma coluna por etapa entre "A iniciar" e "Pronto" e um cartão por subitem, pelo prazo.
 
 **Reconciliação de materiais**:
-Confirmação, antes de marcar um subitem pronto, do que foi consumido, devolvido ao estoque e perdido.
+Confirmação, ao marcar pronta uma peça com material planejado, do que foi consumido e perdido de cada material, de que local e lote saiu e de qual material foi usado no lugar do previsto. O que sai do estoque sai nesse momento; o resto é sobra da reconciliação. Libera a reserva do subitem. Há no máximo uma ativa por subitem.
+_Evitar_: baixa, fechamento de material
+
+**Sobra da reconciliação**:
+Parte do previsto de um material que não saiu do estoque na reconciliação. Nunca deixou o estoque, então não tem movimento: só deixa de estar reservada. Não confundir com a sobra da contagem de inventário.
+_Evitar_: devolução, material retornado, sobra (sozinho)
+
+**Estorno da reconciliação**:
+Registro que desfaz uma reconciliação inteira: devolve ao estoque o que ela tirou, pelo mesmo valor, faz a reserva voltar a contar e tira a peça de Pronto. Material gasto a mais depois do Pronto se registra estornando e reconciliando de novo com o total.
+_Evitar_: cancelar reconciliação, consumo complementar
 
 **Entrega parcial**:
 Entrega de um ou mais subitens de uma OS ainda aberta, com comprovante próprio.
@@ -235,7 +244,7 @@ Unidade produzida por uma OP e aceita no estoque de acabados.
 _Evitar_: unidade aprovada
 
 **Perda de produção**:
-Material ou unidade que não se torna produto bom e cujo destino e custo são registrados.
+Material ou unidade que não se torna produto bom e cujo destino e custo são registrados. Na OS, é o perdido de cada material na reconciliação, que sai do estoque junto com o consumido.
 
 **Saída parcial de OP**:
 Entrada de unidades boas no estoque antes do fechamento da OP, com custo provisório.
@@ -281,7 +290,7 @@ Fator que transforma a embalagem comprada, como rolo, cone ou pacote, na unidade
 Armário, prateleira ou área com saldo físico próprio. Lista plana, sem hierarquia.
 
 **Movimento de estoque**:
-Registro imutável de uma variação de saldo num ponto, com quantidade e valor assinados. Nasce por saldo de abertura, ajuste, transferência, compra, sessão de inventário ou estorno, e nunca é editado nem apagado.
+Registro imutável de uma variação de saldo num ponto, com quantidade e valor assinados. Nasce por saldo de abertura, ajuste, transferência, compra, sessão de inventário, reconciliação de materiais ou estorno, e nunca é editado nem apagado.
 _Evitar_: lançamento, entrada e saída
 
 **Ponto de saldo**:
@@ -301,7 +310,7 @@ Rolo ou aquisição identificável de uma variante de material, com quantidade p
 Quantidade ou valor existente no dia da instalação, registrado como movimento auditado que não é compra nem faturamento.
 
 **Reserva prevista**:
-Quantidade de material comprometida para um subitem na aprovação da OS, calculada sobre a disponibilidade da hora da gravação, sem reduzir o saldo físico.
+Quantidade de material comprometida para um subitem na aprovação da OS, calculada sobre a disponibilidade da hora da gravação, sem reduzir o saldo físico. Deixa de contar quando o subitem é reconciliado e volta a contar se a reconciliação for estornada.
 
 **Disponibilidade**:
 Saldo físico somado de todos os locais e lotes menos todas as reservas previstas da variante.
@@ -336,14 +345,14 @@ Registro que desfaz uma compra inteira: devolve os movimentos de estoque pelo va
 _Evitar_: cancelamento de compra, exclusão
 
 **Consumo real**:
-Quantidade retirada para produção, possivelmente de vários lotes, que reduz o saldo físico.
+Quantidade retirada para produção, possivelmente de vários locais e lotes, que reduz o saldo físico. Na OS, é registrado pela reconciliação da peça, com o lote mais antigo sugerido.
 
 **Troca de material**:
-Uso de material diferente do planejado, registrando previsto, usado, motivo e diferença de custo.
+Uso de material diferente do planejado, com a mesma unidade base, registrando previsto, usado, motivo e diferença de custo.
 _Evitar_: substituição silenciosa
 
 **Custo provisório**:
-Valor temporário usado quando um consumo ou venda legítima deixa o saldo negativo.
+Valor temporário da parte de um consumo ou venda legítima que passa do saldo do ponto: o custo médio do ponto quando ele ainda tinha saldo, senão o custo de referência da variante, senão zero (sem custo). Fica marcado para o ajuste de custo.
 
 **Ajuste de custo**:
 Evento posterior e auditável que corrige a diferença entre o custo provisório e o custo real, sem reescrever o evento original.

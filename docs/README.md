@@ -46,6 +46,7 @@ Documentação curada e versionada do Costura Pro. Todo doc novo em `docs/` entr
 | [0023](adr/0023-orcamento-rascunho-com-revisao-emitida-como-fato.md) | Orçamento como rascunho mutável e cada emissão como revisão congelada, com redação na anonimização |
 | [0024](adr/0024-aprovacao-como-fato-que-cria-a-os.md) | Aprovação como fato que cria a OS, com subitens como agregados e reserva e recebível como fatos |
 | [0025](adr/0025-fluxo-de-producao-como-agregado-com-copia-na-os.md) | Fluxo de produção como agregado com cópia na OS, e produção em colunas do subitem |
+| [0026](adr/0026-reconciliacao-como-fato-que-consome-e-libera-a-reserva.md) | Reconciliação de materiais como fato que consome o estoque e libera a reserva |
 
 ## Agentes e harness
 
