@@ -10,6 +10,7 @@ import { bigintInteger } from "../columns";
 import { client } from "./clients";
 import { materialVariant } from "./materials";
 import type { MeasurementFieldRow } from "./measurements";
+import { type FlowStageRow, productionStatusValues } from "./production";
 import {
 	type QuoteLineRow,
 	type QuoteLineTotalsRow,
@@ -59,6 +60,8 @@ export const serviceOrder = sqliteTable(
 		codeNumber: integer("code_number").notNull(),
 		codeYear: integer("code_year").notNull(),
 		createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
+		flowStages: text("flow_stages", { mode: "json" }).$type<FlowStageRow[]>(),
+		flowVersion: integer("flow_version"),
 		id: text("id").primaryKey(),
 		openedOn: text("opened_on").notNull(),
 		quoteId: text("quote_id")
@@ -118,9 +121,16 @@ export const serviceOrderItem = sqliteTable(
 			.$type<MeasurementSnapshotRow[]>()
 			.notNull(),
 		position: integer("position").notNull(),
+		productionStatus: text("production_status", {
+			enum: productionStatusValues,
+		})
+			.notNull()
+			.default("notStarted"),
 		serviceOrderId: text("service_order_id")
 			.notNull()
 			.references(() => serviceOrder.id),
+		stageId: text("stage_id"),
+		stageIds: text("stage_ids", { mode: "json" }).$type<string[]>(),
 		updatedAt: integer("updated_at", { mode: "timestamp_ms" }).notNull(),
 		version: integer("version").notNull(),
 	},

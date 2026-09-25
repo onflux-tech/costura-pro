@@ -89,6 +89,7 @@ describe("services schema", () => {
 				"outsourced",
 				"price_cents",
 				"search_text",
+				"suggested_stage_ids",
 				"target_margin_basis_points",
 				"updated_at",
 				"version",

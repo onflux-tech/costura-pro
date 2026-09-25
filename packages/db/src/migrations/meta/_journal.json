@@ -141,6 +141,13 @@
       "when": 1790279835694,
       "tag": "0019_service_order_facts_append_only",
       "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "6",
+      "when": 1790307181085,
+      "tag": "0020_production_flow",
+      "breakpoints": true
     }
   ]
 }

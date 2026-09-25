@@ -14,6 +14,10 @@ export const service = sqliteTable("service", {
 	outsourced: integer("outsourced", { mode: "boolean" }).notNull(),
 	priceCents: bigintInteger("price_cents").notNull(),
 	searchText: text("search_text").notNull(),
+	suggestedStageIds: text("suggested_stage_ids", { mode: "json" })
+		.$type<string[]>()
+		.notNull()
+		.default([]),
 	targetMarginBasisPoints: integer("target_margin_basis_points"),
 	updatedAt: integer("updated_at", { mode: "timestamp_ms" }).notNull(),
 	version: integer("version").notNull(),
