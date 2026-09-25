@@ -28,3 +28,4 @@ Você implementa um checkpoint de um plano que o dono já aprovou. Brainstorming
 - Campo novo em tabela, snapshot ou payload quebra teste existente que compara a lista inteira (colunas do schema, snapshot do `sync.pull`, `toEqual` do payload na web) mesmo fora do mapa do plano: ajuste só a comparação e registre como desvio.
 - Script Python que regrava arquivo no Windows troca LF por CRLF e o `biome check` reprova o arquivo inteiro: grave com `newline="\n"` ou rode `pnpm exec biome check --write` depois (rule de harness).
 - O servidor de produção da verificação recusa `CANONICAL_ORIGIN` com `http`: na verificação local, deixe a variável fora e use o loopback.
+- A verificação no navegador roda o `apps/server/dist` que existir, e ele pode ser de antes das procedures do checkpoint (a leitura nova responde 404): rode `pnpm --filter server build` antes de subir o servidor de produção da verificação.
