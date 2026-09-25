@@ -31,13 +31,13 @@ O `id` da projeção é `variantId|locationId|lotId ou -`, porque coluna anuláv
 | `reversal` | `stockMovements.reverse` ou estorno da compra | contrário ao movimento original |
 | `purchase` | `purchase.create` ([compras](compras.md)), um por item, com `purchase_id` | positivo, com o custo de aquisição do item |
 | `inventory` | `inventorySession.create`, um por linha divergente, com `inventory_session_id` e o motivo da sessão | positivo na sobra, com o valor informado; negativo na falta, pela média do ponto |
-| `consumption` | `materialReconciliation.create` ([produção](producao.md)), um por saída, com `material_reconciliation_id` | negativo, pela média do ponto na parte coberta e com o excesso provisório (média, referência ou zero) |
+| `consumption` | `materialReconciliation.create` ([produção](producao.md)), um por saída, com `material_reconciliation_id` | negativo, pela média do ponto na parte coberta e com o excesso provisório (média, referência ou zero); ponto com valor negativo não tem média, e a saída inteira sai pela referência |
 
 `stockMovements.create` só aceita `opening` e `adjustment`: a união discriminada recusa os outros pela forma, então um payload com `transferOut` vira `invalidPayload` no push em vez de criar meia transferência.
 
 ## Valor de uma saída
 
-O valor sai da média do ponto de saldo, `exitValueCents(quantidade, valor, saída)` em `packages/domain/src/stock.ts`, arredondado ao centavo meio para cima, e é congelado no próprio movimento. Ponto zerado ou negativo devolve `0n` sem dividir por zero. Numa variante com lote, o ponto já é o lote, então a mesma conta serve com e sem lote.
+O valor sai da média do ponto de saldo, `exitValueCents(quantidade, valor, saída)` em `packages/domain/src/stock.ts`, arredondado ao centavo meio para cima, e é congelado no próprio movimento. Ponto zerado ou negativo devolve `0n` sem dividir por zero, e ponto com quantidade positiva e valor negativo (sobra de um negativo antes do ajuste de custo) também: sem a guarda, a média negativa virava saída com valor positivo, que aumentava o valor do estoque. O brinde a R$ 0 tem média zero. Numa variante com lote, o ponto já é o lote, então a mesma conta serve com e sem lote.
 
 Como o movimento carrega o valor decidido, a projeção é soma pura: a ordem em que os movimentos chegam não muda o saldo.
 

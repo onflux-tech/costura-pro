@@ -15,7 +15,7 @@ O RF-EST-12 exige a reconciliação antes do "Pronto" da peça. O RF-EST-10 pede
 
 O que não saiu é a sobra da reconciliação, sem movimento. O consumido e o perdido saem juntos no mesmo movimento, e a divisão entre os dois mora só na linha do fato.
 
-**Valor da saída.** Cada parte sai pela média do ponto, sobre o saldo que as partes anteriores deixaram. O que passa do saldo é provisório: vale a média do ponto quando ele ainda tinha saldo, senão o custo de referência, senão zero. A parte guarda o provisório para o ajuste de custo que virá com a compra.
+**Valor da saída.** Cada parte sai pela média do ponto, sobre o saldo que as partes anteriores deixaram, pela mesma função do domínio no servidor e na prévia. O que passa do saldo é provisório: vale a média do ponto quando ele ainda tinha saldo, senão o custo de referência, senão zero. Ponto com quantidade positiva e valor negativo (sobra de um negativo antes do ajuste de custo) não tem média, e a parte inteira sai provisória pela referência; o brinde a R$ 0 tem média zero. A parte guarda o provisório para o ajuste de custo que virá com a compra.
 
 **Reserva liberada por derivação.** Uma reserva cujo subitem tem reconciliação ativa (sem `material_reconciliation_reversal`) deixa de somar no reservado da variante. Nada é gravado na reserva.
 
