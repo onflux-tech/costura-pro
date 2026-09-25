@@ -14,9 +14,11 @@ import { variantSearchQuery } from "./material-queries";
 export function VariantPicker({
 	emptyHint,
 	onPick,
+	unavailable,
 }: {
 	emptyHint: string;
 	onPick: (variant: VariantOptionView) => void;
+	unavailable?: (variant: VariantOptionView) => string | null;
 }) {
 	const [query, setQuery] = useState("");
 	const [search, setSearch] = useState("");
@@ -44,30 +46,39 @@ export function VariantPicker({
 				<Text tone="subtle">{emptyHint}</Text>
 			) : null}
 			<div className="flex max-h-72 flex-col gap-1 overflow-y-auto">
-				{items.map((variant) => (
-					<Button
-						className="h-auto min-h-11 flex-col items-start justify-center gap-0.5 whitespace-normal py-2 text-left"
-						key={variant.id}
-						onClick={() => onPick(variant)}
-						type="button"
-						variant="ghost"
-					>
-						<Text inline weight="semibold">
-							{`${variant.materialName} · ${variant.name}`}
-						</Text>
-						<Text inline size="sm" tone="subtle">
-							{[
-								variant.code,
-								variant.packaging
-									? `${variant.packaging.label}`
-									: unitAbbreviation(variant.baseUnit),
-								variant.tracksLots ? "por lote" : null,
-							]
-								.filter(Boolean)
-								.join(" · ")}
-						</Text>
-					</Button>
-				))}
+				{items.map((variant) => {
+					const blocked = unavailable?.(variant) ?? null;
+					return (
+						<Button
+							className="h-auto min-h-11 flex-col items-start justify-center gap-0.5 whitespace-normal py-2 text-left"
+							disabled={blocked !== null}
+							key={variant.id}
+							onClick={() => onPick(variant)}
+							type="button"
+							variant="ghost"
+						>
+							<Text inline weight="semibold">
+								{`${variant.materialName} · ${variant.name}`}
+							</Text>
+							<Text inline size="sm" tone="subtle">
+								{[
+									variant.code,
+									variant.packaging
+										? `${variant.packaging.label}`
+										: unitAbbreviation(variant.baseUnit),
+									variant.tracksLots ? "por lote" : null,
+								]
+									.filter(Boolean)
+									.join(" · ")}
+							</Text>
+							{blocked === null ? null : (
+								<Text inline size="xs" tone="warning">
+									{blocked}
+								</Text>
+							)}
+						</Button>
+					);
+				})}
 			</div>
 		</div>
 	);

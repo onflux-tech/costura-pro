@@ -18,6 +18,15 @@ export function serviceOrderQuery(serviceOrderId: string) {
 	});
 }
 
+export function variantPointsQuery(variantIds: readonly string[]) {
+	return orpc.stockBalances.variantPoints.queryOptions({
+		input: { variantIds: [...variantIds] },
+		meta: { silent: true },
+		refetchInterval: 15_000,
+		refetchOnMount: "always",
+	});
+}
+
 export async function refreshServiceOrders(queryClient: QueryClient) {
 	await Promise.all([
 		queryClient.invalidateQueries({ queryKey: orpc.serviceOrders.key() }),
@@ -26,5 +35,13 @@ export async function refreshServiceOrders(queryClient: QueryClient) {
 		queryClient.invalidateQueries({ queryKey: orpc.stockBalances.key() }),
 		queryClient.invalidateQueries({ queryKey: orpc.materials.key() }),
 		queryClient.invalidateQueries({ queryKey: orpc.search.key() }),
+	]);
+}
+
+export async function refreshReconciliation(queryClient: QueryClient) {
+	await Promise.all([
+		refreshServiceOrders(queryClient),
+		queryClient.invalidateQueries({ queryKey: orpc.stockMovements.key() }),
+		queryClient.invalidateQueries({ queryKey: orpc.stockLots.key() }),
 	]);
 }

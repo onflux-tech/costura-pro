@@ -13,7 +13,14 @@ import {
 } from "@costura-pro/domain/reconciliation";
 import { exitValueCents } from "@costura-pro/domain/stock";
 import type { BaseUnitCode } from "@costura-pro/domain/unit";
+import { ORPCError } from "@orpc/client";
 
+import {
+	type ClientCommandFailure,
+	clientCommandFailure,
+} from "./client-command-error";
+import { moneyLabel } from "./finance";
+import { unitAbbreviation } from "./materials";
 import { dayError } from "./quote-drafts";
 import type { MaterialRowView } from "./service-orders";
 import { pointQuantity } from "./stock";
@@ -531,6 +538,90 @@ export function reconciliationFailure(failure: {
 		return "Esta peça mudou de etapa em outra janela. Confira e tente de novo.";
 	}
 	return failure.message;
+}
+
+function lineQuantity(line: LineDraft, micros: bigint): string {
+	return pointQuantity(
+		micros.toString(),
+		line.variant.baseUnit,
+		line.variant.displayPrecision
+	);
+}
+
+export function lineOutcomeText(line: LineDraft, preview: LinePreview): string {
+	return preview.extraMicros > 0n
+		? `${lineQuantity(line, preview.extraMicros)} a mais`
+		: `Sobra ${lineQuantity(line, preview.leftoverMicros)}`;
+}
+
+const negativeSources: Record<
+	Exclude<NonNullable<LinePreview["negative"]>["source"], "none">,
+	string
+> = {
+	average: "média do ponto",
+	reference: "custo de referência",
+};
+
+export function negativeText(
+	line: LineDraft,
+	preview: LinePreview
+): string | null {
+	const { negative } = preview;
+	if (negative === null) {
+		return null;
+	}
+	const head = `Fica negativo em ${lineQuantity(line, negative.micros)}`;
+	if (negative.source === "none" || negative.unitCents === null) {
+		return `${head}: sem custo`;
+	}
+	return `${head}: custo provisório ${moneyLabel(negative.unitCents)}/${unitAbbreviation(line.variant.baseUnit)} (${negativeSources[negative.source]})`;
+}
+
+export function swapUnitHint(
+	option: { baseUnit: BaseUnitCode },
+	line: Pick<LineDraft, "variant">
+): string | null {
+	return option.baseUnit === line.variant.baseUnit
+		? null
+		: `Outra unidade: a troca precisa ser em ${unitAbbreviation(line.variant.baseUnit)}.`;
+}
+
+function conflictMessage(error: unknown): string | null {
+	return error instanceof ORPCError && error.code === "CONFLICT"
+		? error.message
+		: null;
+}
+
+export function reconcileCommandFailure(error: unknown): ClientCommandFailure {
+	const conflict = conflictMessage(error);
+	if (
+		conflict === commandMessages.aggregateExists ||
+		conflict === commandMessages.reconciliationExists
+	) {
+		return {
+			kind: "exists",
+			message: reconciliationFailure({ kind: "exists", message: conflict }),
+		};
+	}
+	const failure = clientCommandFailure(error, "OS");
+	return { kind: failure.kind, message: reconciliationFailure(failure) };
+}
+
+export function reverseCommandFailure(error: unknown): ClientCommandFailure {
+	const conflict = conflictMessage(error);
+	if (conflict === commandMessages.aggregateExists) {
+		return {
+			kind: "exists",
+			message: "Este estorno já tinha sido registrado. Confira os materiais.",
+		};
+	}
+	if (conflict === commandMessages.reconciliationReversed) {
+		return {
+			kind: "exists",
+			message: "Esta reconciliação já foi estornada em outra janela.",
+		};
+	}
+	return clientCommandFailure(error, "OS");
 }
 
 export function reverseReconciliationFields(input: {

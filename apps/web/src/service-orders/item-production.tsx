@@ -12,6 +12,9 @@ import type { ServiceOrderItemView } from "@/lib/service-orders";
 import { StartProductionDialog } from "@/production/start-dialog";
 import { useProductionActions } from "@/production/use-production-actions";
 
+import { ReconcileDialog } from "./reconcile-dialog";
+import type { ReconciliationActions } from "./use-reconciliation-actions";
+
 function statusText(item: ServiceOrderItemView, label: string): string {
 	return item.kind === "material" ? label : `Etapa atual: ${label}`;
 }
@@ -19,21 +22,29 @@ function statusText(item: ServiceOrderItemView, label: string): string {
 function NextStep({
 	next,
 	onAdvance,
+	onReconcile,
 	onStart,
 	pending,
-	startButton,
+	nextButton,
 }: {
 	next: ItemProductionView["next"];
 	onAdvance: () => void;
+	onReconcile: () => void;
 	onStart: () => void;
 	pending: boolean;
-	startButton: RefObject<HTMLButtonElement | null>;
+	nextButton: RefObject<HTMLButtonElement | null>;
 }) {
 	switch (next.kind) {
 		case "start":
 			return (
-				<Button disabled={pending} onClick={onStart} ref={startButton}>
+				<Button disabled={pending} onClick={onStart} ref={nextButton}>
 					Iniciar produção
+				</Button>
+			);
+		case "reconcile":
+			return (
+				<Button disabled={pending} onClick={onReconcile} ref={nextButton}>
+					Reconciliar e marcar pronto
 				</Button>
 			);
 		case "advance":
@@ -76,25 +87,31 @@ export function ItemProduction({
 	item,
 	itemTitle,
 	number,
+	order,
+	reconciliation,
+	status,
 }: {
 	flowStages: readonly FlowStageView[] | null;
 	item: ServiceOrderItemView;
 	itemTitle: string;
 	number: number;
+	order: { code: string; openedOn: string };
+	reconciliation: ReconciliationActions;
+	status: RefObject<HTMLParagraphElement | null>;
 }) {
 	const view = itemProduction(item, flowStages);
 	const { advance, back, pendingId, start } = useProductionActions();
 	const [starting, setStarting] = useState(false);
+	const [reconciling, setReconciling] = useState(false);
 	const [settled, setSettled] = useState(0);
-	const startButton = useRef<HTMLButtonElement>(null);
-	const status = useRef<HTMLParagraphElement>(null);
+	const nextButton = useRef<HTMLButtonElement>(null);
 	const pending = pendingId === item.id;
 
 	useEffect(() => {
 		if (settled > 0 && document.activeElement === document.body) {
 			status.current?.focus();
 		}
-	}, [settled]);
+	}, [settled, status]);
 
 	const act = async (command: typeof advance) => {
 		if (await command(item)) {
@@ -102,8 +119,12 @@ export function ItemProduction({
 		}
 	};
 
+	const finalFocus = () =>
+		nextButton.current?.isConnected ? nextButton.current : status.current;
+
 	const actions =
 		view.next.kind === "start" ||
+		view.next.kind === "reconcile" ||
 		view.next.kind === "advance" ||
 		view.next.kind === "ready" ||
 		view.back;
@@ -125,10 +146,11 @@ export function ItemProduction({
 				<div className="flex flex-wrap gap-2">
 					<NextStep
 						next={view.next}
+						nextButton={nextButton}
 						onAdvance={() => act(advance)}
+						onReconcile={() => setReconciling(true)}
 						onStart={() => setStarting(true)}
 						pending={pending}
-						startButton={startButton}
 					/>
 					{view.back ? (
 						<Button
@@ -143,11 +165,7 @@ export function ItemProduction({
 			) : null}
 			{flowStages === null ? null : (
 				<StartProductionDialog
-					finalFocus={() =>
-						startButton.current?.isConnected
-							? startButton.current
-							: status.current
-					}
+					finalFocus={finalFocus}
 					flowStages={flowStages}
 					item={item}
 					itemTitle={itemTitle}
@@ -157,6 +175,16 @@ export function ItemProduction({
 					start={start}
 				/>
 			)}
+			<ReconcileDialog
+				actions={reconciliation}
+				finalFocus={finalFocus}
+				item={item}
+				itemTitle={itemTitle}
+				onOpenChange={setReconciling}
+				open={reconciling}
+				openedOn={order.openedOn}
+				orderCode={order.code}
+			/>
 		</div>
 	);
 }

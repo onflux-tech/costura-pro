@@ -634,6 +634,33 @@ export function materialCostRows(
 	};
 }
 
+function plannedCostText(cents: bigint | null): string {
+	return cents === null
+		? "sem custo previsto"
+		: `previsto ${moneyLabel(cents)}`;
+}
+
+export function materialCostText(row: MaterialCostRow): string {
+	return `${row.label}: ${plannedCostText(row.plannedCents)} · real ${moneyLabel(row.realCents)}`;
+}
+
+export function materialCostTotalText(costs: MaterialCosts): string {
+	return `Total: ${plannedCostText(costs.plannedTotal)} · real ${moneyLabel(costs.realTotal)}`;
+}
+
+export function costDifferenceText(costs: MaterialCosts): string | null {
+	if (costs.plannedTotal === null) {
+		return null;
+	}
+	const difference = costs.realTotal - costs.plannedTotal;
+	if (difference === 0n) {
+		return moneyLabel(difference);
+	}
+	return difference > 0n
+		? `+${moneyLabel(difference)}`
+		: `−${moneyLabel(-difference)}`;
+}
+
 export function subitemsLabel(count: number): string {
 	if (count === 0) {
 		return "sem subitens";

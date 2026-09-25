@@ -1,22 +1,28 @@
 import { describe, expect, test } from "bun:test";
 import { commandMessages } from "@costura-pro/api/command-messages";
 import { reconciliationLimits } from "@costura-pro/domain/reconciliation";
+import { ORPCError } from "@orpc/client";
 
 import {
 	hasReconciliationErrors,
 	type LineDraft,
+	lineOutcomeText,
 	linePreview,
+	negativeText,
 	type ReconciliationDraft,
+	reconcileCommandFailure,
 	reconciliationDraftOf,
 	reconciliationErrors,
 	reconciliationFailure,
 	reconciliationFields,
 	reconciliationOpKey,
 	removePart,
+	reverseCommandFailure,
 	reverseOpKey,
 	reverseReconciliationErrors,
 	reverseReconciliationFields,
 	splitPart,
+	swapUnitHint,
 	type VariantPointsView,
 	withPart,
 	withQuantities,
@@ -838,5 +844,140 @@ describe("falha da reconciliação", () => {
 				message: commandMessages.reconciliationSwapUnit,
 			})
 		).toBe(commandMessages.reconciliationSwapUnit);
+	});
+});
+
+describe("textos do diálogo de reconciliação", () => {
+	test("sobra, a mais e a sobra zerada", () => {
+		const exact = line(freshDraft());
+		expect(lineOutcomeText(exact, linePreview(exact, crepePoints))).toBe(
+			"Sobra 0,00 m"
+		);
+		const less = line(
+			withQuantities(freshDraft(), 0, "2,00", "0", points, sequence(600))
+		);
+		expect(lineOutcomeText(less, linePreview(less, crepePoints))).toBe(
+			"Sobra 1,40 m"
+		);
+		const more = line(
+			withQuantities(freshDraft(), 1, "1", "1", points, sequence(600)),
+			1
+		);
+		expect(lineOutcomeText(more, linePreview(more, zipperPoints))).toBe(
+			"1 un a mais"
+		);
+	});
+
+	test("aviso de ponto negativo pela média, pela referência e sem custo", () => {
+		const crepeLine = line(freshDraft());
+		expect(negativeText(crepeLine, linePreview(crepeLine, crepePoints))).toBe(
+			"Fica negativo em 0,90 m: custo provisório R$ 30,00/m (média do ponto)"
+		);
+		const empty = { ...crepePoints, points: [] };
+		expect(negativeText(crepeLine, linePreview(crepeLine, empty))).toBe(
+			"Fica negativo em 3,40 m: custo provisório R$ 30,00/m (custo de referência)"
+		);
+		expect(
+			negativeText(
+				crepeLine,
+				linePreview(crepeLine, { ...empty, referenceCostCents: null })
+			)
+		).toBe("Fica negativo em 3,40 m: sem custo");
+		const zipperLine = line(freshDraft(), 1);
+		expect(
+			negativeText(zipperLine, linePreview(zipperLine, zipperPoints))
+		).toBeNull();
+	});
+
+	test("troca só com a mesma unidade", () => {
+		const crepeLine = line(freshDraft());
+		expect(swapUnitHint({ baseUnit: "m" }, crepeLine)).toBeNull();
+		expect(swapUnitHint({ baseUnit: "un" }, crepeLine)).toBe(
+			"Outra unidade: a troca precisa ser em m."
+		);
+	});
+});
+
+describe("falhas dos comandos da reconciliação", () => {
+	test("recusas de outra janela e registro já existente viram aviso", () => {
+		expect(
+			reconcileCommandFailure(
+				new ORPCError("CONFLICT", {
+					message: commandMessages.reconciliationExists,
+				})
+			)
+		).toEqual({
+			kind: "exists",
+			message:
+				"Esta peça já foi reconciliada em outra janela. Confira os materiais.",
+		});
+		expect(
+			reconcileCommandFailure(
+				new ORPCError("CONFLICT", { message: commandMessages.aggregateExists })
+			)
+		).toEqual({
+			kind: "exists",
+			message:
+				"Esta reconciliação já tinha sido registrada. Confira os materiais.",
+		});
+		expect(
+			reconcileCommandFailure(
+				new ORPCError("NOT_FOUND", {
+					message: commandMessages.reconciliationNotAtLastStage,
+				})
+			)
+		).toEqual({
+			kind: "other",
+			message:
+				"Esta peça mudou de etapa em outra janela. Confira e tente de novo.",
+		});
+		expect(
+			reconcileCommandFailure(
+				new ORPCError("NOT_FOUND", {
+					message: commandMessages.reconciliationSwapUnit,
+				})
+			)
+		).toEqual({
+			kind: "other",
+			message: commandMessages.reconciliationSwapUnit,
+		});
+		expect(
+			reconcileCommandFailure(
+				new ORPCError("PRECONDITION_FAILED", {
+					message: commandMessages.clientAnonymized,
+				})
+			).kind
+		).toBe("anonymized");
+	});
+
+	test("estorno repetido ou já feito em outra janela vira aviso", () => {
+		expect(
+			reverseCommandFailure(
+				new ORPCError("CONFLICT", { message: commandMessages.aggregateExists })
+			)
+		).toEqual({
+			kind: "exists",
+			message: "Este estorno já tinha sido registrado. Confira os materiais.",
+		});
+		expect(
+			reverseCommandFailure(
+				new ORPCError("CONFLICT", {
+					message: commandMessages.reconciliationReversed,
+				})
+			)
+		).toEqual({
+			kind: "exists",
+			message: "Esta reconciliação já foi estornada em outra janela.",
+		});
+		expect(
+			reverseCommandFailure(
+				new ORPCError("NOT_FOUND", {
+					message: commandMessages.reconciliationNotFound,
+				})
+			)
+		).toEqual({
+			kind: "other",
+			message: commandMessages.reconciliationNotFound,
+		});
 	});
 });

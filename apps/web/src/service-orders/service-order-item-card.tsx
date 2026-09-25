@@ -1,4 +1,5 @@
 import { Badge } from "@costura-pro/ui/components/badge";
+import { Button } from "@costura-pro/ui/components/button";
 import {
 	DataList,
 	DataListCell,
@@ -7,13 +8,22 @@ import {
 	DataListRow,
 } from "@costura-pro/ui/components/data-list";
 import {
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuTrigger,
+} from "@costura-pro/ui/components/dropdown-menu";
+import {
 	Panel,
 	PanelContent,
 	PanelHeader,
 	PanelTitle,
 } from "@costura-pro/ui/components/panel";
 import { Text } from "@costura-pro/ui/components/typography";
+import { EllipsisIcon } from "lucide-react";
+import { type RefObject, useRef, useState } from "react";
 
+import { formatDay } from "@/lib/measurements";
 import { type FlowStageView, productionBlocked } from "@/lib/production";
 import {
 	lineDetail,
@@ -31,6 +41,9 @@ import { pointQuantity } from "@/lib/stock";
 
 import { ItemProduction } from "./item-production";
 import { MeasurementSnapshot } from "./measurement-snapshot";
+import { ReconciledMaterials } from "./reconciled-materials";
+import { ReverseReconciliationDialog } from "./reverse-reconciliation-dialog";
+import type { ReconciliationActions } from "./use-reconciliation-actions";
 
 function amount(row: MaterialRowView, micros: bigint): string {
 	return pointQuantity(micros.toString(), row.baseUnit, row.displayPrecision);
@@ -85,34 +98,93 @@ function ItemMaterials({
 	);
 }
 
+function ItemMenu({
+	number,
+	onReverse,
+	trigger,
+}: {
+	number: number;
+	onReverse: () => void;
+	trigger: RefObject<HTMLButtonElement | null>;
+}) {
+	return (
+		<DropdownMenu>
+			<DropdownMenuTrigger
+				render={
+					<Button
+						aria-label={`Mais ações do subitem ${number}`}
+						ref={trigger}
+						size="icon"
+						variant="ghost"
+					/>
+				}
+			>
+				<EllipsisIcon aria-hidden="true" />
+			</DropdownMenuTrigger>
+			<DropdownMenuContent align="end" className="w-52">
+				<DropdownMenuItem onClick={onReverse}>
+					Estornar reconciliação
+				</DropdownMenuItem>
+			</DropdownMenuContent>
+		</DropdownMenu>
+	);
+}
+
+function ItemMaterialsOf({
+	item,
+	number,
+}: {
+	item: ServiceOrderItemView;
+	number: number;
+}) {
+	if (item.reconciliation) {
+		return <ReconciledMaterials item={item} number={number} />;
+	}
+	const rows = itemMaterials(item);
+	return rows.length > 0 ? <ItemMaterials number={number} rows={rows} /> : null;
+}
+
 export function ServiceOrderItemCard({
 	flowStages,
 	item,
 	number,
+	order,
 	people,
+	reconciliation,
 	today,
 }: {
 	flowStages: readonly FlowStageView[] | null;
 	item: ServiceOrderItemView;
 	number: number;
+	order: { code: string; openedOn: string };
 	people: PeopleNames;
+	reconciliation: ReconciliationActions;
 	today: string;
 }) {
 	const { line } = item;
 	const due = dueLabel(item.dueOn, today);
-	const rows = itemMaterials(item);
 	const profiled = line.kind !== "material" && line.profileId !== null;
 	const missing = productionBlocked(item);
+	const status = useRef<HTMLParagraphElement>(null);
+	const menu = useRef<HTMLButtonElement>(null);
+	const [reversing, setReversing] = useState(false);
 	return (
 		<Panel>
 			<PanelHeader>
 				<PanelTitle>{`Subitem ${number} · ${lineTitle(line)}`}</PanelTitle>
-				{due.late || missing !== null ? (
-					<div className="flex flex-wrap gap-1">
+				{due.late || missing !== null || item.reconciliation ? (
+					<div className="flex flex-wrap items-center gap-1">
 						{due.late ? <Badge tone="warning">prazo vencido</Badge> : null}
 						{missing === null ? null : (
 							<Badge tone="danger">{`bloqueado · falta ${missing}`}</Badge>
 						)}
+						{item.reconciliation ? (
+							<ItemMenu
+								number={number}
+								onReverse={() => setReversing(true)}
+								trigger={menu}
+							/>
+						) : null}
 					</div>
 				) : null}
 			</PanelHeader>
@@ -124,6 +196,11 @@ export function ServiceOrderItemCard({
 					<Text size="xs" tone="subtle">
 						{`Prazo ${due.text} · Entrega: pendente`}
 					</Text>
+					{item.reconciliation ? (
+						<Text size="xs" tone="subtle">
+							{`Reconciliada em ${formatDay(item.reconciliation.occurredOn)}`}
+						</Text>
+					) : null}
 					{line.note ? (
 						<Text size="xs" tone="muted">
 							{line.note}
@@ -135,12 +212,25 @@ export function ServiceOrderItemCard({
 					item={item}
 					itemTitle={lineTitle(line)}
 					number={number}
+					order={order}
+					reconciliation={reconciliation}
+					status={status}
 				/>
 				{profiled ? (
 					<MeasurementSnapshot snapshots={item.measurements} />
 				) : null}
 			</PanelContent>
-			{rows.length > 0 ? <ItemMaterials number={number} rows={rows} /> : null}
+			<ItemMaterialsOf item={item} number={number} />
+			<ReverseReconciliationDialog
+				actions={reconciliation}
+				finalFocus={() =>
+					menu.current?.isConnected ? menu.current : status.current
+				}
+				itemTitle={`Subitem ${number} · ${lineTitle(line)}`}
+				onOpenChange={setReversing}
+				open={reversing}
+				reconciliation={item.reconciliation}
+			/>
 		</Panel>
 	);
 }

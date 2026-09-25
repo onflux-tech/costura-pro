@@ -10,7 +10,7 @@ import { Skeleton } from "@costura-pro/ui/components/skeleton";
 import { Text } from "@costura-pro/ui/components/typography";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { clientCommandFailure } from "@/lib/client-command-error";
 import { localDay } from "@/lib/measurements";
@@ -26,11 +26,18 @@ import { ServiceOrderInternalPanel } from "./service-order-internal-panel";
 import { ServiceOrderItemCard } from "./service-order-item-card";
 import { serviceOrderQuery } from "./service-order-queries";
 import { ServiceOrderStates } from "./service-order-states";
+import { useReconciliationActions } from "./use-reconciliation-actions";
 
 function ServiceOrderView({ detail }: { detail: ServiceOrderDetailView }) {
 	const { people } = usePeople(detail.client.id);
 	const [today] = useState(() => localDay(new Date()));
 	const production = detail.items.some((item) => item.kind !== "material");
+	const reconciliation = useReconciliationActions();
+	const { forgetSettled } = reconciliation;
+	const { code, openedOn } = detail.serviceOrder;
+	useEffect(() => {
+		forgetSettled(detail.items);
+	}, [detail.items, forgetSettled]);
 	return (
 		<div className="grid grid-cols-[minmax(0,1fr)] gap-4 lg:grid-cols-[minmax(0,1fr)_22rem]">
 			<div className="flex min-w-0 flex-col gap-4">
@@ -53,7 +60,9 @@ function ServiceOrderView({ detail }: { detail: ServiceOrderDetailView }) {
 							item={item}
 							key={item.id}
 							number={index + 1}
+							order={{ code, openedOn }}
 							people={people}
+							reconciliation={reconciliation}
 							today={today}
 						/>
 					))
@@ -61,7 +70,10 @@ function ServiceOrderView({ detail }: { detail: ServiceOrderDetailView }) {
 			</div>
 			<div className="flex min-w-0 flex-col gap-4">
 				<ReceivablePanel detail={detail} />
-				<ServiceOrderInternalPanel revision={detail.revision} />
+				<ServiceOrderInternalPanel
+					items={detail.items}
+					revision={detail.revision}
+				/>
 				<ClosingPanel detail={detail} />
 			</div>
 		</div>

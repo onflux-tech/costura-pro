@@ -16,6 +16,7 @@ import {
 	approvalIds,
 	approvalPreview,
 	closingSteps,
+	costDifferenceText,
 	deliverySummary,
 	dueLabel,
 	estimatedMargin,
@@ -23,6 +24,8 @@ import {
 	itemMaterials,
 	listProductionSummary,
 	materialCostRows,
+	materialCostText,
+	materialCostTotalText,
 	productionSummary,
 	type ReconciliationView,
 	receivableLabel,
@@ -963,5 +966,37 @@ describe("subitem reconciliado", () => {
 			realTotal: 0n,
 			rows: [],
 		});
+	});
+
+	test("texto do custo por material, total e diferença", () => {
+		const costs = materialCostRows([serviceItem, reconciled]);
+		expect(costs.rows.map(materialCostText)).toEqual([
+			"Forro · Bege: previsto R$ 102,00 · real R$ 64,00",
+			"Zíper · 20 cm: previsto R$ 3,70 · real R$ 7,40",
+		]);
+		expect(materialCostTotalText(costs)).toBe(
+			"Total: previsto R$ 105,70 · real R$ 71,40"
+		);
+		expect(costDifferenceText(costs)).toBe("−R$ 34,30");
+		expect(
+			costDifferenceText({ plannedTotal: 100n, realTotal: 250n, rows: [] })
+		).toBe("+R$ 1,50");
+		expect(
+			costDifferenceText({ plannedTotal: 250n, realTotal: 250n, rows: [] })
+		).toBe("R$ 0,00");
+	});
+
+	test("sem custo previsto não calcula a diferença", () => {
+		const costs = materialCostRows([
+			reconciled,
+			{ ...pieceItem, reconciled: true, reconciliation: withProvisional },
+		]);
+		expect(costs.rows.map(materialCostText).at(-1)).toBe(
+			"Crepe · Preto: sem custo previsto · real R$ 102,00"
+		);
+		expect(materialCostTotalText(costs)).toBe(
+			"Total: sem custo previsto · real R$ 177,10"
+		);
+		expect(costDifferenceText(costs)).toBeNull();
 	});
 });
