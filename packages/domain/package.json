@@ -50,6 +50,10 @@
       "types": "./dist/src/product.d.ts",
       "default": "./src/product.ts"
     },
+    "./production": {
+      "types": "./dist/src/production.d.ts",
+      "default": "./src/production.ts"
+    },
     "./purchase": {
       "types": "./dist/src/purchase.d.ts",
       "default": "./src/purchase.ts"

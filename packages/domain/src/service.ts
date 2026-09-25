@@ -5,6 +5,7 @@ export const serviceLimits = {
 	estimatedMinutes: { max: 9999, min: 1 },
 	name: { max: 120, min: 1 },
 	notes: 2000,
+	suggestedStages: 50,
 } as const;
 
 export const serviceCategorySuggestions = [
