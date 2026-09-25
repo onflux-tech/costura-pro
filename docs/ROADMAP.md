@@ -92,6 +92,8 @@ Cada spike responde uma pergunta que muda o desenho antes de construir em cima d
 - App Tauri removido do scaffold (Q-11, DEC-59): pasta do app, scripts e CLI do Tauri, teste do `frontendDist` (o contrato do proxy do Vite segue em `apps/server/tests/vite-proxy.test.ts`), armadilhas do HARNESS e da rule de web, papel `contract` e instruções de desenvolvimento do README (2026-09-16).
 - Implementação por subagente (DEC-165, 2026-09-24): papel `implementer` com escrita executando cada checkpoint do plano numa sessão de execução separada da de design, skill `/implementar`, ferramentas, esforço e sandbox por papel no gerador, hooks que fazem o Stop esperar subagente rodando e guard do implementer ([HARNESS §4](HARNESS.md#4-ciclo-de-entrega-e-evolução-do-harness)).
 - Sessão da execução escolhida pelo dono depois do plano (DEC-166, 2026-09-25): o `/entrega-iniciar` pergunta se a execução roda numa sessão nova, aberta com `claude --effort high` e o handoff, ou na mesma sessão do design ([HARNESS §4](HARNESS.md#4-ciclo-de-entrega-e-evolução-do-harness)).
+- Grill-with-docs obrigatório na rota completa (DEC-177, 2026-09-25): a spec passa sempre pelo `grilling` e pelo `domain-modeling`, com `CONTEXT.md` e ADR gravados na hora, e o `/implementar` confere o registro no cabeçalho do plano ([HARNESS §4](HARNESS.md#4-ciclo-de-entrega-e-evolução-do-harness)).
+- Commit por checkpoint (DEC-178, 2026-09-25): o `/implementar` commita na branch cada checkpoint aceito e cada rodada de correção, sem amend, e o `/integrar-branch` só faz o merge linear, o push e acompanha o CI ([HARNESS §4](HARNESS.md#4-ciclo-de-entrega-e-evolução-do-harness)).
 
 **Pendente:**
 - **Build conferido numa máquina Ubuntu 24.04** além do CI (Q-10).

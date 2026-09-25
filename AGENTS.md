@@ -12,11 +12,11 @@ App local-first para um único ateliê e um único dono: atendimento, orçamento
 
 Toda implementação segue as skills do projeto (fonte em `.agents/skills/`; no Claude, `/nome`):
 
-1. `entrega-iniciar`: escolhe a entrega do ROADMAP, cria a branch, define a rota, a spec local e o plano, e termina perguntando ao dono onde a execução roda: numa sessão nova, com o prompt do handoff, ou na mesma sessão.
+1. `entrega-iniciar`: escolhe a entrega do ROADMAP, cria a branch, define a rota, a spec local (passada sempre pelo grill-with-docs: `grilling` e `domain-modeling`) e o plano, e termina perguntando ao dono onde a execução roda: numa sessão nova, com o prompt do handoff, ou na mesma sessão.
 2. `implementar`: na sessão escolhida, despacha o papel `implementer` um checkpoint por vez e confere cada um.
 3. `verificar` e, quando a entrega toca dinheiro, quantidade, dados, autenticação, sync ou contrato entre camadas, `revisar`.
 4. `entrega-fechar`: atualiza docs curadas e índice, evolui o harness pelos critérios do `docs/HARNESS.md` §4 e deixa o `local.db` do dono migrado e com dados de exemplo da entrega, para ele ver com `pnpm dev`. É o que deixa o harness mais especialista a cada entrega.
-5. `integrar-branch`: roda sozinho logo depois do `entrega-fechar` verde, com commits por área, merge `--ff-only` na `main`, push e CI acompanhado, sem pedir confirmação; não há PR.
+5. `integrar-branch`: roda sozinho logo depois do `entrega-fechar` verde, com merge `--ff-only` na `main`, push e CI acompanhado, sem pedir confirmação; não há PR. Os commits já existem na branch: um por checkpoint aceito no `implementar`, um por rodada de correção e os do fechamento.
 
 ## Regras por área
 
@@ -49,7 +49,7 @@ Antes de tocar arquivos de uma área, leia a rule dela (no Claude elas carregam 
 - Pronto significa `pnpm harness:check`, `pnpm docs:check`, `pnpm harness:test`, `pnpm test`, `pnpm check`, `pnpm check-types` e `pnpm build` sem erro nem aviso; `pnpm fix` corrige formatação.
 - Suíte de teste roda com saída redirecionada para arquivo, nunca com pipe.
 - Escolha ou confirmação do dono vai pela ferramenta de pergunta do cliente, com a opção recomendada primeiro.
-- Commit, merge na `main` e push acontecem automaticamente ao fim de cada entrega, pelo `integrar-branch` (autorização permanente do dono); mensagens de commit em inglês no padrão conventional commits.
+- Commit na branch da entrega a cada checkpoint aceito e a cada rodada de correção, sem amend; merge na `main` e push automáticos ao fim de cada entrega, pelo `integrar-branch` (autorização permanente do dono); mensagens de commit em inglês no padrão conventional commits.
 
 ## Subagentes
 

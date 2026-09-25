@@ -5,7 +5,7 @@ description: Despacha revisão independente do diff de uma entrega do Costura Pr
 
 # Revisar
 
-1. **Salvar o diff.** Grave `git diff main...HEAD` e, se houver, `git diff HEAD` num arquivo do scratchpad; arquivo novo entra por `git diff --no-index -- /dev/null <arquivo>` anexado ao mesmo arquivo, nunca por `git add -N`, que recusa o pre-commit. O `reviewer` não tem shell e lê só arquivos.
+1. **Salvar o diff.** Grave `git diff main...HEAD` (numa rodada de correção, `git diff <commit antes da rodada>..HEAD`) e, se houver, `git diff HEAD` num arquivo do scratchpad; arquivo novo entra por `git diff --no-index -- /dev/null <arquivo>` anexado ao mesmo arquivo, nunca por `git add -N`, que recusa o pre-commit. O `reviewer` não tem shell e lê só arquivos.
 2. **Despachar.** Envie ao `reviewer`:
    - caminho do diff, spec local e DoD;
    - RF, RNF e ADRs afetados;
