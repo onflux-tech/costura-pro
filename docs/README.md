@@ -45,6 +45,7 @@ Documentação curada e versionada do Costura Pro. Todo doc novo em `docs/` entr
 | [0022](adr/0022-sessao-de-inventario-como-fato-com-esperado-da-contagem.md) | Sessão de inventário como fato gravado na finalização, com o esperado da hora da contagem |
 | [0023](adr/0023-orcamento-rascunho-com-revisao-emitida-como-fato.md) | Orçamento como rascunho mutável e cada emissão como revisão congelada, com redação na anonimização |
 | [0024](adr/0024-aprovacao-como-fato-que-cria-a-os.md) | Aprovação como fato que cria a OS, com subitens como agregados e reserva e recebível como fatos |
+| [0025](adr/0025-fluxo-de-producao-como-agregado-com-copia-na-os.md) | Fluxo de produção como agregado com cópia na OS, e produção em colunas do subitem |
 
 ## Agentes e harness
 
@@ -71,3 +72,4 @@ Quando uma área acumular conhecimento que não cabe numa rule, o `/entrega-fech
 | [Busca global](areas/busca.md) | Antes de mexer na busca global, no filtro de busca de uma lista, na normalização de texto ou no atalho de busca: onde a regra mora, grupos, arquivados e anonimizado, tela, busca offline e armadilhas |
 | [Orçamentos](areas/orcamentos.md) | Antes de mexer em orçamento, linha, peça sob medida, desconto, emissão de revisão, recusa ou estado do orçamento: agregados, forma das linhas, a conta dos totais e do custo, comandos, anonimização, telas e armadilhas |
 | [Ordens de serviço](areas/ordens-de-servico.md) | Antes de mexer em aprovação, OS, subitem, snapshot de medidas, reserva, disponível ou recebível: agregados e fatos, o comando e suas recusas, a conta da reserva, leituras, anonimização, telas e armadilhas |
+| [Produção](areas/producao.md) | Antes de mexer no fluxo de produção, nas etapas sugeridas do serviço, na produção do subitem ou no quadro por etapa: onde mora cada coisa, regras do domínio com o exemplo, comandos e leituras, telas e armadilhas |

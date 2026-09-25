@@ -63,6 +63,9 @@ _Evitar_: exclusão
 **Serviço**:
 Atividade de costura, feita no ateliê ou terceirizada, com custo e preço praticado separados. O custo não inclui materiais listados à parte. A versão sobe a cada edição, e o orçamento copia o serviço como estava.
 
+**Etapas sugeridas**:
+Etapas do fluxo de produção que um serviço costuma percorrer. Vêm marcadas no "Iniciar produção" do subitem, que une as dos serviços de uma peça; sem nenhuma, todas as etapas ativas vêm marcadas.
+
 **Serviço terceirizado**:
 Serviço executado fora do ateliê, marcado no cadastro, com custo estimado substituído pela despesa real quando ela é vinculada.
 
@@ -175,7 +178,13 @@ _Evitar_: pedido
 Peça ou serviço dentro da OS com medidas, materiais, etapas, prazo e entrega próprios. Nasce um por linha de serviço, peça sob medida ou material da revisão aprovada; o de material é só entrega, e a linha livre fica só no valor.
 
 **Estado de produção**:
-Posição de um subitem no fluxo de produção, independente de entrega e pagamento.
+Posição de um subitem no fluxo de produção, independente de entrega e pagamento: A iniciar, numa etapa aplicável ou Pronto. "A iniciar" e "Pronto" ficam fixos nas pontas do fluxo; o Pronto de subitem com material planejado espera a reconciliação.
+
+**Subitem atrasado**:
+Subitem de produção ainda não pronto com o prazo combinado antes de hoje.
+
+**Subitem bloqueado**:
+Subitem de produção ainda não pronto com falta de algum material da linha. É só um aviso: não impede o avanço.
 
 **Estado de entrega**:
 Situação da entrega de um subitem ao cliente: pendente ou entregue.
@@ -193,10 +202,19 @@ Alteração de preço, material prometido ou prazo que só vale após nova aprov
 Alteração de nota ou de etapa que não muda o acordo com o cliente e vale imediatamente.
 
 **Fluxo de produção**:
-Versão das etapas possíveis, comum a OS e OP. Cada trabalho recebe a versão vigente ao ser criado e só muda por migração manual.
+Lista das etapas possíveis, comum a OS e OP, que o dono renomeia, reordena, oculta e amplia. Cada trabalho recebe uma cópia da versão vigente ao ser criado e só muda por migração manual ("Usar a versão nova").
+
+**Versão do fluxo**:
+Número que sobe a cada gravação do fluxo de produção. A OS mostra a versão com que nasceu e oferece a vigente quando é mais nova.
+
+**Etapa**:
+Passo do fluxo de produção, com nome e identidade estáveis entre versões. Etapa oculta sai das escolhas novas mas continua valendo para o trabalho que já a usa; nunca é apagada.
 
 **Etapa aplicável**:
-Etapa do fluxo selecionada para um trabalho; as demais são puladas sem transição manual.
+Etapa do fluxo selecionada para um subitem ao iniciar a produção, congelada na ordem do fluxo; as demais são puladas sem transição manual.
+
+**Quadro por etapa**:
+Visão da produção com uma coluna por etapa entre "A iniciar" e "Pronto" e um cartão por subitem, pelo prazo.
 
 **Reconciliação de materiais**:
 Confirmação, antes de marcar um subitem pronto, do que foi consumido, devolvido ao estoque e perdido.

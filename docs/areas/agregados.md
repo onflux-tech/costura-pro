@@ -29,6 +29,12 @@ Agregado cujo registro é um fato consumado (movimento de estoque, e depois movi
 
 Projeção derivada desse agregado (o saldo) **não** é agregado: fica fora de `AggregateType` e do `change_log`, é escrita por um único caminho na mesma transação do insert, e o dispositivo que sincroniza a recalcula a partir dos fatos que recebe no pull. O teste da área compara a soma dos fatos com a projeção, porque é essa igualdade que a projeção promete.
 
+## Edição que depende do pai
+
+Quando a regra da edição depende de outro agregado (o subitem de produção precisa do fluxo copiado na OS e da anonimização do cliente), o `read` do `updateCommands` junta o pai e devolve a linha com os campos juntados; o `update` devolve o mesmo tipo, espalhando a linha lida sobre a gravada. A validação fica na forma (schema) e no domínio, e a transição que não se aplica (iniciar o que já começou, avançar o pronto, iniciar em OS sem fluxo) faz o `patchFor` devolver `null`: é "sem efeito", não recusa, porque o `updateCommands` não tem caminho de recusa. Filho que não pode receber o comando (subitem de material) sai do `read` como não encontrado ([produção](producao.md)). A versão-base conferida é só a do filho: se o pai mudar em outra janela (o fluxo da OS trocado), o comando pode virar "sem efeito" sem conflito, e a tela trata a resposta com a mesma versão enviada como "nada mudou", com aviso e releitura, nunca como sucesso.
+
+## Recusa e transição sobre fatos
+
 Recusa que precisa consultar o banco cabe no `create` de um `CreateDefinition`, que devolve `CreateRejection`; `updateCommands` não tem esse caminho. `CreateRejection` aceita `aggregateNotFound`, `aggregateAnonymized` e `aggregateExists`, e essa última é o que a procedure direta traduz em `CONFLICT` e o push grava como quarentena do mesmo nome.
 
 Transição sobre um fato já gravado (estornar a compra, quitar a obrigação) também é criação: nasce um fato novo que referencia o antigo, e o estado se lê dos fatos. É isso que dá caminho de recusa ("Compra já estornada" e "Obrigação já paga" como `aggregateExists`, "Obrigação cancelada" como `aggregateNotFound`) sem razão de quarentena nova, e que torna dois aparelhos quitando a mesma obrigação offline uma recusa clara em vez de um conflito de versão.

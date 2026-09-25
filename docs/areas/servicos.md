@@ -1,6 +1,6 @@
 # Serviços: custo, preço praticado e preço sugerido
 
-**Files:** `packages/domain/src/service.ts`, `packages/domain/src/pricing.ts`, `packages/db/src/schema/services.ts`, `packages/db/src/schema/installation.ts`, `packages/db/src/migrations/0012_services_target_margin.sql`, `packages/api/src/services/schemas.ts`, `packages/api/src/services/store.ts`, `packages/api/src/services/commands.ts`, `packages/api/src/services/queries.ts`, `packages/api/src/services/router.ts`, `packages/api/src/installation/store.ts`, `packages/api/src/search.ts`, `apps/web/src/lib/services.ts`, `apps/web/src/services/`, `apps/web/src/routes/_app/catalogo-produtos/servicos/`, `packages/db/tests/services-schema.test.ts`, `apps/server/tests/services.test.ts`, `apps/server/tests/services-sync.test.ts`, `apps/web/tests/services.test.ts`
+**Files:** `packages/domain/src/service.ts`, `packages/domain/src/pricing.ts`, `packages/db/src/schema/services.ts`, `packages/db/src/schema/installation.ts`, `packages/db/src/migrations/0012_services_target_margin.sql`, `packages/db/src/migrations/0020_production_flow.sql`, `packages/api/src/services/schemas.ts`, `packages/api/src/services/store.ts`, `packages/api/src/services/commands.ts`, `packages/api/src/services/queries.ts`, `packages/api/src/services/router.ts`, `packages/api/src/installation/store.ts`, `packages/api/src/search.ts`, `apps/web/src/lib/services.ts`, `apps/web/src/services/`, `apps/web/src/routes/_app/catalogo-produtos/servicos/`, `packages/db/tests/services-schema.test.ts`, `apps/server/tests/services.test.ts`, `apps/server/tests/services-sync.test.ts`, `apps/web/tests/services.test.ts`
 
 ## Overview
 
@@ -12,7 +12,7 @@ O serviço é um agregado comum, no molde de [agregados](agregados.md), sem dado
 
 | Onde | Campos |
 |---|---|
-| `service` | `name` (1 a 120), `category` (texto de 1 a 40 com sugestões, como a do material), `outsourced` (terceirizado, editável), `cost_cents` e `price_cents` (obrigatórios, maiores ou iguais a zero), `target_margin_basis_points` (nulo usa a do ateliê), `estimated_minutes` (1 a 9999, só para a agenda), `notes`, `search_text`, `archived_at`, `version` |
+| `service` | `name` (1 a 120), `category` (texto de 1 a 40 com sugestões, como a do material), `outsourced` (terceirizado, editável), `cost_cents` e `price_cents` (obrigatórios, maiores ou iguais a zero), `target_margin_basis_points` (nulo usa a do ateliê), `estimated_minutes` (1 a 9999, só para a agenda), `notes`, `suggested_stage_ids` (etapas sugeridas do fluxo de produção, até 50 ids distintos, padrão `[]`), `search_text`, `archived_at`, `version` |
 | `installation.target_margin_basis_points` | meta do ateliê em pontos-base, de 0 a 9999, padrão 4000 |
 
 A versão do serviço é a do agregado: sobe a cada edição, inclusive arquivar e desarquivar, e a tela de edição a mostra ("Versão 3"). O orçamento da F4 copia nome, custo, preço e versão na linha.
@@ -44,7 +44,7 @@ As procedures diretas são `services.*` e `pricing.settings` e `pricing.setTarge
 
 ## Telas
 
-Catálogo tem a sub-aba Serviços (`/catalogo-produtos/servicos`), entre Materiais e Modelos de medidas. A lista mostra no topo a meta do ateliê com "Alterar meta" (diálogo), busca por nome e categoria, filtro de categoria e ativos ou arquivados, e por serviço o custo, o preço, a margem, o sugerido (com a meta própria quando houver) e os selos terceirizado, abaixo da meta e abaixo do custo. O formulário (novo e edição) tem "Quem faz" (no ateliê ou terceirizado, que troca o rótulo do custo para "Custo estimado"), custo, preço praticado, meta própria, o painel de preço sugerido com "Usar preço sugerido", que só preenche o campo, duração e notas. A edição congela a versão aberta, oferece "Carregar versão atual" num conflito e desativa arquivar enquanto houver mudança não salva.
+Catálogo tem a sub-aba Serviços (`/catalogo-produtos/servicos`), entre Materiais e Modelos de medidas. A lista mostra no topo a meta do ateliê com "Alterar meta" (diálogo), busca por nome e categoria, filtro de categoria e ativos ou arquivados, e por serviço o custo, o preço, a margem, o sugerido (com a meta própria quando houver) e os selos terceirizado, abaixo da meta e abaixo do custo. O formulário (novo e edição) tem "Quem faz" (no ateliê ou terceirizado, que troca o rótulo do custo para "Custo estimado"), custo, preço praticado, meta própria, o painel de preço sugerido com "Usar preço sugerido", que só preenche o campo, duração e notas. O formulário também tem o `Fieldset` "Etapas sugeridas", com `CheckboxChips` das etapas ativas do fluxo de produção vigente e a dica "Vêm marcadas ao iniciar a produção; você ajusta no início."; a escolha pré-marca o "Iniciar produção" do subitem ([produção](producao.md)). A edição congela a versão aberta, oferece "Carregar versão atual" num conflito e desativa arquivar enquanto houver mudança não salva.
 
 ## Armadilhas
 
@@ -54,4 +54,6 @@ Catálogo tem a sub-aba Serviços (`/catalogo-produtos/servicos`), entre Materia
 | Sugestão da lista diferente da do formulário | Conta refeita na tela | As duas chamam `pricingOf` pelo mesmo caminho (`pricingPreview`) |
 | "Margem 40%" ao lado de "abaixo da meta" (custo R$ 600, preço R$ 999,99) | Margem arredondada meio para cima chega à meta que o preço não alcança | Margem arredondada para baixo em `marginOfPrice`, com o caso no teste do domínio |
 | Pull de um banco migrado traz a instalação sem `targetMarginBasisPoints` | O snapshot da instalação foi gravado antes da coluna existir, e a migration não grava snapshot novo | O consumidor aplica `defaultTargetMarginBasisPoints` até a próxima escrita da instalação ([SPEC §4](../SPEC.md#4-api-sincronização-e-conflito)) |
+| Mesma escolha de etapas sugeridas em outra ordem sujava o formulário e gerava patch | O `CheckboxGroup` devolve os ids na ordem dos cliques | `servicePatch` e `sameServiceValues` comparam as etapas como conjunto |
+| Pull de serviço antigo sem `suggestedStageIds` | Snapshot gravado antes da migration `0020` | O consumidor aplica `[]` até a próxima escrita do serviço |
 | Meta do ateliê recusada como versão desatualizada logo depois de renomear o ateliê | A meta e o nome do ateliê dividem a versão da instalação | Esperado ([ADR 0020](../adr/0020-servico-versionado-e-preco-sugerido-na-leitura.md)); o diálogo fecha com aviso e recarrega a versão |
