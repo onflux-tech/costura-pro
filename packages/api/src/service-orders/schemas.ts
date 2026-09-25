@@ -1,4 +1,5 @@
 import { measurementLimits } from "@costura-pro/domain/measurement";
+import { productionLimits } from "@costura-pro/domain/production";
 import { quoteLimits } from "@costura-pro/domain/quote";
 import {
 	approvalChannels,
@@ -94,3 +95,11 @@ export const quoteApprovePayload = z
 	});
 
 export type QuoteApproveValues = z.output<typeof quoteApprovePayload>;
+
+export const productionStartPayload = z.object({
+	stageIds: z
+		.array(z.uuid())
+		.min(1)
+		.max(productionLimits.activeStages.max)
+		.refine(distinct, { ...whenShapeIsValid, message: "Etapa repetida" }),
+});

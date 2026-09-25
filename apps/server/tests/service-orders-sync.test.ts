@@ -249,10 +249,13 @@ describe("quote approval sync", () => {
 		]);
 		const [order, approval, service, material, reservation, receivable] =
 			changes.map((change) => change.data);
+		const flow = await setup.local.productionFlow.get({});
 		expect(order).toEqual({
 			clientId,
 			code: "OS-2026-PC-0001",
 			createdAt: expect.any(String),
+			flowStages: flow.stages,
+			flowVersion: 1,
 			id: payload.serviceOrderId,
 			openedOn: "2026-09-22",
 			quoteId: revision.quoteId,
@@ -276,6 +279,9 @@ describe("quote approval sync", () => {
 			line: work[0],
 			measurements: [],
 			position: 0,
+			productionStatus: "notStarted",
+			stageId: null,
+			stageIds: null,
 			version: 1,
 		});
 		expect(material).toMatchObject({ kind: "material", position: 1 });

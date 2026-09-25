@@ -1,5 +1,6 @@
 import { ensureInstallation } from "@costura-pro/api/installation/store";
 import { ensureMeasurementTemplates } from "@costura-pro/api/measurements/seed";
+import { ensureProductionFlow } from "@costura-pro/api/production/seed";
 import { appRouter } from "@costura-pro/api/routers/index";
 import type { Auth } from "@costura-pro/auth";
 import type { Database } from "@costura-pro/db";
@@ -82,6 +83,7 @@ export function createApp({
 	const bootedAt = now();
 	ensureInstallation(db, bootedAt);
 	ensureMeasurementTemplates(db, bootedAt);
+	ensureProductionFlow(db, bootedAt);
 	const identifyUser = createAuthMiddleware(auth as BetterAuthInstance, {
 		maskEmail: true,
 	});

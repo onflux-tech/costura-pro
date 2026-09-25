@@ -18,6 +18,7 @@ export type ServiceFields = {
 	notes: string | null;
 	outsourced: boolean;
 	priceCents: string;
+	suggestedStageIds: string[];
 	targetMarginBasisPoints: number | null;
 };
 
@@ -46,6 +47,7 @@ export function serviceSnapshot(row: ServiceRow): ServiceSnapshot {
 		notes: row.notes,
 		outsourced: row.outsourced,
 		priceCents: row.priceCents.toString(),
+		suggestedStageIds: row.suggestedStageIds,
 		targetMarginBasisPoints: row.targetMarginBasisPoints,
 		version: row.version,
 	};

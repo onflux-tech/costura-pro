@@ -15,6 +15,7 @@ import {
 	measurementsRouter,
 	measurementTemplatesRouter,
 } from "../measurements/router";
+import { productionFlowRouter } from "../production/router";
 import { productsRouter, productVariantsRouter } from "../products/router";
 import {
 	obligationsRouter,
@@ -24,7 +25,10 @@ import {
 import { quotesRouter } from "../quotes/router";
 import { receivedItemsRouter } from "../received-items/router";
 import { recoveryRouter } from "../recovery/router";
-import { serviceOrdersRouter } from "../service-orders/router";
+import {
+	serviceOrderItemsRouter,
+	serviceOrdersRouter,
+} from "../service-orders/router";
 import { pricingRouter, servicesRouter } from "../services/router";
 import {
 	stockBalancesRouter,
@@ -52,6 +56,7 @@ export const appRouter = {
 		message: "This is private",
 		user: context.session?.user,
 	})),
+	productionFlow: productionFlowRouter,
 	products: productsRouter,
 	productVariants: productVariantsRouter,
 	profiles: profilesRouter,
@@ -60,6 +65,7 @@ export const appRouter = {
 	receivedItems: receivedItemsRouter,
 	recovery: recoveryRouter,
 	search: searchRouter,
+	serviceOrderItems: serviceOrderItemsRouter,
 	serviceOrders: serviceOrdersRouter,
 	services: servicesRouter,
 	stockBalances: stockBalancesRouter,

@@ -15,6 +15,7 @@ export type AggregateType =
 	| "measurementTemplate"
 	| "obligation"
 	| "product"
+	| "productionFlow"
 	| "productVariant"
 	| "profile"
 	| "purchase"

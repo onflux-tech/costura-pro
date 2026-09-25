@@ -74,6 +74,7 @@ describe("services", () => {
 			notes: "Com overloque",
 			outsourced: false,
 			priceCents: "10000",
+			suggestedStageIds: [],
 			targetMarginBasisPoints: null,
 			updatedAt: "2026-09-16T12:00:00.000Z",
 			version: 1,
@@ -273,6 +274,66 @@ describe("services", () => {
 				serviceId,
 			})
 		).rejects.toMatchObject({ code: "BAD_REQUEST" });
+	});
+
+	test("keeps the suggested stages of a service and refuses a repeated stage", async () => {
+		const { owner } = await ownerSetup();
+		const suggested = [
+			"c0000000-0000-4000-8000-000000000003",
+			"c0000000-0000-4000-8000-000000000004",
+		];
+		const { id } = await createService(owner, {
+			suggestedStageIds: suggested,
+		});
+		expect(await owner.services.get({ serviceId: id })).toMatchObject({
+			suggestedStageIds: suggested,
+			version: 1,
+		});
+		const plain = await createService(owner, { name: "Bainha" });
+		expect(
+			(await owner.services.get({ serviceId: plain.id })).suggestedStageIds
+		).toEqual([]);
+		expect(
+			await owner.services.update({
+				baseVersion: 1,
+				opId: newOpId(),
+				patch: {
+					suggestedStageIds: ["c0000000-0000-4000-8000-000000000001"],
+				},
+				serviceId: id,
+			})
+		).toEqual({ version: 2 });
+		expect(await owner.services.get({ serviceId: id })).toMatchObject({
+			suggestedStageIds: ["c0000000-0000-4000-8000-000000000001"],
+			version: 2,
+		});
+		const repeated = [
+			"c0000000-0000-4000-8000-000000000002",
+			"c0000000-0000-4000-8000-000000000002",
+		];
+		const outcomes = await inSequence(
+			[
+				() => createService(owner, { suggestedStageIds: repeated }),
+				() =>
+					owner.services.update({
+						baseVersion: 2,
+						opId: newOpId(),
+						patch: { suggestedStageIds: repeated },
+						serviceId: id,
+					}),
+				() => createService(owner, { suggestedStageIds: ["Prova"] }),
+			],
+			(call) =>
+				call().then(
+					() => "accepted",
+					(error: { code?: string }) => error.code
+				)
+		);
+		expect(outcomes).toEqual(["BAD_REQUEST", "BAD_REQUEST", "BAD_REQUEST"]);
+		expect(await owner.services.get({ serviceId: id })).toMatchObject({
+			suggestedStageIds: ["c0000000-0000-4000-8000-000000000001"],
+			version: 2,
+		});
 	});
 
 	test("refuses money out of format, a margin of 100% and a zero duration", async () => {

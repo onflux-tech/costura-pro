@@ -19,6 +19,7 @@ import {
 import { inventoryCommands } from "../inventory/commands";
 import { materialCommands } from "../materials/commands";
 import { measurementCommands } from "../measurements/commands";
+import { productionFlowCommands } from "../production/commands";
 import { productCommands } from "../products/commands";
 import { purchaseCommands } from "../purchases/commands";
 import { quoteCommands } from "../quotes/commands";
@@ -125,6 +126,7 @@ export const syncCommands = {
 	...materialCommands,
 	...measurementCommands,
 	...productCommands,
+	...productionFlowCommands,
 	...purchaseCommands,
 	...quoteCommands,
 	...receivedItemCommands,

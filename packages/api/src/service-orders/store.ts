@@ -1,4 +1,5 @@
 import type { Database } from "@costura-pro/db";
+import type { FlowStageRow } from "@costura-pro/db/schema/production";
 import {
 	type MeasurementSnapshotRow,
 	quoteApproval,
@@ -7,6 +8,7 @@ import {
 	serviceOrder,
 	serviceOrderItem,
 } from "@costura-pro/db/schema/service-orders";
+import type { ProductionStatus } from "@costura-pro/domain/production";
 import {
 	documentCode,
 	documentSearchKey,
@@ -17,9 +19,11 @@ import {
 	serviceOrderCodePrefix,
 	type WorkLineKind,
 } from "@costura-pro/domain/service-order";
+import { ORPCError } from "@orpc/server";
 import { and, asc, eq, gt, sql } from "drizzle-orm";
 
 import { appendChange } from "../change-log";
+import { readClient } from "../clients/store";
 import type { ChangeStamp } from "../devices/store";
 import type { Executor } from "../executor";
 
@@ -33,10 +37,25 @@ export type ServiceOrderSnapshot = {
 	clientId: string;
 	code: string;
 	createdAt: string;
+	flowStages: FlowStageRow[] | null;
+	flowVersion: number | null;
 	id: string;
 	openedOn: string;
 	quoteId: string;
 	version: number;
+};
+
+export type ServiceOrderFlow = { stages: FlowStageRow[]; version: number };
+
+export type ServiceOrderPatch = {
+	flowStages: FlowStageRow[];
+	flowVersion: number;
+};
+
+export type ServiceOrderItemPatch = {
+	productionStatus: ProductionStatus;
+	stageId: string | null;
+	stageIds: string[] | null;
 };
 
 export type QuoteApprovalSnapshot = {
@@ -60,7 +79,10 @@ export type ServiceOrderItemSnapshot = {
 	lineId: string;
 	measurements: MeasurementSnapshotRow[];
 	position: number;
+	productionStatus: ProductionStatus;
 	serviceOrderId: string;
+	stageId: string | null;
+	stageIds: string[] | null;
 	version: number;
 };
 
@@ -71,6 +93,8 @@ export function serviceOrderSnapshot(
 		clientId: row.clientId,
 		code: row.code,
 		createdAt: row.createdAt.toISOString(),
+		flowStages: row.flowStages,
+		flowVersion: row.flowVersion,
 		id: row.id,
 		openedOn: row.openedOn,
 		quoteId: row.quoteId,
@@ -106,7 +130,10 @@ export function serviceOrderItemSnapshot(
 		lineId: row.lineId,
 		measurements: row.measurements,
 		position: row.position,
+		productionStatus: row.productionStatus,
 		serviceOrderId: row.serviceOrderId,
+		stageId: row.stageId,
+		stageIds: row.stageIds,
 		version: row.version,
 	};
 }
@@ -127,6 +154,13 @@ export function readServiceOrder(
 	id: string
 ): ServiceOrderRow | undefined {
 	return db.select().from(serviceOrder).where(eq(serviceOrder.id, id)).get();
+}
+
+export function isServiceOrderAnonymized(
+	db: Reader,
+	row: ServiceOrderRow
+): boolean {
+	return (readClient(db, row.clientId)?.anonymizedAt ?? null) !== null;
 }
 
 export function readQuoteApproval(
@@ -201,11 +235,44 @@ function nextCodeNumber(db: Reader, year: number): number {
 	return last + 1;
 }
 
+function recordServiceOrder(
+	db: Executor,
+	row: ServiceOrderRow,
+	stamp: ChangeStamp
+) {
+	appendChange(db, {
+		aggregateId: row.id,
+		aggregateType: "serviceOrder",
+		data: serviceOrderSnapshot(row),
+		epoch: stamp.epoch,
+		now: stamp.now,
+		opId: stamp.opId,
+		version: row.version,
+	});
+}
+
+function recordServiceOrderItem(
+	db: Executor,
+	row: ServiceOrderItemRow,
+	stamp: ChangeStamp
+) {
+	appendChange(db, {
+		aggregateId: row.id,
+		aggregateType: "serviceOrderItem",
+		data: serviceOrderItemSnapshot(row),
+		epoch: stamp.epoch,
+		now: stamp.now,
+		opId: stamp.opId,
+		version: row.version,
+	});
+}
+
 export function insertServiceOrder(
 	db: Executor,
 	id: string,
 	fields: {
 		clientId: string;
+		flow: ServiceOrderFlow | null;
 		openedOn: string;
 		quoteId: string;
 		titles: readonly string[];
@@ -229,6 +296,8 @@ export function insertServiceOrder(
 			codeNumber: number,
 			codeYear: year,
 			createdAt: stamp.now,
+			flowStages: fields.flow?.stages ?? null,
+			flowVersion: fields.flow?.version ?? null,
 			id,
 			openedOn: fields.openedOn,
 			quoteId: fields.quoteId,
@@ -238,16 +307,39 @@ export function insertServiceOrder(
 		})
 		.returning()
 		.get();
-	appendChange(db, {
-		aggregateId: row.id,
-		aggregateType: "serviceOrder",
-		data: serviceOrderSnapshot(row),
-		epoch: stamp.epoch,
-		now: stamp.now,
-		opId: stamp.opId,
-		version: row.version,
-	});
+	recordServiceOrder(db, row, stamp);
 	return row;
+}
+
+export function updateServiceOrder(
+	db: Executor,
+	current: ServiceOrderRow,
+	patch: ServiceOrderPatch,
+	stamp: ChangeStamp
+): ServiceOrderRow {
+	const next = db
+		.update(serviceOrder)
+		.set({
+			flowStages: patch.flowStages,
+			flowVersion: patch.flowVersion,
+			updatedAt: stamp.now,
+			version: current.version + 1,
+		})
+		.where(
+			and(
+				eq(serviceOrder.id, current.id),
+				eq(serviceOrder.version, current.version)
+			)
+		)
+		.returning()
+		.get();
+	if (!next) {
+		throw new ORPCError("CONFLICT", {
+			message: "OS mudou durante a operação",
+		});
+	}
+	recordServiceOrder(db, next, stamp);
+	return next;
 }
 
 export function insertQuoteApproval(
@@ -276,7 +368,10 @@ export function insertQuoteApproval(
 export function insertServiceOrderItem(
 	db: Executor,
 	id: string,
-	fields: Omit<ServiceOrderItemSnapshot, "createdAt" | "id" | "version">,
+	fields: Omit<
+		ServiceOrderItemSnapshot,
+		"createdAt" | "id" | "productionStatus" | "stageId" | "stageIds" | "version"
+	>,
 	stamp: ChangeStamp
 ): ServiceOrderItemRow {
 	const row = db
@@ -285,19 +380,44 @@ export function insertServiceOrderItem(
 			...fields,
 			createdAt: stamp.now,
 			id,
+			productionStatus: "notStarted",
 			updatedAt: stamp.now,
 			version: 1,
 		})
 		.returning()
 		.get();
-	appendChange(db, {
-		aggregateId: row.id,
-		aggregateType: "serviceOrderItem",
-		data: serviceOrderItemSnapshot(row),
-		epoch: stamp.epoch,
-		now: stamp.now,
-		opId: stamp.opId,
-		version: row.version,
-	});
+	recordServiceOrderItem(db, row, stamp);
 	return row;
+}
+
+export function updateServiceOrderItem(
+	db: Executor,
+	current: ServiceOrderItemRow,
+	patch: ServiceOrderItemPatch,
+	stamp: ChangeStamp
+): ServiceOrderItemRow {
+	const next = db
+		.update(serviceOrderItem)
+		.set({
+			productionStatus: patch.productionStatus,
+			stageId: patch.stageId,
+			stageIds: patch.stageIds,
+			updatedAt: stamp.now,
+			version: current.version + 1,
+		})
+		.where(
+			and(
+				eq(serviceOrderItem.id, current.id),
+				eq(serviceOrderItem.version, current.version)
+			)
+		)
+		.returning()
+		.get();
+	if (!next) {
+		throw new ORPCError("CONFLICT", {
+			message: "Subitem mudou durante a operação",
+		});
+	}
+	recordServiceOrderItem(db, next, stamp);
+	return next;
 }

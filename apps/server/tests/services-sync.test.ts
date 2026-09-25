@@ -63,6 +63,7 @@ describe("service sync", () => {
 				category: "Barra",
 				costCents: "6500",
 				outsourced: true,
+				suggestedStageIds: ["c0000000-0000-4000-8000-000000000004"],
 				targetMarginBasisPoints: 2500,
 			},
 		});
@@ -71,6 +72,13 @@ describe("service sync", () => {
 			{ name: "Outro", targetMarginBasisPoints: 10_000 },
 			{ estimatedMinutes: 0, name: "Outro" },
 			{ baseUnit: "m" },
+			{
+				name: "Outro",
+				suggestedStageIds: [
+					"c0000000-0000-4000-8000-000000000001",
+					"c0000000-0000-4000-8000-000000000001",
+				],
+			},
 		].map((payload) =>
 			envelope(setup, {
 				aggregateId: serviceId,
@@ -100,6 +108,7 @@ describe("service sync", () => {
 		expect(serviceChanges[0]?.data).toMatchObject({
 			costCents: "6000",
 			outsourced: false,
+			suggestedStageIds: [],
 			version: 1,
 		});
 		expect(serviceChanges.at(-1)?.data).toEqual({
@@ -113,6 +122,7 @@ describe("service sync", () => {
 			notes: null,
 			outsourced: true,
 			priceCents: "10000",
+			suggestedStageIds: ["c0000000-0000-4000-8000-000000000004"],
 			targetMarginBasisPoints: 2500,
 			version: 2,
 		});

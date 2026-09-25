@@ -1,14 +1,17 @@
 import type { Database } from "@costura-pro/db";
 import { client } from "@costura-pro/db/schema/clients";
+import type { FlowStageRow } from "@costura-pro/db/schema/production";
 import {
 	serviceOrder,
 	serviceOrderItem,
 } from "@costura-pro/db/schema/service-orders";
+import { service } from "@costura-pro/db/schema/services";
+import { suggestedStageIds } from "@costura-pro/domain/production";
 import { quoteLineOfText } from "@costura-pro/domain/quote";
 import { searchTokens } from "@costura-pro/domain/search";
 import { linePlannedMaterials } from "@costura-pro/domain/service-order";
 import { ORPCError } from "@orpc/server";
-import { and, desc, eq, inArray, or, type SQL, sql } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, or, type SQL, sql } from "drizzle-orm";
 import z from "zod";
 
 import { clientMatches } from "../clients/queries";
@@ -18,6 +21,7 @@ import {
 	readReceivableOfServiceOrder,
 	receivableSnapshot,
 } from "../finance/receivables";
+import { readCurrentProductionFlow } from "../production/store";
 import { readQuote, readQuoteRevision } from "../quotes/store";
 import { containing } from "../search";
 import { reservationsOfItems } from "../stock/reservations";
@@ -27,6 +31,7 @@ import {
 	quoteApprovalSnapshot,
 	readApprovalOfQuote,
 	readServiceOrder,
+	type ServiceOrderItemRow,
 	type ServiceOrderItemSnapshot,
 	type ServiceOrderSnapshot,
 	serviceOrderItemSnapshot,
@@ -47,6 +52,12 @@ const earliestDue = sql<
 >`(SELECT min(item.due_on) FROM service_order_item AS item WHERE item.service_order_id = "service_order"."id")`;
 
 const itemCount = sql<number>`(SELECT count(*) FROM service_order_item AS item WHERE item.service_order_id = "service_order"."id")`;
+
+const productionCount = sql<number>`(SELECT count(*) FROM service_order_item AS item WHERE item.service_order_id = "service_order"."id" AND item.kind IN ('service', 'custom'))`;
+
+const startedCount = sql<number>`(SELECT count(*) FROM service_order_item AS item WHERE item.service_order_id = "service_order"."id" AND item.production_status = 'inProgress')`;
+
+const readyCount = sql<number>`(SELECT count(*) FROM service_order_item AS item WHERE item.service_order_id = "service_order"."id" AND item.production_status = 'ready')`;
 
 const receivableTotal = sql<
 	string | null
@@ -134,7 +145,10 @@ export type ServiceOrderListItem = {
 	id: string;
 	itemCount: number;
 	openedOn: string;
+	productionCount: number;
+	readyCount: number;
 	shortage: boolean;
+	startedCount: number;
 	totalCents: string;
 };
 
@@ -143,7 +157,12 @@ export function listServiceOrders(
 	{ offset, query }: z.output<typeof serviceOrderListInput>
 ): { items: ServiceOrderListItem[]; nextOffset: number | null } {
 	const rows = db
-		.select(serviceOrderColumns)
+		.select({
+			...serviceOrderColumns,
+			productionCount,
+			readyCount,
+			startedCount,
+		})
 		.from(serviceOrder)
 		.innerJoin(client, eq(client.id, serviceOrder.clientId))
 		.where(and(...serviceOrderMatches(db, searchTokens(query ?? ""))))
@@ -167,11 +186,15 @@ export function listServiceOrders(
 	};
 }
 
+type ItemReservation = { reservedMicros: string; variantId: string };
+
 export type ServiceOrderDetail = {
 	approval: QuoteApprovalSnapshot;
 	client: { anonymized: boolean; archived: boolean; id: string; name: string };
+	currentFlowVersion: number | null;
 	items: (ServiceOrderItemSnapshot & {
-		reservations: { reservedMicros: string; variantId: string }[];
+		reservations: ItemReservation[];
+		suggestedStageIds: string[];
 	})[];
 	quote: { code: string; id: string };
 	receivable: ReceivableSnapshot | null;
@@ -188,6 +211,92 @@ export type ServiceOrderDetail = {
 	};
 	serviceOrder: ServiceOrderSnapshot & { updatedAt: string };
 };
+
+function lineServiceIds(item: ServiceOrderItemRow): string[] {
+	const { line } = item;
+	switch (line.kind) {
+		case "service":
+			return [line.serviceId];
+		case "custom":
+			return line.components.flatMap((component) =>
+				component.kind === "service" ? [component.serviceId] : []
+			);
+		default:
+			return [];
+	}
+}
+
+function suggestedListsOf(
+	db: Reader,
+	items: readonly ServiceOrderItemRow[]
+): Map<string, string[]> {
+	const serviceIds = [...new Set(items.flatMap(lineServiceIds))];
+	if (serviceIds.length === 0) {
+		return new Map();
+	}
+	return new Map(
+		db
+			.select({ id: service.id, suggestedStageIds: service.suggestedStageIds })
+			.from(service)
+			.where(inArray(service.id, serviceIds))
+			.all()
+			.map((row) => [row.id, row.suggestedStageIds])
+	);
+}
+
+function itemSuggestion(
+	flowStages: FlowStageRow[] | null,
+	item: ServiceOrderItemRow,
+	lists: ReadonlyMap<string, string[]>
+): string[] {
+	if (flowStages === null || item.kind === "material") {
+		return [];
+	}
+	return suggestedStageIds(
+		flowStages,
+		lineServiceIds(item).map((serviceId) => lists.get(serviceId) ?? [])
+	);
+}
+
+export function suggestionsOf(
+	db: Reader,
+	flowStages: FlowStageRow[] | null,
+	items: ServiceOrderItemRow[]
+): Map<string, string[]> {
+	const lists = suggestedListsOf(db, items);
+	return new Map(
+		items.map((item) => [item.id, itemSuggestion(flowStages, item, lists)])
+	);
+}
+
+function itemReservations(
+	db: Reader,
+	items: readonly ServiceOrderItemRow[]
+): Map<string, ItemReservation[]> {
+	const byItem = new Map<string, ItemReservation[]>();
+	for (const { itemId, reservedMicros, variantId } of reservationsOfItems(
+		db,
+		items.map((item) => item.id)
+	)) {
+		const list = byItem.get(itemId) ?? [];
+		list.push({ reservedMicros, variantId });
+		byItem.set(itemId, list);
+	}
+	return new Map(
+		items.map((item) => {
+			const order = linePlannedMaterials(quoteLineOfText(item.line)).map(
+				(material) => material.variantId
+			);
+			return [
+				item.id,
+				(byItem.get(item.id) ?? []).sort(
+					(left, right) =>
+						order.indexOf(left.variantId) - order.indexOf(right.variantId)
+				),
+			];
+		})
+	);
+}
 
 function missingOrder(): ORPCError<"NOT_FOUND", unknown> {
 	return new ORPCError("NOT_FOUND", {
@@ -212,10 +321,8 @@ export function getServiceOrder(
 		throw missingOrder();
 	}
 	const items = listServiceOrderItems(db, row.id);
-	const reservations = reservationsOfItems(
-		db,
-		items.map((item) => item.id)
-	);
+	const reservations = itemReservations(db, items);
+	const suggestions = suggestionsOf(db, row.flowStages, items);
 	const receivable = readReceivableOfServiceOrder(db, row.id);
 	return {
 		approval: quoteApprovalSnapshot(approval),
@@ -225,24 +332,12 @@ export function getServiceOrder(
 			id: owner.id,
 			name: owner.name,
 		},
-		items: items.map((item) => {
-			const order = linePlannedMaterials(quoteLineOfText(item.line)).map(
-				(material) => material.variantId
-			);
-			return {
-				...serviceOrderItemSnapshot(item),
-				reservations: reservations
-					.filter((reservation) => reservation.itemId === item.id)
-					.sort(
-						(left, right) =>
-							order.indexOf(left.variantId) - order.indexOf(right.variantId)
-					)
-					.map(({ reservedMicros, variantId }) => ({
-						reservedMicros,
-						variantId,
-					})),
-			};
-		}),
+		currentFlowVersion: readCurrentProductionFlow(db)?.version ?? null,
+		items: items.map((item) => ({
+			...serviceOrderItemSnapshot(item),
+			reservations: reservations.get(item.id) ?? [],
+			suggestedStageIds: suggestions.get(item.id) ?? [],
+		})),
 		quote: { code: source.code, id: source.id },
 		receivable: receivable ? receivableSnapshot(receivable) : null,
 		revision: {
@@ -260,5 +355,86 @@ export function getServiceOrder(
 			...serviceOrderSnapshot(row),
 			updatedAt: row.updatedAt.toISOString(),
 		},
+	};
+}
+
+type BoardOrder = {
+	clientName: string;
+	code: string;
+	flowStages: FlowStageRow[] | null;
+	flowVersion: number | null;
+	id: string;
+};
+
+export type ProductionBoard = {
+	flow: { id: string; stages: FlowStageRow[]; version: number };
+	items: (Omit<
+		ServiceOrderItemSnapshot,
+		"createdAt" | "lineId" | "measurements"
+	> & {
+		reservations: ItemReservation[];
+		suggestedStageIds: string[];
+	})[];
+	orders: BoardOrder[];
+};
+
+export function boardOf(db: Reader): ProductionBoard {
+	const flow = readCurrentProductionFlow(db);
+	if (!flow) {
+		throw new ORPCError("NOT_FOUND", {
+			message: commandMessages.productionFlowNotFound,
+		});
+	}
+	const rows = db
+		.select({
+			clientName: client.name,
+			item: serviceOrderItem,
+			order: serviceOrder,
+		})
+		.from(serviceOrderItem)
+		.innerJoin(
+			serviceOrder,
+			eq(serviceOrder.id, serviceOrderItem.serviceOrderId)
+		)
+		.innerJoin(client, eq(client.id, serviceOrder.clientId))
+		.where(inArray(serviceOrderItem.kind, ["service", "custom"]))
+		.orderBy(
+			sql`${serviceOrderItem.dueOn} IS NULL`,
+			asc(serviceOrderItem.dueOn),
+			asc(serviceOrder.code),
+			asc(serviceOrderItem.position)
+		)
+		.all();
+	const items = rows.map((row) => row.item);
+	const reservations = itemReservations(db, items);
+	const lists = suggestedListsOf(db, items);
+	const orders = new Map<string, BoardOrder>();
+	for (const { clientName, order } of rows) {
+		if (!orders.has(order.id)) {
+			orders.set(order.id, {
+				clientName,
+				code: order.code,
+				flowStages: order.flowStages,
+				flowVersion: order.flowVersion,
+				id: order.id,
+			});
+		}
+	}
+	return {
+		flow: { id: flow.id, stages: flow.stages, version: flow.version },
+		items: rows.map(({ item, order }) => {
+			const {
+				createdAt: _createdAt,
+				lineId: _lineId,
+				measurements: _measurements,
+				...snapshot
+			} = serviceOrderItemSnapshot(item);
+			return {
+				...snapshot,
+				reservations: reservations.get(item.id) ?? [],
+				suggestedStageIds: itemSuggestion(order.flowStages, item, lists),
+			};
+		}),
+		orders: [...orders.values()],
 	};
 }

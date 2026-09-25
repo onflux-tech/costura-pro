@@ -14,6 +14,7 @@ import {
 import { commandMessages } from "../command-messages";
 import { insertReceivable, readReceivable } from "../finance/receivables";
 import { readMeasurement } from "../measurements/store";
+import { readCurrentProductionFlow } from "../production/store";
 import {
 	isQuoteAnonymized,
 	latestRevisionNumber,
@@ -32,6 +33,7 @@ import type {
 	CreateDefinition,
 	CreateRejection,
 } from "../sync/commands";
+import { productionCommands } from "./production";
 import { type QuoteApproveValues, quoteApprovePayload } from "./schemas";
 import {
 	insertQuoteApproval,
@@ -169,11 +171,13 @@ const approveQuote: CreateDefinition = {
 		if (idsTaken(db, id, fields)) {
 			return taken;
 		}
+		const flow = readCurrentProductionFlow(db);
 		const order = insertServiceOrder(
 			db,
 			fields.serviceOrderId,
 			{
 				clientId: target.clientId,
+				flow: flow ? { stages: flow.stages, version: flow.version } : null,
 				openedOn: fields.approvedOn,
 				quoteId: target.id,
 				titles: pairs.map(({ line }) => itemTitle(line)),
@@ -263,5 +267,6 @@ const approveQuote: CreateDefinition = {
 };
 
 export const serviceOrderCommands = {
+	...productionCommands,
 	"quote.approve": approveQuote,
 };
