@@ -161,6 +161,7 @@ describe("stock schema", () => {
 				"kind",
 				"location_id",
 				"lot_id",
+				"material_reconciliation_id",
 				"occurred_on",
 				"purchase_id",
 				"quantity_micros",

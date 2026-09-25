@@ -161,10 +161,19 @@ describe("advanceProduction", () => {
 		).toEqual(ready([fitting, finishing]));
 	});
 
-	test("na última com material planejado não tem efeito", () => {
+	test("na última aguardando reconciliação não tem efeito", () => {
 		expect(
 			advanceProduction(inProgress([cut, assembly, finishing], finishing), true)
 		).toBeNull();
+	});
+
+	test("na última sem reconciliação pendente fica pronto", () => {
+		expect(
+			advanceProduction(
+				inProgress([cut, assembly, finishing], finishing),
+				false
+			)
+		).toEqual(ready([cut, assembly, finishing]));
 	});
 
 	test("sem efeito em a iniciar e pronto", () => {

@@ -10,6 +10,7 @@ import {
 import { bigintInteger } from "../columns";
 import { materialVariant } from "./materials";
 import { purchase } from "./purchases";
+import { materialReconciliation } from "./reconciliation";
 
 export const stockMovementKindValues = [
 	"opening",
@@ -19,6 +20,7 @@ export const stockMovementKindValues = [
 	"reversal",
 	"purchase",
 	"inventory",
+	"consumption",
 ] as const;
 
 export type InventoryLineRecord = {
@@ -83,6 +85,9 @@ export const stockMovement = sqliteTable(
 			.notNull()
 			.references(() => stockLocation.id),
 		lotId: text("lot_id").references(() => stockLot.id),
+		materialReconciliationId: text("material_reconciliation_id").references(
+			() => materialReconciliation.id
+		),
 		occurredOn: text("occurred_on").notNull(),
 		purchaseId: text("purchase_id").references(() => purchase.id),
 		quantityMicros: bigintInteger("quantity_micros").notNull(),
@@ -106,6 +111,9 @@ export const stockMovement = sqliteTable(
 		index("stock_movement_transfer_idx").on(table.transferId),
 		index("stock_movement_purchase_idx").on(table.purchaseId),
 		index("stock_movement_inventory_session_idx").on(table.inventorySessionId),
+		index("stock_movement_material_reconciliation_idx").on(
+			table.materialReconciliationId
+		),
 		uniqueIndex("stock_movement_reverses_idx").on(table.reversesMovementId),
 	]
 );

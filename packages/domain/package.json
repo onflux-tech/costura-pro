@@ -70,6 +70,10 @@
       "types": "./dist/src/received-item.d.ts",
       "default": "./src/received-item.ts"
     },
+    "./reconciliation": {
+      "types": "./dist/src/reconciliation.d.ts",
+      "default": "./src/reconciliation.ts"
+    },
     "./reservation": {
       "types": "./dist/src/reservation.d.ts",
       "default": "./src/reservation.ts"

@@ -80,7 +80,7 @@ export function startProduction(
 
 export function advanceProduction(
 	state: ProductionState,
-	hasPlannedMaterials: boolean
+	awaitingReconciliation: boolean
 ): ProductionState | null {
 	if (
 		state.status !== "inProgress" ||
@@ -93,7 +93,7 @@ export function advanceProduction(
 	if (next !== undefined) {
 		return { ...state, stageId: next };
 	}
-	if (hasPlannedMaterials) {
+	if (awaitingReconciliation) {
 		return null;
 	}
 	return { stageId: null, stageIds: state.stageIds, status: "ready" };

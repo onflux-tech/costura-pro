@@ -17,6 +17,7 @@ describe("stockMovementKinds", () => {
 			"reversal",
 			"purchase",
 			"inventory",
+			"consumption",
 		]);
 	});
 });

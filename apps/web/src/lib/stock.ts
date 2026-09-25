@@ -89,6 +89,7 @@ const isoDate = /^\d{4}-\d{2}-\d{2}$/;
 
 const kindLabels: Record<StockMovementKind, string> = {
 	adjustment: "Ajuste",
+	consumption: "Consumo",
 	inventory: "Inventário",
 	opening: "Saldo de abertura",
 	purchase: "Compra",

@@ -6,6 +6,7 @@ export const stockMovementKinds = [
 	"reversal",
 	"purchase",
 	"inventory",
+	"consumption",
 ] as const;
 
 export type StockMovementKind = (typeof stockMovementKinds)[number];
