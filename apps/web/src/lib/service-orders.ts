@@ -527,7 +527,7 @@ export type ReconciledRow = {
 	consumed: string;
 	extra: string | null;
 	label: string;
-	leftover: string;
+	leftover: string | null;
 	lost: string;
 	planned: string;
 	swap: string | null;
@@ -561,7 +561,8 @@ export function reconciledRows(
 			consumed: quantity(BigInt(row.consumedMicros)),
 			extra: outcome.extraMicros > 0n ? quantity(outcome.extraMicros) : null,
 			label: `${row.materialName} · ${row.variantName}`,
-			leftover: quantity(outcome.leftoverMicros),
+			leftover:
+				outcome.leftoverMicros > 0n ? quantity(outcome.leftoverMicros) : null,
 			lost: quantity(BigInt(row.lostMicros)),
 			planned: quantity(BigInt(row.plannedMicros)),
 			swap:

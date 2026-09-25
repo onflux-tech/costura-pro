@@ -25,7 +25,7 @@ import { refreshReconciliation } from "./service-order-queries";
 
 export type ReconcileTarget = Pick<
 	ServiceOrderItemView,
-	"id" | "line" | "reconciled" | "reconciliation" | "reservations"
+	"id" | "line" | "reconciled" | "reservations"
 >;
 
 type KeptReconciliation = {
@@ -66,9 +66,9 @@ export function useReconciliationActions() {
 	const reversals = useRef(new Map<string, KeptReversal>());
 
 	const keptFor = useCallback(
-		(item: Pick<ReconcileTarget, "id" | "reconciliation">) => {
+		(item: Pick<ReconcileTarget, "id" | "reconciled">) => {
 			const kept = drafts.current.get(item.id);
-			if (kept && item.reconciliation?.id === kept.reconciliationId) {
+			if (kept && item.reconciled) {
 				drafts.current.delete(item.id);
 				return;
 			}
@@ -79,7 +79,7 @@ export function useReconciliationActions() {
 
 	const keepDraft = useCallback(
 		(
-			item: Pick<ReconcileTarget, "id" | "reconciliation">,
+			item: Pick<ReconcileTarget, "id" | "reconciled">,
 			draft: ReconciliationDraft
 		): KeptReconciliation => {
 			const kept = keptFor(item) ?? {
@@ -95,13 +95,13 @@ export function useReconciliationActions() {
 	);
 
 	const draftOf = useCallback(
-		(item: Pick<ReconcileTarget, "id" | "reconciliation">) =>
+		(item: Pick<ReconcileTarget, "id" | "reconciled">) =>
 			keptFor(item)?.draft ?? null,
 		[keptFor]
 	);
 
 	const forgetSettled = useCallback(
-		(items: readonly Pick<ReconcileTarget, "id" | "reconciliation">[]) => {
+		(items: readonly Pick<ReconcileTarget, "id" | "reconciled">[]) => {
 			for (const item of items) {
 				keptFor(item);
 			}

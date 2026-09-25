@@ -8,13 +8,22 @@ import {
 } from "@costura-pro/ui/components/data-list";
 import { Text } from "@costura-pro/ui/components/typography";
 
-import { type ReconciledRow, reconciledRows } from "@/lib/service-orders";
-
-import type { ReconcileTarget } from "./use-reconciliation-actions";
+import {
+	type ReconciledRow,
+	reconciledRows,
+	type ServiceOrderItemView,
+} from "@/lib/service-orders";
 
 function Leftover({ row }: { row: ReconciledRow }) {
 	if (row.extra !== null) {
 		return <Badge tone="warning">{`${row.extra} a mais`}</Badge>;
+	}
+	if (row.leftover === null) {
+		return (
+			<Text inline tone="muted">
+				sem sobra
+			</Text>
+		);
 	}
 	return (
 		<Text inline numeric>
@@ -27,7 +36,7 @@ export function ReconciledMaterials({
 	item,
 	number,
 }: {
-	item: Pick<ReconcileTarget, "line" | "reconciliation">;
+	item: Pick<ServiceOrderItemView, "line" | "reconciliation">;
 	number: number;
 }) {
 	return (

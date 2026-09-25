@@ -419,6 +419,12 @@ function LineFieldset({
 		quantitiesError !== null && parseQuantity(value, displayPrecision) === null
 			? true
 			: undefined;
+	let outcomeTone: "muted" | "subtle" | "warning" = "subtle";
+	if (preview.extraMicros > 0n) {
+		outcomeTone = "warning";
+	} else if (preview.leftoverMicros === 0n) {
+		outcomeTone = "muted";
+	}
 	const setQuantities = (consumed: string, lost: string) =>
 		change(withQuantities(draft, index, consumed, lost, points, newId));
 	return (
@@ -475,7 +481,7 @@ function LineFieldset({
 					{quantitiesError}
 				</Text>
 			) : (
-				<Text size="sm" tone={preview.extraMicros > 0n ? "warning" : "subtle"}>
+				<Text size="sm" tone={outcomeTone}>
 					{lineOutcomeText(line, preview)}
 				</Text>
 			)}

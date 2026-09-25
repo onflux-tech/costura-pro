@@ -851,7 +851,7 @@ describe("textos do diálogo de reconciliação", () => {
 	test("sobra, a mais e a sobra zerada", () => {
 		const exact = line(freshDraft());
 		expect(lineOutcomeText(exact, linePreview(exact, crepePoints))).toBe(
-			"Sobra 0,00 m"
+			"sem sobra"
 		);
 		const less = line(
 			withQuantities(freshDraft(), 0, "2,00", "0", points, sequence(600))

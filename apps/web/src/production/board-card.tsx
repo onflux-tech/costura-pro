@@ -21,11 +21,13 @@ export type BoardOrderView = {
 	flowStages: FlowStageView[] | null;
 	flowVersion: number | null;
 	id: string;
+	openedOn: string;
 };
 
 export type BoardCardActions = {
 	onAdvance: () => void;
 	onBack: () => void;
+	onReconcile: () => void;
 	onStart: () => void;
 	pending: boolean;
 };
@@ -52,6 +54,18 @@ function NextAction({
 					size="sm"
 				>
 					Iniciar
+				</Button>
+			);
+		case "reconcile":
+			return (
+				<Button
+					aria-label={`Reconciliar e marcar pronto: ${context}`}
+					data-board-reconcile={item.id}
+					disabled={actions.pending}
+					onClick={actions.onReconcile}
+					size="sm"
+				>
+					Reconciliar e marcar pronto
 				</Button>
 			);
 		case "advance":
@@ -113,6 +127,7 @@ export function BoardCard({
 	const view = itemProduction(item, order?.flowStages ?? null);
 	const late = productionLate(item, today);
 	const missing = productionBlocked(item);
+	const sealed = item.productionStatus === "ready" && item.reconciled;
 
 	return (
 		<article className="flex min-w-0 flex-col gap-2 rounded-lg border border-border bg-card p-3">
@@ -139,8 +154,9 @@ export function BoardCard({
 					{`${order?.clientName ?? ""} · ${boardDueLabel(item.dueOn)}`}
 				</Text>
 			</div>
-			{late || missing !== null ? (
+			{late || missing !== null || sealed ? (
 				<div className="flex flex-wrap gap-1">
+					{sealed ? <Badge tone="success">reconciliado</Badge> : null}
 					{late ? <Badge tone="danger">atrasado</Badge> : null}
 					{missing === null ? null : (
 						<Badge className="whitespace-normal text-left" tone="danger">

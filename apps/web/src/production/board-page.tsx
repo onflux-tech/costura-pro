@@ -29,6 +29,11 @@ import {
 } from "@/lib/production";
 import { lineTitle } from "@/lib/quotes";
 import { subitemsLabel } from "@/lib/service-orders";
+import { ReconcileDialog } from "@/service-orders/reconcile-dialog";
+import {
+	type ReconciliationActions,
+	useReconciliationActions,
+} from "@/service-orders/use-reconciliation-actions";
 import { usePageHeader } from "@/shell/page-header";
 import type { client } from "@/utils/orpc";
 
@@ -69,6 +74,8 @@ function asBoardItems(items: BoardRead["items"]): BoardItemView[] {
 		item.kind === "material" ? [] : [{ ...item, kind: item.kind }]
 	);
 }
+
+type Chosen = { id: string; open: boolean } | null;
 
 type CardContext = {
 	actionsFor: (item: BoardItemView) => BoardCardActions;
@@ -182,7 +189,7 @@ function StartDialog({
 	items: readonly BoardItemView[];
 	onClose: () => void;
 	orders: ReadonlyMap<string, BoardOrderView>;
-	starting: { id: string; open: boolean } | null;
+	starting: Chosen;
 } & Pick<ReturnType<typeof useProductionActions>, "pendingId" | "start">) {
 	const item = items.find((candidate) => candidate.id === starting?.id);
 	const flowStages =
@@ -216,15 +223,63 @@ function StartDialog({
 	);
 }
 
+function ReconcileFromBoard({
+	actions,
+	chosen,
+	items,
+	onClose,
+	orders,
+}: {
+	actions: ReconciliationActions;
+	chosen: Chosen;
+	items: readonly BoardItemView[];
+	onClose: () => void;
+	orders: ReadonlyMap<string, BoardOrderView>;
+}) {
+	const item = items.find((candidate) => candidate.id === chosen?.id);
+	const order =
+		item === undefined ? undefined : orders.get(item.serviceOrderId);
+	if (item === undefined || order === undefined) {
+		return null;
+	}
+	return (
+		<ReconcileDialog
+			actions={actions}
+			finalFocus={() =>
+				focusTarget(item.id, ["data-board-reconcile", "data-board-card"])
+			}
+			item={item}
+			itemTitle={lineTitle(item.line)}
+			key={item.id}
+			onOpenChange={(open) => {
+				if (!open) {
+					onClose();
+				}
+			}}
+			open={chosen?.open === true}
+			openedOn={order.openedOn}
+			orderCode={order.code}
+		/>
+	);
+}
+
+function closed(current: Chosen): Chosen {
+	return current === null ? null : { ...current, open: false };
+}
+
 function Board({ data, etapa }: { data: BoardRead; etapa?: string }) {
 	const navigate = route.useNavigate();
 	const { advance, back, pendingId, start } = useProductionActions();
+	const reconciliation = useReconciliationActions();
+	const { forgetSettled } = reconciliation;
 	const [today] = useState(() => localDay(new Date()));
-	const [starting, setStarting] = useState<{
-		id: string;
-		open: boolean;
-	} | null>(null);
+	const [starting, setStarting] = useState<Chosen>(null);
+	const [reconciling, setReconciling] = useState<Chosen>(null);
 	const [settledId, setSettledId] = useState<string | null>(null);
+
+	useEffect(() => {
+		forgetSettled(data.items);
+	}, [data.items, forgetSettled]);
 
 	useEffect(() => {
 		if (settledId === null) {
@@ -256,6 +311,7 @@ function Board({ data, etapa }: { data: BoardRead; etapa?: string }) {
 		actionsFor: (item) => ({
 			onAdvance: () => step(advance, item),
 			onBack: () => step(back, item),
+			onReconcile: () => setReconciling({ id: item.id, open: true }),
 			onStart: () => setStarting({ id: item.id, open: true }),
 			pending: pendingId === item.id,
 		}),
@@ -296,15 +352,18 @@ function Board({ data, etapa }: { data: BoardRead; etapa?: string }) {
 			</Tabs>
 			<StartDialog
 				items={items}
-				onClose={() =>
-					setStarting((current) =>
-						current === null ? null : { ...current, open: false }
-					)
-				}
+				onClose={() => setStarting(closed)}
 				orders={orders}
 				pendingId={pendingId}
 				start={start}
 				starting={starting}
+			/>
+			<ReconcileFromBoard
+				actions={reconciliation}
+				chosen={reconciling}
+				items={items}
+				onClose={() => setReconciling(closed)}
+				orders={orders}
 			/>
 		</BoardFrame>
 	);

@@ -904,13 +904,25 @@ describe("subitem reconciliado", () => {
 				consumed: "2 un",
 				extra: "1 un",
 				label: "Zíper · 20 cm",
-				leftover: "0 un",
+				leftover: null,
 				lost: "0 un",
 				planned: "1 un",
 				swap: null,
 			},
 		]);
 		expect(reconciledRows(pieceItem)).toEqual([]);
+	});
+
+	test("sobra zerada sem a mais fica sem sobra", () => {
+		expect(
+			reconciledRows({
+				...reconciled,
+				reconciliation: withProvisional,
+			}).map((row) => [row.label, row.leftover, row.extra])
+		).toEqual([
+			["Crepe · Preto", null, null],
+			["Zíper · 20 cm", null, null],
+		]);
 	});
 
 	test("custo previsto contra o real por material, com provisório", () => {

@@ -18,8 +18,9 @@ import { formatDay, localDay } from "@/lib/measurements";
 import {
 	type BalanceItemView,
 	balanceValue,
-	movementKindLabel,
+	movementAction,
 	movementQuantity,
+	movementTitle,
 	pointQuantity,
 } from "@/lib/stock";
 import { useOpId } from "@/lib/use-op-id";
@@ -202,8 +203,8 @@ export function VariantBalancePanel({ item }: { item: BalanceItemView }) {
 								<DataListCell label="Movimento">
 									<div className="flex flex-col gap-1">
 										<div className="flex flex-wrap items-center gap-2">
-											<Text weight="semibold">
-												{movementKindLabel(movement.kind)}
+											<Text className="break-words" weight="semibold">
+												{movementTitle(movement)}
 											</Text>
 											{movement.reversedByMovementId ? (
 												<Badge tone="warning">estornado</Badge>
@@ -269,35 +270,43 @@ function MovementAction({
 	onReverse,
 }: {
 	busy: boolean;
-	movement: {
-		kind: string;
-		purchaseId: string | null;
-		reversedByMovementId: string | null;
-	};
+	movement: Parameters<typeof movementAction>[0];
 	onReverse: () => void;
 }) {
-	if (movement.purchaseId) {
-		return (
-			<ButtonLink
-				render={
-					<Link
-						params={{ compraId: movement.purchaseId }}
-						to="/compras/recebidas/$compraId"
-					/>
-				}
-				size="sm"
-				variant="ghost"
-			>
-				Ver compra
-			</ButtonLink>
-		);
+	const action = movementAction(movement);
+	switch (action.kind) {
+		case "purchase":
+			return (
+				<ButtonLink
+					render={
+						<Link
+							params={{ compraId: action.id }}
+							to="/compras/recebidas/$compraId"
+						/>
+					}
+					size="sm"
+					variant="ghost"
+				>
+					Ver compra
+				</ButtonLink>
+			);
+		case "serviceOrder":
+			return (
+				<ButtonLink
+					render={<Link params={{ osId: action.id }} to="/os/$osId" />}
+					size="sm"
+					variant="ghost"
+				>
+					Ver OS
+				</ButtonLink>
+			);
+		case "reverse":
+			return (
+				<Button disabled={busy} onClick={onReverse} size="sm" variant="ghost">
+					Estornar
+				</Button>
+			);
+		default:
+			return null;
 	}
-	if (movement.reversedByMovementId || movement.kind === "reversal") {
-		return null;
-	}
-	return (
-		<Button disabled={busy} onClick={onReverse} size="sm" variant="ghost">
-			Estornar
-		</Button>
-	);
 }

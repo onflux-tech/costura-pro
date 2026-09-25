@@ -11,6 +11,7 @@ import {
 	movementAction,
 	movementKindLabel,
 	movementQuantity,
+	movementTitle,
 	openingValueCents,
 	pointQuantity,
 	reservationNote,
@@ -152,6 +153,34 @@ describe("movementKindLabel", () => {
 		expect(movementKindLabel("reversal")).toBe("Estorno");
 		expect(movementKindLabel("inventory")).toBe("Inventário");
 		expect(movementKindLabel("consumption")).toBe("Consumo");
+	});
+});
+
+describe("movementTitle", () => {
+	const consumption = {
+		itemPosition: 1,
+		kind: "consumption" as const,
+		serviceOrderCode: "OS-2026-PC-0001",
+	};
+
+	test("consumo cita a OS e o subitem", () => {
+		expect(movementTitle(consumption)).toBe(
+			"Consumo · OS-2026-PC-0001 · subitem 2"
+		);
+		expect(movementTitle({ ...consumption, itemPosition: 0 })).toBe(
+			"Consumo · OS-2026-PC-0001 · subitem 1"
+		);
+	});
+
+	test("outros movimentos ficam com o nome do tipo", () => {
+		expect(movementTitle({ ...consumption, kind: "reversal" })).toBe("Estorno");
+		expect(
+			movementTitle({
+				itemPosition: null,
+				kind: "adjustment",
+				serviceOrderCode: null,
+			})
+		).toBe("Ajuste");
 	});
 });
 

@@ -549,9 +549,12 @@ function lineQuantity(line: LineDraft, micros: bigint): string {
 }
 
 export function lineOutcomeText(line: LineDraft, preview: LinePreview): string {
-	return preview.extraMicros > 0n
-		? `${lineQuantity(line, preview.extraMicros)} a mais`
-		: `Sobra ${lineQuantity(line, preview.leftoverMicros)}`;
+	if (preview.extraMicros > 0n) {
+		return `${lineQuantity(line, preview.extraMicros)} a mais`;
+	}
+	return preview.leftoverMicros > 0n
+		? `Sobra ${lineQuantity(line, preview.leftoverMicros)}`
+		: "sem sobra";
 }
 
 const negativeSources: Record<

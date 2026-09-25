@@ -102,6 +102,22 @@ export function movementKindLabel(kind: StockMovementKind): string {
 	return kindLabels[kind];
 }
 
+export function movementTitle(movement: {
+	itemPosition: number | null;
+	kind: StockMovementKind;
+	serviceOrderCode: string | null;
+}): string {
+	const label = movementKindLabel(movement.kind);
+	if (
+		movement.kind !== "consumption" ||
+		movement.serviceOrderCode === null ||
+		movement.itemPosition === null
+	) {
+		return label;
+	}
+	return `${label} · ${movement.serviceOrderCode} · subitem ${movement.itemPosition + 1}`;
+}
+
 export function openingValueCents(
 	referenceCostCents: string | null,
 	micros: bigint
