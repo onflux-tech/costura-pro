@@ -14,6 +14,7 @@ import {
 } from "@costura-pro/ui/components/panel";
 import { Text } from "@costura-pro/ui/components/typography";
 
+import { type FlowStageView, productionBlocked } from "@/lib/production";
 import {
 	lineDetail,
 	lineQuantityLabel,
@@ -28,6 +29,7 @@ import {
 } from "@/lib/service-orders";
 import { pointQuantity } from "@/lib/stock";
 
+import { ItemProduction } from "./item-production";
 import { MeasurementSnapshot } from "./measurement-snapshot";
 
 function amount(row: MaterialRowView, micros: bigint): string {
@@ -84,11 +86,13 @@ function ItemMaterials({
 }
 
 export function ServiceOrderItemCard({
+	flowStages,
 	item,
 	number,
 	people,
 	today,
 }: {
+	flowStages: readonly FlowStageView[] | null;
 	item: ServiceOrderItemView;
 	number: number;
 	people: PeopleNames;
@@ -98,15 +102,19 @@ export function ServiceOrderItemCard({
 	const due = dueLabel(item.dueOn, today);
 	const rows = itemMaterials(item);
 	const profiled = line.kind !== "material" && line.profileId !== null;
-	const production =
-		line.kind === "material"
-			? "Só entrega, sem produção"
-			: "Produção: não iniciada";
+	const missing = productionBlocked(item);
 	return (
 		<Panel>
 			<PanelHeader>
 				<PanelTitle>{`Subitem ${number} · ${lineTitle(line)}`}</PanelTitle>
-				{due.late ? <Badge tone="warning">prazo vencido</Badge> : null}
+				{due.late || missing !== null ? (
+					<div className="flex flex-wrap gap-1">
+						{due.late ? <Badge tone="warning">prazo vencido</Badge> : null}
+						{missing === null ? null : (
+							<Badge tone="danger">{`bloqueado · falta ${missing}`}</Badge>
+						)}
+					</div>
+				) : null}
 			</PanelHeader>
 			<PanelContent className="flex flex-col gap-3">
 				<div className="flex flex-col gap-0.5">
@@ -114,7 +122,7 @@ export function ServiceOrderItemCard({
 						{`${lineDetail(line, people)} · ${lineQuantityLabel(line)}`}
 					</Text>
 					<Text size="xs" tone="subtle">
-						{`Prazo ${due.text} · ${production} · Entrega: pendente`}
+						{`Prazo ${due.text} · Entrega: pendente`}
 					</Text>
 					{line.note ? (
 						<Text size="xs" tone="muted">
@@ -122,6 +130,12 @@ export function ServiceOrderItemCard({
 						</Text>
 					) : null}
 				</div>
+				<ItemProduction
+					flowStages={flowStages}
+					item={item}
+					itemTitle={lineTitle(line)}
+					number={number}
+				/>
 				{profiled ? (
 					<MeasurementSnapshot snapshots={item.measurements} />
 				) : null}

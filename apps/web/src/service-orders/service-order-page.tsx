@@ -20,6 +20,7 @@ import { usePageHeader } from "@/shell/page-header";
 
 import { ClosingPanel } from "./closing-panel";
 import { ReceivablePanel } from "./receivable-panel";
+import { ServiceOrderFlow } from "./service-order-flow";
 import { ServiceOrderHeader } from "./service-order-header";
 import { ServiceOrderInternalPanel } from "./service-order-internal-panel";
 import { ServiceOrderItemCard } from "./service-order-item-card";
@@ -29,11 +30,13 @@ import { ServiceOrderStates } from "./service-order-states";
 function ServiceOrderView({ detail }: { detail: ServiceOrderDetailView }) {
 	const { people } = usePeople(detail.client.id);
 	const [today] = useState(() => localDay(new Date()));
+	const production = detail.items.some((item) => item.kind !== "material");
 	return (
 		<div className="grid grid-cols-[minmax(0,1fr)] gap-4 lg:grid-cols-[minmax(0,1fr)_22rem]">
 			<div className="flex min-w-0 flex-col gap-4">
 				<ServiceOrderHeader detail={detail} />
-				<ServiceOrderStates detail={detail} />
+				<ServiceOrderStates detail={detail} today={today} />
+				{production ? <ServiceOrderFlow detail={detail} /> : null}
 				{detail.items.length === 0 ? (
 					<Panel>
 						<PanelContent>
@@ -46,6 +49,7 @@ function ServiceOrderView({ detail }: { detail: ServiceOrderDetailView }) {
 				) : (
 					detail.items.map((item, index) => (
 						<ServiceOrderItemCard
+							flowStages={detail.serviceOrder.flowStages}
 							item={item}
 							key={item.id}
 							number={index + 1}

@@ -508,6 +508,7 @@ describe("item da ficha", () => {
 			notes: null,
 			outsourced: false,
 			priceCents: "2000",
+			suggestedStageIds: [],
 			targetMarginBasisPoints: null,
 			version: 1,
 		});

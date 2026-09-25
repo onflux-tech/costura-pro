@@ -21,9 +21,12 @@ import {
 	estimatedMargin,
 	financialSummary,
 	itemMaterials,
+	listProductionSummary,
 	productionSummary,
 	receivableLabel,
 	type ServiceOrderDetailView,
+	type ServiceOrderItemView,
+	type ServiceOrderListItemView,
 	subitemsLabel,
 } from "../src/lib/service-orders";
 
@@ -41,6 +44,11 @@ function sequence(start: number): () => string {
 const maria = id(50);
 const crepe = id(81);
 const zipper = id(89);
+
+const cut = "c0000000-0000-4000-8000-000000000001";
+const assembly = "c0000000-0000-4000-8000-000000000002";
+const fitting = "c0000000-0000-4000-8000-000000000003";
+const finishing = "c0000000-0000-4000-8000-000000000004";
 
 function frozen(line: QuoteLineView, totalCents = "0"): FrozenLineView {
 	return {
@@ -482,6 +490,7 @@ function detailOf(
 			version: 1,
 		},
 		client: { anonymized: false, archived: false, id: id(700), name: "Maria" },
+		currentFlowVersion: 1,
 		items: [service, piece, material].map((line, position) => ({
 			createdAt: "2026-09-22T12:00:00.000Z",
 			dueOn: "2026-10-12",
@@ -491,6 +500,7 @@ function detailOf(
 			lineId: line.id,
 			measurements: [],
 			position,
+			productionStatus: "notStarted",
 			reservations:
 				position === 1
 					? [
@@ -499,6 +509,10 @@ function detailOf(
 						]
 					: [],
 			serviceOrderId: id(600),
+			stageId: null,
+			stageIds: null,
+			suggestedStageIds:
+				line.kind === "material" ? [] : [cut, assembly, fitting, finishing],
 			version: 1,
 		})),
 		quote: { code: "ORC-2026-PC-0001", id: revision.quoteId },
@@ -527,6 +541,13 @@ function detailOf(
 			clientId: id(700),
 			code: "OS-2026-PC-0001",
 			createdAt: "2026-09-22T12:00:00.000Z",
+			flowStages: [
+				{ active: true, id: cut, name: "Corte" },
+				{ active: true, id: assembly, name: "Montagem" },
+				{ active: true, id: fitting, name: "Prova" },
+				{ active: true, id: finishing, name: "Acabamento" },
+			],
+			flowVersion: 1,
 			id: id(600),
 			openedOn: "2026-09-22",
 			quoteId: revision.quoteId,
@@ -559,13 +580,8 @@ describe("estados e valores da OS", () => {
 		]);
 	});
 
-	test("resume produção, entrega e financeiro", () => {
+	test("resume entrega e financeiro", () => {
 		const detail = detailOf();
-		expect(productionSummary(detail.items)).toBe("não iniciada");
-		expect(productionSummary([])).toBe("sem produção");
-		expect(
-			productionSummary(detail.items.filter((item) => item.kind === "material"))
-		).toBe("sem produção");
 		expect(deliverySummary(detail.items)).toBe("0 de 3 entregues");
 		expect(deliverySummary(detail.items.slice(0, 1))).toBe("0 de 1 entregue");
 		expect(deliverySummary([])).toBe("nada a entregar");
@@ -616,5 +632,127 @@ describe("textos da lista e do encerramento da OS", () => {
 		expect(
 			closingSteps({ items: [], receivable: null }).map((step) => step.state)
 		).toEqual(["done", "done", "done"]);
+	});
+});
+
+describe("resumo de produção da OS", () => {
+	const today = "2026-10-01";
+	const [serviceItem, pieceItem, materialItem] = detailOf().items as [
+		ServiceOrderItemView,
+		ServiceOrderItemView,
+		ServiceOrderItemView,
+	];
+	const stocked = {
+		...pieceItem,
+		reservations: [
+			{ reservedMicros: "3400000", variantId: crepe },
+			{ reservedMicros: "1000000", variantId: zipper },
+		],
+	};
+	const ready = (item: ServiceOrderItemView): ServiceOrderItemView => ({
+		...item,
+		productionStatus: "ready",
+		stageIds: [finishing],
+	});
+	const cutting = (item: ServiceOrderItemView): ServiceOrderItemView => ({
+		...item,
+		productionStatus: "inProgress",
+		stageId: cut,
+		stageIds: [cut, finishing],
+	});
+
+	test("não iniciada, em produção e pronta pelos subitens de produção", () => {
+		expect(
+			productionSummary([serviceItem, stocked, materialItem], today)
+		).toEqual({ text: "não iniciada", tone: "default" });
+		expect(
+			productionSummary([ready(serviceItem), stocked, materialItem], today)
+		).toEqual({ text: "em produção", tone: "default" });
+		expect(productionSummary([serviceItem, cutting(stocked)], today)).toEqual({
+			text: "em produção",
+			tone: "default",
+		});
+		expect(
+			productionSummary(
+				[ready(serviceItem), ready(stocked), materialItem],
+				today
+			)
+		).toEqual({ text: "pronta", tone: "success" });
+	});
+
+	test("só material ou nada fica sem produção", () => {
+		expect(productionSummary([materialItem], today)).toEqual({
+			text: "sem produção",
+			tone: "default",
+		});
+		expect(productionSummary([], today)).toEqual({
+			text: "sem produção",
+			tone: "default",
+		});
+		expect(
+			productionSummary([{ ...materialItem, dueOn: "2026-09-01" }], today)
+		).toEqual({ text: "sem produção", tone: "default" });
+	});
+
+	test("acrescenta os atrasados e o bloqueio com tom de perigo", () => {
+		const late = { dueOn: "2026-09-30" };
+		expect(
+			productionSummary(
+				[ready({ ...serviceItem, ...late }), cutting({ ...stocked, ...late })],
+				today
+			)
+		).toEqual({ text: "em produção · 1 atrasado", tone: "danger" });
+		expect(
+			productionSummary(
+				[{ ...serviceItem, ...late }, cutting({ ...stocked, ...late })],
+				today
+			)
+		).toEqual({ text: "em produção · 2 atrasados", tone: "danger" });
+		expect(
+			productionSummary([serviceItem, pieceItem, materialItem], today)
+		).toEqual({ text: "não iniciada · bloqueado", tone: "danger" });
+		expect(
+			productionSummary(
+				[serviceItem, cutting({ ...pieceItem, ...late })],
+				today
+			)
+		).toEqual({ text: "em produção · 1 atrasado · bloqueado", tone: "danger" });
+		expect(
+			productionSummary(
+				[ready({ ...serviceItem, ...late }), ready(pieceItem)],
+				today
+			)
+		).toEqual({ text: "pronta", tone: "success" });
+	});
+});
+
+describe("resumo de produção na lista de OS", () => {
+	const order: ServiceOrderListItemView = {
+		clientId: id(700),
+		clientName: "Maria",
+		code: "OS-2026-PC-0001",
+		dueOn: "2026-10-12",
+		id: id(600),
+		itemCount: 3,
+		openedOn: "2026-09-22",
+		productionCount: 2,
+		readyCount: 0,
+		shortage: false,
+		startedCount: 0,
+		totalCents: "120600",
+	};
+
+	test("usa as contagens de produção", () => {
+		expect(listProductionSummary(order)).toBe("não iniciada");
+		expect(listProductionSummary({ ...order, startedCount: 1 })).toBe(
+			"em produção"
+		);
+		expect(listProductionSummary({ ...order, readyCount: 1 })).toBe(
+			"em produção"
+		);
+		expect(listProductionSummary({ ...order, readyCount: 2 })).toBe("pronta");
+		expect(
+			listProductionSummary({ ...order, itemCount: 1, productionCount: 0 })
+		).toBe("sem produção");
 	});
 });

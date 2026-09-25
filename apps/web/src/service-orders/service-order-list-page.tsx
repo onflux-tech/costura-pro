@@ -21,6 +21,7 @@ import { clientCommandFailure } from "@/lib/client-command-error";
 import { localDay } from "@/lib/measurements";
 import {
 	dueLabel,
+	listProductionSummary,
 	receivableLabel,
 	type ServiceOrderListItemView,
 	subitemsLabel,
@@ -69,9 +70,16 @@ function ServiceOrderRow({
 				</Text>
 			</DataListCell>
 			<DataListCell label="Situação">
-				<div className="flex flex-wrap gap-1">
-					<Badge>aberta</Badge>
-					{order.shortage ? <Badge tone="warning">falta material</Badge> : null}
+				<div className="flex flex-col items-start gap-1">
+					<div className="flex flex-wrap gap-1">
+						<Badge>aberta</Badge>
+						{order.shortage ? (
+							<Badge tone="warning">falta material</Badge>
+						) : null}
+					</div>
+					<Text size="xs" tone="subtle">
+						{`Produção: ${listProductionSummary(order)}`}
+					</Text>
 				</div>
 			</DataListCell>
 		</DataListRow>

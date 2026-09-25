@@ -24,6 +24,7 @@ export type ServiceView = {
 	notes: string | null;
 	outsourced: boolean;
 	priceCents: string;
+	suggestedStageIds: string[];
 	targetMarginBasisPoints: number | null;
 	version: number;
 };
@@ -38,6 +39,7 @@ export type ServiceFormValues = {
 	name: string;
 	notes: string;
 	price: string;
+	suggestedStageIds: string[];
 	targetMargin: string;
 };
 
@@ -49,6 +51,7 @@ export type ServiceFields = {
 	notes: string | null;
 	outsourced: boolean;
 	priceCents: string;
+	suggestedStageIds: string[];
 	targetMarginBasisPoints: number | null;
 };
 
@@ -59,6 +62,7 @@ export type ServiceField =
 	| "name"
 	| "notes"
 	| "price"
+	| "suggestedStageIds"
 	| "targetMargin";
 
 export const serviceFieldOrder: readonly ServiceField[] = [
@@ -68,6 +72,7 @@ export const serviceFieldOrder: readonly ServiceField[] = [
 	"price",
 	"targetMargin",
 	"estimatedMinutes",
+	"suggestedStageIds",
 	"notes",
 ];
 
@@ -79,6 +84,7 @@ export const emptyServiceValues: ServiceFormValues = {
 	name: "",
 	notes: "",
 	price: "",
+	suggestedStageIds: [],
 	targetMargin: "",
 };
 
@@ -125,6 +131,7 @@ export function serviceFormValues(service: ServiceView): ServiceFormValues {
 		name: service.name,
 		notes: service.notes ?? "",
 		price: formatMoneyInput(BigInt(service.priceCents)),
+		suggestedStageIds: [...service.suggestedStageIds],
 		targetMargin:
 			service.targetMarginBasisPoints === null
 				? ""
@@ -158,6 +165,11 @@ export function serviceFormErrors(
 					estimatedMinutes: `Use minutos inteiros de ${serviceLimits.estimatedMinutes.min} a ${serviceLimits.estimatedMinutes.max}`,
 				}
 			: {}),
+		...(values.suggestedStageIds.length > serviceLimits.suggestedStages
+			? {
+					suggestedStageIds: `Até ${serviceLimits.suggestedStages} etapas sugeridas.`,
+				}
+			: {}),
 		...(values.notes.trim().length > serviceLimits.notes
 			? { notes: `Use até ${serviceLimits.notes} caracteres` }
 			: {}),
@@ -173,6 +185,7 @@ export function serviceFields(values: ServiceFormValues): ServiceFields {
 		notes: emptyToNull(values.notes),
 		outsourced: values.kind === "outsourced",
 		priceCents: String(parseMoney(values.price) ?? 0n),
+		suggestedStageIds: [...values.suggestedStageIds],
 		targetMarginBasisPoints: ownTargetOf(values.targetMargin),
 	};
 }
@@ -188,15 +201,46 @@ const serviceKeys = [
 	"targetMarginBasisPoints",
 ] as const;
 
+function sameStages(a: readonly string[], b: readonly string[]): boolean {
+	const chosen = new Set(a);
+	return a.length === b.length && b.every((id) => chosen.has(id));
+}
+
+const formKeys = [
+	"category",
+	"cost",
+	"estimatedMinutes",
+	"kind",
+	"name",
+	"notes",
+	"price",
+	"targetMargin",
+] as const satisfies readonly (keyof ServiceFormValues)[];
+
+export function sameServiceValues(
+	left: ServiceFormValues,
+	right: ServiceFormValues
+): boolean {
+	return (
+		formKeys.every((key) => left[key] === right[key]) &&
+		sameStages(left.suggestedStageIds, right.suggestedStageIds)
+	);
+}
+
 export function servicePatch(
 	opened: ServiceView,
 	fields: ServiceFields
 ): Partial<ServiceFields> | null {
-	const patch: Partial<ServiceFields> = Object.fromEntries(
-		serviceKeys
-			.filter((key) => fields[key] !== opened[key])
-			.map((key) => [key, fields[key]])
-	);
+	const patch: Partial<ServiceFields> = {
+		...Object.fromEntries(
+			serviceKeys
+				.filter((key) => fields[key] !== opened[key])
+				.map((key) => [key, fields[key]])
+		),
+		...(sameStages(fields.suggestedStageIds, opened.suggestedStageIds)
+			? {}
+			: { suggestedStageIds: fields.suggestedStageIds }),
+	};
 	return Object.keys(patch).length === 0 ? null : patch;
 }
 

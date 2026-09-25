@@ -1,4 +1,5 @@
 import { type Pricing, pricingOf } from "@costura-pro/domain/pricing";
+import type { ProductionStatus } from "@costura-pro/domain/production";
 import { quoteLineOfText } from "@costura-pro/domain/quote";
 import { planReservations } from "@costura-pro/domain/reservation";
 import {
@@ -19,6 +20,11 @@ import {
 	type MeasurementFieldView,
 	type MeasurementView,
 } from "./measurements";
+import {
+	type FlowStageView,
+	productionBlocked,
+	productionLate,
+} from "./production";
 import { dayError } from "./quote-drafts";
 import {
 	type FrozenLineView,
@@ -380,8 +386,12 @@ export type ServiceOrderItemView = {
 	lineId: string;
 	measurements: MeasurementSnapshotView[];
 	position: number;
+	productionStatus: ProductionStatus;
 	reservations: { reservedMicros: string; variantId: string }[];
 	serviceOrderId: string;
+	stageId: string | null;
+	stageIds: string[] | null;
+	suggestedStageIds: string[];
 	version: number;
 };
 
@@ -421,6 +431,7 @@ export type ServiceOrderDetailView = {
 		version: number;
 	};
 	client: { anonymized: boolean; archived: boolean; id: string; name: string };
+	currentFlowVersion: number | null;
 	items: ServiceOrderItemView[];
 	quote: { code: string; id: string };
 	receivable: ReceivableView | null;
@@ -429,6 +440,8 @@ export type ServiceOrderDetailView = {
 		clientId: string;
 		code: string;
 		createdAt: string;
+		flowStages: FlowStageView[] | null;
+		flowVersion: number | null;
 		id: string;
 		openedOn: string;
 		quoteId: string;
@@ -445,11 +458,16 @@ export type ServiceOrderListItemView = {
 	id: string;
 	itemCount: number;
 	openedOn: string;
+	productionCount: number;
+	readyCount: number;
 	shortage: boolean;
+	startedCount: number;
 	totalCents: string;
 };
 
-export function itemMaterials(item: ServiceOrderItemView): MaterialRowView[] {
+export function itemMaterials(
+	item: Pick<ServiceOrderItemView, "line" | "reservations">
+): MaterialRowView[] {
 	const reserved = new Map(
 		item.reservations.map((row) => [row.variantId, BigInt(row.reservedMicros)])
 	);
@@ -494,12 +512,53 @@ export function closingSteps({
 	];
 }
 
-export function productionSummary(
-	items: readonly Pick<ServiceOrderItemView, "kind">[]
-): string {
-	return items.some((item) => item.kind !== "material")
+function productionStage(counts: {
+	production: number;
+	ready: number;
+	started: number;
+}): string {
+	if (counts.production === 0) {
+		return "sem produção";
+	}
+	if (counts.ready === counts.production) {
+		return "pronta";
+	}
+	return counts.started === 0 && counts.ready === 0
 		? "não iniciada"
-		: "sem produção";
+		: "em produção";
+}
+
+export function productionSummary(
+	items: readonly Pick<
+		ServiceOrderItemView,
+		"dueOn" | "kind" | "line" | "productionStatus" | "reservations"
+	>[],
+	today: string
+): { text: string; tone: "danger" | "default" | "success" } {
+	const production = items.filter((item) => item.kind !== "material");
+	const count = (status: ProductionStatus) =>
+		production.filter((item) => item.productionStatus === status).length;
+	const stage = productionStage({
+		production: production.length,
+		ready: count("ready"),
+		started: count("inProgress"),
+	});
+	const late = production.filter((item) => productionLate(item, today)).length;
+	const blocked = production.some((item) => productionBlocked(item) !== null);
+	const lateText = late === 1 ? " · 1 atrasado" : ` · ${late} atrasados`;
+	const text = `${stage}${late > 0 ? lateText : ""}${blocked ? " · bloqueado" : ""}`;
+	if (late > 0 || blocked) {
+		return { text, tone: "danger" };
+	}
+	return { text, tone: stage === "pronta" ? "success" : "default" };
+}
+
+export function listProductionSummary(item: ServiceOrderListItemView): string {
+	return productionStage({
+		production: item.productionCount,
+		ready: item.readyCount,
+		started: item.startedCount,
+	});
 }
 
 export function deliverySummary(items: readonly unknown[]): string {

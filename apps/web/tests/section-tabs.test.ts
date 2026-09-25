@@ -158,6 +158,26 @@ describe("abas por destino", () => {
 		}
 	});
 
+	test("Produção marca Quadro no quadro por etapa", () => {
+		expect(sectionTabsFor("producao", "/producao/quadro")).toEqual({
+			activeId: "quadro",
+			items: [
+				{ href: "/producao/quadro", id: "quadro", label: "Quadro" },
+				{
+					href: "/producao/fluxo",
+					id: "fluxo",
+					label: "Fluxo de produção",
+				},
+			],
+		});
+	});
+
+	test("Produção marca Fluxo de produção no editor do fluxo", () => {
+		expect(sectionTabsFor("producao", "/producao/fluxo").activeId).toBe(
+			"fluxo"
+		);
+	});
+
 	test("destino sem abas e rota fora do shell devolvem lista vazia", () => {
 		expect(sectionTabsFor("agenda", "/agenda")).toEqual({
 			activeId: undefined,

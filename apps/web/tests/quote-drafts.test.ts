@@ -165,6 +165,7 @@ const catalogService: ServiceView = {
 	notes: null,
 	outsourced: false,
 	priceCents: "16000",
+	suggestedStageIds: [],
 	targetMarginBasisPoints: null,
 	version: 3,
 };

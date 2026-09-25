@@ -6,6 +6,7 @@ import {
 	formPricingHint,
 	type ServiceFormValues,
 	type ServiceView,
+	sameServiceValues,
 	serviceFields,
 	serviceFormErrors,
 	serviceFormValues,
@@ -13,6 +14,9 @@ import {
 	servicePriceFacts,
 	targetMarginFields,
 } from "../src/lib/services";
+
+const fitting = "c0000000-0000-4000-8000-000000000003";
+const finishing = "c0000000-0000-4000-8000-000000000004";
 
 const service: ServiceView = {
 	archivedAt: null,
@@ -25,6 +29,7 @@ const service: ServiceView = {
 	notes: null,
 	outsourced: false,
 	priceCents: "10000",
+	suggestedStageIds: [fitting, finishing],
 	targetMarginBasisPoints: 3750,
 	version: 2,
 };
@@ -44,6 +49,7 @@ describe("formulário de serviço", () => {
 			name: "Barra de calça",
 			notes: "",
 			price: "100,00",
+			suggestedStageIds: [fitting, finishing],
 			targetMargin: "37,5",
 		});
 		expect(serviceFields(values())).toEqual({
@@ -54,6 +60,7 @@ describe("formulário de serviço", () => {
 			notes: null,
 			outsourced: false,
 			priceCents: "10000",
+			suggestedStageIds: [fitting, finishing],
 			targetMarginBasisPoints: 3750,
 		});
 	});
@@ -75,6 +82,7 @@ describe("formulário de serviço", () => {
 			notes: null,
 			outsourced: true,
 			priceCents: "15050",
+			suggestedStageIds: [],
 			targetMarginBasisPoints: null,
 		});
 	});
@@ -106,6 +114,21 @@ describe("formulário de serviço", () => {
 		expect(serviceFormErrors(values())).toEqual({});
 	});
 
+	test("aceita até 50 etapas sugeridas", () => {
+		const stageIds = (count: number) =>
+			Array.from(
+				{ length: count },
+				(_, index) =>
+					`c0000000-0000-4000-8000-${String(index + 1).padStart(12, "0")}`
+			);
+		expect(
+			serviceFormErrors(values({ suggestedStageIds: stageIds(51) }))
+		).toEqual({ suggestedStageIds: "Até 50 etapas sugeridas." });
+		expect(
+			serviceFormErrors(values({ suggestedStageIds: stageIds(50) }))
+		).toEqual({});
+	});
+
 	test("o patch leva só o que mudou", () => {
 		expect(servicePatch(service, serviceFields(values()))).toBeNull();
 		expect(
@@ -119,10 +142,48 @@ describe("formulário de serviço", () => {
 			targetMarginBasisPoints: null,
 		});
 	});
+
+	test("o patch leva as etapas sugeridas só quando a escolha muda", () => {
+		expect(
+			servicePatch(
+				service,
+				serviceFields(values({ suggestedStageIds: [finishing, fitting] }))
+			)
+		).toBeNull();
+		expect(
+			servicePatch(
+				service,
+				serviceFields(values({ suggestedStageIds: [finishing] }))
+			)
+		).toEqual({ suggestedStageIds: [finishing] });
+		expect(
+			servicePatch(service, serviceFields(values({ suggestedStageIds: [] })))
+		).toEqual({ suggestedStageIds: [] });
+	});
+
+	test("o formulário fica sujo quando a escolha de etapas muda", () => {
+		expect(sameServiceValues(values(), values())).toBe(true);
+		expect(
+			sameServiceValues(
+				values({ suggestedStageIds: [finishing, fitting] }),
+				values()
+			)
+		).toBe(true);
+		expect(
+			sameServiceValues(values({ suggestedStageIds: [finishing] }), values())
+		).toBe(false);
+		expect(
+			sameServiceValues(
+				values({ suggestedStageIds: [finishing, fitting, finishing] }),
+				values({ suggestedStageIds: [finishing, fitting] })
+			)
+		).toBe(false);
+		expect(sameServiceValues(values({ name: "Barra" }), values())).toBe(false);
+	});
 });
 
 describe("edição completa e meta do diálogo", () => {
-	test("o patch leva os oito campos quando todos mudam", () => {
+	test("o patch leva os nove campos quando todos mudam", () => {
 		expect(
 			servicePatch(
 				service,
@@ -135,6 +196,7 @@ describe("edição completa e meta do diálogo", () => {
 						name: "Barra italiana",
 						notes: "Com overloque",
 						price: "120",
+						suggestedStageIds: [fitting],
 						targetMargin: "",
 					})
 				)
@@ -147,6 +209,7 @@ describe("edição completa e meta do diálogo", () => {
 			notes: "Com overloque",
 			outsourced: true,
 			priceCents: "12000",
+			suggestedStageIds: [fitting],
 			targetMarginBasisPoints: null,
 		});
 	});

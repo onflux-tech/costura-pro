@@ -21,6 +21,7 @@ export function serviceOrderQuery(serviceOrderId: string) {
 export async function refreshServiceOrders(queryClient: QueryClient) {
 	await Promise.all([
 		queryClient.invalidateQueries({ queryKey: orpc.serviceOrders.key() }),
+		queryClient.invalidateQueries({ queryKey: orpc.serviceOrderItems.key() }),
 		queryClient.invalidateQueries({ queryKey: orpc.quotes.key() }),
 		queryClient.invalidateQueries({ queryKey: orpc.stockBalances.key() }),
 		queryClient.invalidateQueries({ queryKey: orpc.materials.key() }),

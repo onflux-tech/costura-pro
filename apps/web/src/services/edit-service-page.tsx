@@ -19,6 +19,7 @@ import {
 	type ClientCommandFailure,
 	clientCommandFailure,
 } from "@/lib/client-command-error";
+import type { FlowStageView } from "@/lib/production";
 import {
 	type ServiceFields,
 	type ServiceView,
@@ -28,6 +29,8 @@ import {
 import { useOpId } from "@/lib/use-op-id";
 import { pricingSettingsQuery } from "@/pricing/pricing-queries";
 import { SettingsPending } from "@/pricing/settings-failure";
+import { FlowPending } from "@/production/flow-pending";
+import { productionFlowQuery } from "@/production/production-queries";
 import { usePageHeader } from "@/shell/page-header";
 import { client as api } from "@/utils/orpc";
 
@@ -44,11 +47,13 @@ function ServiceEditor({
 	categories,
 	onReloadCurrent,
 	service,
+	stages,
 }: {
 	atelierTarget: number;
 	categories: readonly string[];
 	onReloadCurrent: () => Promise<void>;
 	service: ServiceView;
+	stages: readonly FlowStageView[];
 }) {
 	const navigate = useNavigate();
 	const queryClient = useQueryClient();
@@ -150,6 +155,7 @@ function ServiceEditor({
 				onDirtyChange={setDirty}
 				onReloadCurrent={reloadCurrent}
 				onSubmit={submit}
+				stages={stages}
 				submitLabel="Salvar serviço"
 			/>
 		</div>
@@ -160,6 +166,7 @@ export function EditServicePage({ serviceId }: { serviceId: string }) {
 	const service = useQuery(serviceQuery(serviceId));
 	const settings = useQuery(pricingSettingsQuery());
 	const categories = useQuery(serviceCategoriesQuery());
+	const flow = useQuery(productionFlowQuery());
 	const [opened, setOpened] = useState<ServiceView | null>(null);
 	const live = service.data;
 	useEffect(() => {
@@ -205,6 +212,10 @@ export function EditServicePage({ serviceId }: { serviceId: string }) {
 		);
 	}
 
+	if (!flow.data) {
+		return <FlowPending error={flow.error} onRetry={() => flow.refetch()} />;
+	}
+
 	const reloadCurrent = async () => {
 		const fresh = await service.refetch();
 		if (fresh.data) {
@@ -219,6 +230,7 @@ export function EditServicePage({ serviceId }: { serviceId: string }) {
 			key={current.version}
 			onReloadCurrent={reloadCurrent}
 			service={current}
+			stages={flow.data.stages.filter((stage) => stage.active)}
 		/>
 	);
 }

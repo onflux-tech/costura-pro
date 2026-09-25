@@ -12,6 +12,10 @@ import {
 } from "@costura-pro/ui/components/alert";
 import { Button } from "@costura-pro/ui/components/button";
 import {
+	CheckboxChip,
+	CheckboxChips,
+} from "@costura-pro/ui/components/checkbox-chips";
+import {
 	ChoiceChip,
 	ChoiceChips,
 } from "@costura-pro/ui/components/choice-chips";
@@ -32,16 +36,19 @@ import {
 } from "@costura-pro/ui/components/panel";
 import { SuggestionField } from "@costura-pro/ui/components/suggestion-field";
 import { Textarea } from "@costura-pro/ui/components/textarea";
+import { Text } from "@costura-pro/ui/components/typography";
 import {
 	type ChangeEvent,
 	type ReactNode,
 	type RefObject,
 	useEffect,
+	useId,
 	useRef,
 	useState,
 } from "react";
 
 import type { ClientCommandFailure } from "@/lib/client-command-error";
+import type { FlowStageView } from "@/lib/production";
 import {
 	formPricing,
 	formPricingHint,
@@ -49,30 +56,16 @@ import {
 	type ServiceFields,
 	type ServiceFormValues,
 	type ServiceKind,
+	sameServiceValues,
 	serviceFieldOrder,
 	serviceFields,
 	serviceFormErrors,
 } from "@/lib/services";
 import { PricingPanel } from "@/pricing/pricing-panel";
 
-type TextKey = Exclude<keyof ServiceFormValues, "kind">;
+type TextKey = Exclude<keyof ServiceFormValues, "kind" | "suggestedStageIds">;
 
 type FieldErrors = Partial<Record<ServiceField, string>>;
-
-const formKeys = [
-	"category",
-	"cost",
-	"estimatedMinutes",
-	"kind",
-	"name",
-	"notes",
-	"price",
-	"targetMargin",
-] as const satisfies readonly (keyof ServiceFormValues)[];
-
-function sameValues(left: ServiceFormValues, right: ServiceFormValues) {
-	return formKeys.every((key) => left[key] === right[key]);
-}
 
 function FormField({
 	children,
@@ -150,6 +143,7 @@ export function ServiceForm({
 	onDirtyChange,
 	onReloadCurrent,
 	onSubmit,
+	stages,
 	submitLabel,
 }: {
 	atelierTarget: number;
@@ -159,14 +153,16 @@ export function ServiceForm({
 	onDirtyChange?: (dirty: boolean) => void;
 	onReloadCurrent?: () => void;
 	onSubmit: (fields: ServiceFields) => Promise<void>;
+	stages: readonly FlowStageView[];
 	submitLabel: string;
 }) {
 	const [values, setValues] = useState(initialValues);
 	const [errors, setErrors] = useState<FieldErrors>({});
 	const [submitting, setSubmitting] = useState(false);
 	const alertRef = useRef<HTMLDivElement>(null);
+	const stagesErrorId = useId();
 	const targets = useRef(new Map<ServiceField, HTMLElement>());
-	const dirty = !sameValues(values, initialValues);
+	const dirty = !sameServiceValues(values, initialValues);
 
 	useEffect(() => {
 		onDirtyChange?.(dirty);
@@ -181,17 +177,19 @@ export function ServiceForm({
 	const set = (key: TextKey) => (next: string) =>
 		setValues((current) => ({ ...current, [key]: next }));
 
+	const target = (key: ServiceField) => (element: HTMLElement | null) => {
+		if (element) {
+			targets.current.set(key, element);
+		} else {
+			targets.current.delete(key);
+		}
+	};
+
 	const inputProps = (key: TextKey & ServiceField) => ({
 		"aria-invalid": errors[key] ? true : undefined,
 		onChange: (event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
 			set(key)(event.target.value),
-		ref: (element: HTMLElement | null) => {
-			if (element) {
-				targets.current.set(key, element);
-			} else {
-				targets.current.delete(key);
-			}
-		},
+		ref: target(key),
 		value: values[key],
 	});
 
@@ -347,6 +345,38 @@ export function ServiceForm({
 							{...inputProps("estimatedMinutes")}
 						/>
 					</FormField>
+					<Fieldset
+						aria-describedby={
+							errors.suggestedStageIds ? stagesErrorId : undefined
+						}
+						ref={target("suggestedStageIds")}
+						tabIndex={-1}
+					>
+						<FieldsetLegend>Etapas sugeridas</FieldsetLegend>
+						<CheckboxChips
+							onValueChange={(next) =>
+								setValues((current) => ({
+									...current,
+									suggestedStageIds: next,
+								}))
+							}
+							value={values.suggestedStageIds}
+						>
+							{stages.map((stage) => (
+								<CheckboxChip key={stage.id} value={stage.id}>
+									{stage.name}
+								</CheckboxChip>
+							))}
+						</CheckboxChips>
+						<Text size="xs" tone="muted">
+							Vêm marcadas ao iniciar a produção; você ajusta no início.
+						</Text>
+						{errors.suggestedStageIds ? (
+							<Text id={stagesErrorId} size="xs" tone="danger">
+								{errors.suggestedStageIds}
+							</Text>
+						) : null}
+					</Fieldset>
 					<FormField
 						error={errors.notes}
 						hint="Como é feito, cuidados, parceiro que executa."

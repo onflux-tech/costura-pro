@@ -9,6 +9,8 @@ import { emptyServiceValues, type ServiceFields } from "@/lib/services";
 import { useOpId } from "@/lib/use-op-id";
 import { pricingSettingsQuery } from "@/pricing/pricing-queries";
 import { SettingsPending } from "@/pricing/settings-failure";
+import { FlowPending } from "@/production/flow-pending";
+import { productionFlowQuery } from "@/production/production-queries";
 import { usePageHeader } from "@/shell/page-header";
 import { client as api } from "@/utils/orpc";
 
@@ -27,6 +29,7 @@ export function NewServicePage() {
 	const [failure, setFailure] = useState<ClientCommandFailure | null>(null);
 	const categories = useQuery(serviceCategoriesQuery());
 	const settings = useQuery(pricingSettingsQuery());
+	const flow = useQuery(productionFlowQuery());
 	usePageHeader({
 		backHref: "/catalogo-produtos/servicos",
 		eyebrow: "Catálogo",
@@ -61,24 +64,35 @@ export function NewServicePage() {
 		await navigate({ to: "/catalogo-produtos/servicos" });
 	};
 
-	return (
-		<>
-			<Heading className="max-md:sr-only">Novo serviço</Heading>
-			{settings.data ? (
-				<ServiceForm
-					atelierTarget={settings.data.targetMarginBasisPoints}
-					categories={categories.data?.categories ?? []}
-					failure={failure}
-					initialValues={emptyServiceValues}
-					onSubmit={submit}
-					submitLabel="Salvar serviço"
-				/>
-			) : (
+	const content = () => {
+		if (!settings.data) {
+			return (
 				<SettingsPending
 					error={settings.error}
 					onRetry={() => settings.refetch()}
 				/>
-			)}
+			);
+		}
+		if (!flow.data) {
+			return <FlowPending error={flow.error} onRetry={() => flow.refetch()} />;
+		}
+		return (
+			<ServiceForm
+				atelierTarget={settings.data.targetMarginBasisPoints}
+				categories={categories.data?.categories ?? []}
+				failure={failure}
+				initialValues={emptyServiceValues}
+				onSubmit={submit}
+				stages={flow.data.stages.filter((stage) => stage.active)}
+				submitLabel="Salvar serviço"
+			/>
+		);
+	};
+
+	return (
+		<>
+			<Heading className="max-md:sr-only">Novo serviço</Heading>
+			{content()}
 		</>
 	);
 }

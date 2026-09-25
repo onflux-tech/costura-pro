@@ -13,6 +13,7 @@ export type CommandSubject =
 	| "compra"
 	| "conta"
 	| "contagem"
+	| "fluxo"
 	| "fornecedor"
 	| "local"
 	| "lote"
@@ -33,6 +34,7 @@ const staleMessages: Record<CommandSubject, string> = {
 	compra: "Esta compra mudou em outra janela ou aparelho.",
 	conta: "Esta conta mudou em outra janela ou aparelho.",
 	contagem: "Esta contagem mudou em outra janela ou aparelho.",
+	fluxo: "O fluxo de produção mudou em outra janela ou aparelho.",
 	fornecedor: "Este fornecedor mudou em outra janela ou aparelho.",
 	local: "Este local mudou em outra janela ou aparelho.",
 	lote: "Este lote mudou em outra janela ou aparelho.",
@@ -52,6 +54,7 @@ const staleMessages: Record<CommandSubject, string> = {
 const personalSubjects: ReadonlySet<CommandSubject> = new Set([
 	"cliente",
 	"medição",
+	"OS",
 	"orçamento",
 	"peça",
 	"perfil",

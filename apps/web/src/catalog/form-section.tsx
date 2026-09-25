@@ -2,6 +2,10 @@ import { materialCategorySuggestions } from "@costura-pro/domain/material";
 import { baseUnits } from "@costura-pro/domain/unit";
 import { Button } from "@costura-pro/ui/components/button";
 import { Checkbox } from "@costura-pro/ui/components/checkbox";
+import {
+	CheckboxChip,
+	CheckboxChips,
+} from "@costura-pro/ui/components/checkbox-chips";
 import { Checklist, ChecklistItem } from "@costura-pro/ui/components/checklist";
 import {
 	ChoiceChip,
@@ -34,6 +38,36 @@ const unitItems = baseUnits.map((unit) => ({
 	label: `${unit.label} (${unit.abbreviation})`,
 	value: unit.code,
 }));
+
+const stageItems = [
+	{ label: "Corte", value: "corte" },
+	{ label: "Montagem", value: "montagem" },
+	{ label: "Prova", value: "prova" },
+	{ label: "Acabamento", value: "acabamento" },
+];
+
+function StageChips({
+	defaultValue,
+	disabled,
+	legend,
+}: {
+	defaultValue: string[];
+	disabled?: boolean;
+	legend: string;
+}) {
+	return (
+		<Fieldset>
+			<FieldsetLegend>{legend}</FieldsetLegend>
+			<CheckboxChips defaultValue={defaultValue} disabled={disabled}>
+				{stageItems.map((stage) => (
+					<CheckboxChip key={stage.value} value={stage.value}>
+						{stage.label}
+					</CheckboxChip>
+				))}
+			</CheckboxChips>
+		</Fieldset>
+	);
+}
 
 function MaterialFieldsPanel() {
 	const [unit, setUnit] = useState("m");
@@ -119,6 +153,16 @@ export function FormSection() {
 								<ChoiceChip value="desgaste">Desgastada</ChoiceChip>
 							</ChoiceChips>
 						</Fieldset>
+						<StageChips
+							defaultValue={["prova", "acabamento"]}
+							legend="Etapas sugeridas"
+						/>
+						<StageChips defaultValue={[]} legend="Etapas (nenhuma marcada)" />
+						<StageChips
+							defaultValue={["corte"]}
+							disabled
+							legend="Etapas (desativado)"
+						/>
 						<Field>
 							<FieldLabel requirement="optional">Observações</FieldLabel>
 							<Textarea defaultValue="Forro descosturado na lateral esquerda." />

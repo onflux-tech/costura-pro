@@ -52,6 +52,10 @@ export const sectionTabs = {
 		{ href: "/orcamentos/vencidos", id: "vencidos", label: "Vencidos" },
 		{ href: "/orcamentos/recusados", id: "recusados", label: "Recusados" },
 	],
+	producao: [
+		{ href: "/producao/quadro", id: "quadro", label: "Quadro" },
+		{ href: "/producao/fluxo", id: "fluxo", label: "Fluxo de produção" },
+	],
 } as const satisfies Record<string, readonly LinkTarget[]>;
 
 export type SectionHref =

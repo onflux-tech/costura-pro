@@ -4,6 +4,7 @@ import {
 	financialMovementTransferPayload,
 } from "@costura-pro/api/finance/schemas";
 import { inventorySessionCreatePayload } from "@costura-pro/api/inventory/schemas";
+import { productionFlowUpdatePayload } from "@costura-pro/api/production/schemas";
 import {
 	productCreatePayload,
 	productPatchPayload,
@@ -18,12 +19,16 @@ import {
 	quoteEmitPayload,
 	quoteRefusePayload,
 } from "@costura-pro/api/quotes/schemas";
-import { quoteApprovePayload } from "@costura-pro/api/service-orders/schemas";
+import {
+	productionStartPayload,
+	quoteApprovePayload,
+} from "@costura-pro/api/service-orders/schemas";
 import {
 	serviceCreatePayload,
 	servicePatchPayload,
 	targetMarginPayload,
 } from "@costura-pro/api/services/schemas";
+import { mergeFlowStages } from "@costura-pro/domain/production";
 import {
 	accountOpeningFields,
 	accountTransferFields,
@@ -38,6 +43,15 @@ import {
 	withDetails,
 } from "../src/lib/inventory";
 import type { MeasurementView } from "../src/lib/measurements";
+import {
+	addStage,
+	flowDraftOf,
+	flowPayload,
+	hideStage,
+	productionStartInput,
+	renameStage,
+	startStageIds,
+} from "../src/lib/production";
 import {
 	emptyProductValues,
 	emptyProductVariantValues,
@@ -91,6 +105,12 @@ import {
 } from "../src/lib/services";
 
 const uuid = () => crypto.randomUUID();
+
+const cut = "c0000000-0000-4000-8000-000000000001";
+const assembly = "c0000000-0000-4000-8000-000000000002";
+const fitting = "c0000000-0000-4000-8000-000000000003";
+const finishing = "c0000000-0000-4000-8000-000000000004";
+const pressing = "c0000000-0000-4000-8000-000000000005";
 
 const uuidPattern = /^[0-9a-f-]{36}$/;
 
@@ -180,9 +200,20 @@ describe("payload da web contra o schema do servidor", () => {
 			kind: "outsourced",
 			name: "Barra de calça",
 			price: "100,00",
+			suggestedStageIds: [fitting, finishing],
 			targetMargin: "37,5",
 		});
 		expect(serviceCreatePayload.parse(fields)).toEqual(fields);
+		expect(
+			serviceCreatePayload.parse(
+				serviceFields({
+					...emptyServiceValues,
+					cost: "60",
+					name: "Barra de calça",
+					price: "100",
+				})
+			)
+		).toMatchObject({ suggestedStageIds: [] });
 		const opened: ServiceView = {
 			...fields,
 			archivedAt: null,
@@ -194,11 +225,13 @@ describe("payload da web contra o schema do servidor", () => {
 			...fields,
 			category: null,
 			notes: "Com overloque",
+			suggestedStageIds: [finishing],
 			targetMarginBasisPoints: null,
 		});
 		expect(servicePatchPayload.parse(patch)).toEqual({
 			category: null,
 			notes: "Com overloque",
+			suggestedStageIds: [finishing],
 			targetMarginBasisPoints: null,
 		});
 		const everything = servicePatch(opened, {
@@ -209,6 +242,7 @@ describe("payload da web contra o schema do servidor", () => {
 			notes: "Com overloque",
 			outsourced: false,
 			priceCents: "12000",
+			suggestedStageIds: [],
 			targetMarginBasisPoints: 2500,
 		});
 		expect(Object.keys(servicePatchPayload.parse(everything)).sort()).toEqual([
@@ -219,10 +253,44 @@ describe("payload da web contra o schema do servidor", () => {
 			"notes",
 			"outsourced",
 			"priceCents",
+			"suggestedStageIds",
 			"targetMarginBasisPoints",
 		]);
 		expect(targetMarginPayload.parse(targetMarginFields("40"))).toEqual({
 			targetMarginBasisPoints: 4000,
+		});
+	});
+
+	test("fluxo editado e início de produção passam nos schemas de produção", () => {
+		const saved = [
+			{ active: true, id: cut, name: "Corte" },
+			{ active: true, id: assembly, name: "Montagem" },
+			{ active: true, id: fitting, name: "Prova" },
+			{ active: true, id: finishing, name: "Acabamento" },
+		];
+		const edited = addStage(
+			renameStage(hideStage(flowDraftOf(saved), 2, saved), 1, " Costura  "),
+			pressing
+		);
+		const payload = flowPayload(renameStage(edited, 3, "Passadoria "));
+		expect(payload).toEqual({
+			stages: [
+				{ id: cut, name: "Corte" },
+				{ id: assembly, name: "Costura" },
+				{ id: finishing, name: "Acabamento" },
+				{ id: pressing, name: "Passadoria" },
+			],
+		});
+		expect(productionFlowUpdatePayload.parse(payload)).toEqual(payload);
+		const flowOfOrder = mergeFlowStages(saved, payload.stages);
+		const input = productionStartInput(
+			{ id: uuid(), version: 1 },
+			startStageIds(flowOfOrder, [pressing, fitting, uuid(), finishing, cut]),
+			() => uuid()
+		);
+		expect(input.stageIds).toEqual([cut, finishing, pressing]);
+		expect(productionStartPayload.parse(input)).toEqual({
+			stageIds: input.stageIds,
 		});
 	});
 });
@@ -435,6 +503,7 @@ describe("orçamento", () => {
 		notes: null,
 		outsourced: false,
 		priceCents: "16000",
+		suggestedStageIds: [],
 		targetMarginBasisPoints: null,
 		version: 3,
 	};

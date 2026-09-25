@@ -31,6 +31,9 @@ describe("falhas de comando de cliente", () => {
 		expect(clientCommandFailure(error, "OS").message).toBe(
 			"Esta OS mudou em outra janela ou aparelho."
 		);
+		expect(clientCommandFailure(error, "fluxo").message).toBe(
+			"O fluxo de produção mudou em outra janela ou aparelho."
+		);
 	});
 
 	test("registro já gravado vira exists, e opId reutilizado segue genérico", () => {
@@ -124,6 +127,19 @@ describe("falhas de orçamento", () => {
 					message: commandMessages.clientAnonymized,
 				}),
 				"orçamento"
+			)
+		).toEqual({ kind: "anonymized", message: "Este cliente foi anonimizado." });
+	});
+});
+
+describe("falhas da OS", () => {
+	test("cliente anonimizado na OS vira anonimizado", () => {
+		expect(
+			clientCommandFailure(
+				new ORPCError("PRECONDITION_FAILED", {
+					message: commandMessages.clientAnonymized,
+				}),
+				"OS"
 			)
 		).toEqual({ kind: "anonymized", message: "Este cliente foi anonimizado." });
 	});
