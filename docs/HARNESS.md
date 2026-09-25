@@ -368,6 +368,8 @@ Configurados em `.claude/settings.json`. Cada script em `.claude/hooks/` exporta
 | Commit de uma foto antiga do harness recusado pelo pre-commit com "porta gerada fora do commit" | O `check --staged` reprova porta com mudança fora do stage, e a árvore já tinha a porta mais nova | Commitar a mudança de harness pendente inteira de uma vez (rule de harness) |
 | Verificação no navegador responde 404 para a procedure recém-criada | O servidor de produção roda o `apps/server/dist` de antes do checkpoint | `pnpm --filter server build` antes de subir o servidor da verificação (papel `implementer`) |
 | Nova tentativa de reconciliar depois de uma resposta perdida seguida de estorno recebe "Registro já existe" para sempre | O rascunho com o id da reconciliação sobrevivia na página, e o id já estava gravado | Descarte do rascunho pela leitura que mostra `reconciled`, na OS e no quadro (rule de web, [produção](areas/producao.md)) |
+| Reconciliação sem nenhuma saída fica ativa para sempre | O estorno exigia ao menos um id de movimento, e a criação aceitava linhas sem saída | Estorno com `movementIds` vazio, com teste pela procedure e pelo push ([produção](areas/producao.md)) |
+| Consumo grava valor negativo e a tela mostra custo provisório negativo | Média de ponto com quantidade positiva e valor negativo, sobra de um negativo sem ajuste de custo | Média só com quantidade e valor positivos (rule de domínio) |
 | Fato imutável não pode ser completado depois dos movimentos que ele cria | A chave estrangeira do movimento exige o fato antes, e a trigger recusa `UPDATE` | Valores calculados antes numa projeção de saldo por ponto (rule de servidor) |
 
 ## 9. Registro de evolução
