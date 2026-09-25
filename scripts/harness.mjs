@@ -17,16 +17,28 @@ import { fileURLToPath } from "node:url";
 // as portas de Claude e Codex são geradas para não divergirem à mão.
 export const ROLE_MODELS = {
 	contract: {
-		claude: "opus",
-		codex: { effort: "high", model: "gpt-5.6-terra" },
+		claude: { effort: "max", model: "opus", tools: "Read, Grep, Glob" },
+		codex: { effort: "high", model: "gpt-5.6-terra", sandbox: "read-only" },
 	},
 	explorer: {
-		claude: "sonnet",
-		codex: { effort: "medium", model: "gpt-5.6-luna" },
+		claude: { model: "sonnet", tools: "Read, Grep, Glob" },
+		codex: { effort: "medium", model: "gpt-5.6-luna", sandbox: "read-only" },
+	},
+	implementer: {
+		claude: {
+			disallowedTools: "Agent, Artifact, Workflow",
+			effort: "high",
+			model: "opus",
+		},
+		codex: {
+			effort: "high",
+			model: "gpt-5.6-terra",
+			sandbox: "workspace-write",
+		},
 	},
 	reviewer: {
-		claude: "opus",
-		codex: { effort: "high", model: "gpt-5.6-terra" },
+		claude: { effort: "max", model: "opus", tools: "Read, Grep, Glob" },
+		codex: { effort: "high", model: "gpt-5.6-terra", sandbox: "read-only" },
 	},
 };
 
@@ -38,7 +50,6 @@ const CODEX_SESSION = {
 	subagentModel: "gpt-5.6-luna",
 };
 
-const CLAUDE_TOOLS = "Read, Grep, Glob";
 // Symlink vira arquivo de texto num clone Windows sem Developer Mode, então as
 // portas são cópias reais e estes diretórios pertencem só ao gerador.
 const GENERATED_DIRS = [".claude/agents", ".codex/agents", ".claude/skills"];
@@ -52,6 +63,8 @@ const FRONTMATTER_FIELD = /^([a-z]+):\s*(.*)$/;
 const LINE_BREAK = /\r?\n/;
 const CRLF = /\r\n/g;
 const SKILLS_SOURCE = ".agents/skills/";
+const CLAUDE_EFFORTS = new Set(["low", "medium", "high", "xhigh", "max"]);
+const CODEX_SANDBOXES = new Set(["read-only", "workspace-write"]);
 
 function tomlString(value) {
 	return JSON.stringify(value);
@@ -86,14 +99,37 @@ function parseRole(root, role) {
 	return { body, description: fields.description, source };
 }
 
-function claudeAgent(role, { body, description, source }) {
+function validateRoleConfig(role, { claude, codex }) {
+	if (Boolean(claude.tools) === Boolean(claude.disallowedTools)) {
+		throw new Error(
+			`scripts/harness.mjs: papel ${role} precisa de tools ou de disallowedTools no Claude, só um dos dois`
+		);
+	}
+	if (claude.effort !== undefined && !CLAUDE_EFFORTS.has(claude.effort)) {
+		throw new Error(
+			`scripts/harness.mjs: papel ${role} com effort inválido (${claude.effort})`
+		);
+	}
+	if (!CODEX_SANDBOXES.has(codex.sandbox)) {
+		throw new Error(
+			`scripts/harness.mjs: papel ${role} com sandbox inválido (${codex.sandbox})`
+		);
+	}
+}
+
+function claudeAgent(
+	role,
+	{ body, description, source },
+	{ disallowedTools, effort, model, tools }
+) {
 	return [
 		"---",
 		`# Gerado por pnpm harness:sync a partir de ${source}`,
 		`name: ${role}`,
 		`description: ${JSON.stringify(description)}`,
-		`model: ${ROLE_MODELS[role].claude}`,
-		`tools: ${CLAUDE_TOOLS}`,
+		`model: ${model}`,
+		...(effort ? [`effort: ${effort}`] : []),
+		tools ? `tools: ${tools}` : `disallowedTools: ${disallowedTools}`,
 		"---",
 		"",
 		body,
@@ -101,15 +137,18 @@ function claudeAgent(role, { body, description, source }) {
 	].join("\n");
 }
 
-function codexAgent(role, { body, description, source }) {
-	const { effort, model } = ROLE_MODELS[role].codex;
+function codexAgent(
+	role,
+	{ body, description, source },
+	{ effort, model, sandbox }
+) {
 	return [
 		`# Gerado por pnpm harness:sync a partir de ${source}`,
 		`name = ${tomlString(role)}`,
 		`description = ${tomlString(description)}`,
 		`model = ${tomlString(model)}`,
 		`model_reasoning_effort = ${tomlString(effort)}`,
-		'sandbox_mode = "read-only"',
+		`sandbox_mode = ${tomlString(sandbox)}`,
 		`developer_instructions = '''\n${body}\n'''`,
 		"",
 	].join("\n");
@@ -192,24 +231,25 @@ function sourceRoles(root) {
 		.map((entry) => entry.name);
 }
 
-export function buildHarness(root) {
+export function buildHarness(root, roles = ROLE_MODELS) {
 	for (const role of sourceRoles(root)) {
-		if (!(role in ROLE_MODELS)) {
+		if (!(role in roles)) {
 			throw new Error(
 				`.agents/agents/${role}: papel sem modelos em scripts/harness.mjs`
 			);
 		}
 	}
 	const expected = new Map();
-	for (const role of Object.keys(ROLE_MODELS)) {
+	for (const [role, config] of Object.entries(roles)) {
+		validateRoleConfig(role, config);
 		const parsed = parseRole(root, role);
 		expected.set(
 			`.claude/agents/${role}.md`,
-			Buffer.from(claudeAgent(role, parsed))
+			Buffer.from(claudeAgent(role, parsed, config.claude))
 		);
 		expected.set(
 			`.codex/agents/${role}.toml`,
-			Buffer.from(codexAgent(role, parsed))
+			Buffer.from(codexAgent(role, parsed, config.codex))
 		);
 	}
 	expected.set(".codex/config.toml", Buffer.from(codexConfig(root)));
@@ -231,10 +271,10 @@ function sameContent(actual, wanted) {
 	return normalize(actual) === normalize(wanted);
 }
 
-export function checkHarness(root = process.cwd()) {
+export function checkHarness(root = process.cwd(), roles = ROLE_MODELS) {
 	let expected;
 	try {
-		expected = buildHarness(root);
+		expected = buildHarness(root, roles);
 	} catch (error) {
 		return [error.message];
 	}
@@ -333,8 +373,8 @@ function removeGenerated(absolute) {
 	rmSync(absolute, { force: true, recursive: true });
 }
 
-export function syncHarness(root = process.cwd()) {
-	const expected = buildHarness(root);
+export function syncHarness(root = process.cwd(), roles = ROLE_MODELS) {
+	const expected = buildHarness(root, roles);
 	for (const parent of PORT_PARENTS) {
 		const problem = structureProblem(root, parent);
 		if (problem) {

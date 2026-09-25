@@ -1,6 +1,7 @@
 ---
 name: integrar-branch
 description: Integra a branch de uma entrega do Costura Pro na main e envia ao remoto. Roda automaticamente no fim do /entrega-fechar e também quando o dono pedir merge, integrar, publicar ou push.
+effort: medium
 ---
 
 # Integrar branch

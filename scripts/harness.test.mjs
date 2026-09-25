@@ -14,7 +14,12 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { afterEach, test } from "node:test";
 
-import { checkHarness, syncHarness, unstagedPortIssues } from "./harness.mjs";
+import {
+	checkHarness,
+	ROLE_MODELS,
+	syncHarness,
+	unstagedPortIssues,
+} from "./harness.mjs";
 
 const roots = [];
 
@@ -48,7 +53,7 @@ function git(root, ...args) {
 function fixture() {
 	const root = mkdtempSync(join(tmpdir(), "costura-harness-"));
 	roots.push(root);
-	for (const role of ["contract", "explorer", "reviewer"]) {
+	for (const role of ["contract", "explorer", "implementer", "reviewer"]) {
 		write(
 			root,
 			`.agents/agents/${role}/agent.md`,
@@ -87,8 +92,17 @@ test("sync gera portas Claude e Codex consistentes com a fonte", () => {
 	const explorer = lines(root, ".claude/agents/explorer.md");
 	assert.ok(explorer.includes("model: sonnet"));
 	assert.ok(explorer.includes("tools: Read, Grep, Glob"));
+	assert.deepEqual(
+		explorer.filter((line) => line.startsWith("effort:")),
+		[]
+	);
 	assert.ok(explorer.includes("Corpo do papel explorer."));
-	assert.ok(lines(root, ".claude/agents/reviewer.md").includes("model: opus"));
+	const reviewer = lines(root, ".claude/agents/reviewer.md");
+	assert.ok(reviewer.includes("model: opus"));
+	assert.ok(reviewer.includes("effort: max"));
+	const contract = lines(root, ".claude/agents/contract.md");
+	assert.ok(contract.includes("model: opus"));
+	assert.ok(contract.includes("effort: max"));
 	const codexReviewer = lines(root, ".codex/agents/reviewer.toml");
 	assert.ok(codexReviewer.includes('model = "gpt-5.6-terra"'));
 	assert.ok(codexReviewer.includes('model_reasoning_effort = "high"'));
@@ -111,6 +125,30 @@ test("sync gera portas Claude e Codex consistentes com a fonte", () => {
 	assert.equal(
 		lstatSync(join(root, ".claude/skills/demo")).isSymbolicLink(),
 		false
+	);
+});
+
+test("porta do implementer herda as ferramentas menos Agent, Artifact e Workflow", () => {
+	const root = fixture();
+
+	syncHarness(root);
+
+	const claude = lines(root, ".claude/agents/implementer.md");
+	assert.ok(claude.includes("model: opus"));
+	assert.ok(claude.includes("effort: high"));
+	assert.ok(claude.includes("disallowedTools: Agent, Artifact, Workflow"));
+	assert.deepEqual(
+		claude.filter((line) => line.startsWith("tools:")),
+		[]
+	);
+	const codex = lines(root, ".codex/agents/implementer.toml");
+	assert.ok(codex.includes('model = "gpt-5.6-terra"'));
+	assert.ok(codex.includes('model_reasoning_effort = "high"'));
+	assert.ok(codex.includes('sandbox_mode = "workspace-write"'));
+	assert.ok(
+		lines(root, ".codex/agents/reviewer.toml").includes(
+			'sandbox_mode = "read-only"'
+		)
 	);
 });
 
@@ -315,6 +353,62 @@ test("papel sem modelos definidos vira problema", () => {
 	assert.deepEqual(checkHarness(root), [
 		".agents/agents/extra: papel sem modelos em scripts/harness.mjs",
 	]);
+});
+
+test("papel da fonte fora da configuração recebida vira problema", () => {
+	const root = fixture();
+	const withoutImplementer = Object.fromEntries(
+		Object.entries(ROLE_MODELS).filter(([role]) => role !== "implementer")
+	);
+
+	assert.deepEqual(checkHarness(root, withoutImplementer), [
+		".agents/agents/implementer: papel sem modelos em scripts/harness.mjs",
+	]);
+});
+
+test("configuração de papel inválida vira problema com o nome do papel", () => {
+	const root = fixture();
+	const roles = (explorer) => ({
+		...ROLE_MODELS,
+		explorer: { ...ROLE_MODELS.explorer, ...explorer },
+	});
+	const toolsProblem =
+		"scripts/harness.mjs: papel explorer precisa de tools ou de disallowedTools no Claude, só um dos dois";
+
+	assert.deepEqual(
+		checkHarness(
+			root,
+			roles({
+				claude: { disallowedTools: "Agent", model: "sonnet", tools: "Read" },
+			})
+		),
+		[toolsProblem]
+	);
+	assert.deepEqual(checkHarness(root, roles({ claude: { model: "sonnet" } })), [
+		toolsProblem,
+	]);
+	assert.deepEqual(
+		checkHarness(
+			root,
+			roles({ claude: { effort: "ultra", model: "sonnet", tools: "Read" } })
+		),
+		["scripts/harness.mjs: papel explorer com effort inválido (ultra)"]
+	);
+	assert.deepEqual(
+		checkHarness(
+			root,
+			roles({
+				codex: {
+					effort: "medium",
+					model: "gpt-5.6-luna",
+					sandbox: "danger-full-access",
+				},
+			})
+		),
+		[
+			"scripts/harness.mjs: papel explorer com sandbox inválido (danger-full-access)",
+		]
+	);
 });
 
 test("corpo de papel com aspas triplas vira problema", () => {

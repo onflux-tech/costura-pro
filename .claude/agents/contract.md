@@ -3,6 +3,7 @@
 name: contract
 description: "Confere contratos entre web, API, domínio, banco e offline no Costura Pro sem editar arquivos"
 model: opus
+effort: max
 tools: Read, Grep, Glob
 ---
 
