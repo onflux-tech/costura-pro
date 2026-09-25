@@ -147,6 +147,7 @@ export type BoardItemView = {
 	line: WorkLineView;
 	position: number;
 	productionStatus: ProductionStatus;
+	reconciled: boolean;
 	reservations: { reservedMicros: string; variantId: string }[];
 	serviceOrderId: string;
 	stageId: string | null;
@@ -220,9 +221,9 @@ export function boardDueLabel(dueOn: string | null): string {
 
 export type ProductionAction =
 	| { kind: "advance"; label: string }
-	| { kind: "blocked" }
 	| { kind: "none" }
 	| { kind: "ready" }
+	| { kind: "reconcile" }
 	| { kind: "start" }
 	| { kind: "useFlow" };
 
@@ -238,7 +239,7 @@ export type ItemProduction = {
 
 type ProductionItem = Pick<
 	BoardItemView,
-	"line" | "productionStatus" | "stageId" | "stageIds"
+	"line" | "productionStatus" | "reconciled" | "stageId" | "stageIds"
 > & { kind: WorkLineKind };
 
 const readyStage = { id: "pronto", label: "Pronto" };
@@ -253,10 +254,11 @@ function nextAction(
 			stageIds: item.stageIds,
 			status: item.productionStatus,
 		},
-		linePlannedMaterials(quoteLineOfText(item.line)).length > 0
+		linePlannedMaterials(quoteLineOfText(item.line)).length > 0 &&
+			!item.reconciled
 	);
 	if (next === null) {
-		return { kind: "blocked" };
+		return { kind: "reconcile" };
 	}
 	return next.stageId === null
 		? { kind: "ready" }
@@ -324,7 +326,10 @@ export function productionLate(
 }
 
 export function productionBlocked(
-	item: Pick<BoardItemView, "line" | "productionStatus" | "reservations"> & {
+	item: Pick<
+		BoardItemView,
+		"line" | "productionStatus" | "reconciled" | "reservations"
+	> & {
 		kind: WorkLineKind;
 	}
 ): string | null {

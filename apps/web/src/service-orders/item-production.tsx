@@ -54,10 +54,10 @@ function NextStep({
 }
 
 function Notice({ next }: { next: ItemProductionView["next"] }) {
-	if (next.kind === "blocked") {
+	if (next.kind === "reconcile") {
 		return (
 			<Text size="xs" tone="warning">
-				O pronto deste subitem espera a reconciliação de materiais.
+				Reconcilie os materiais para marcar pronto.
 			</Text>
 		);
 	}

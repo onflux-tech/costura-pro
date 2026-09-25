@@ -20,6 +20,10 @@ import {
 	quoteRefusePayload,
 } from "@costura-pro/api/quotes/schemas";
 import {
+	reconciliationCreatePayload,
+	reconciliationReversePayload,
+} from "@costura-pro/api/reconciliation/schemas";
+import {
 	productionStartPayload,
 	quoteApprovePayload,
 } from "@costura-pro/api/service-orders/schemas";
@@ -91,6 +95,13 @@ import {
 	serviceLineOf,
 } from "../src/lib/quote-drafts";
 import type { QuoteLineView, QuoteRevisionView } from "../src/lib/quotes";
+import {
+	reconciliationDraftOf,
+	reconciliationFields,
+	reverseReconciliationFields,
+	withSwap,
+	withSwapReason,
+} from "../src/lib/reconciliation";
 import {
 	approvalFields,
 	approvalIds,
@@ -684,5 +695,134 @@ describe("orçamento", () => {
 		const parsed: unknown = quoteApprovePayload.parse(payload);
 		expect(parsed).toEqual(payload);
 		expect(approvalId).toMatch(uuidPattern);
+	});
+});
+
+describe("reconciliação de materiais", () => {
+	const crepe = uuid();
+	const lining = uuid();
+	const closet = uuid();
+	const shelf = uuid();
+	const lot = uuid();
+	const itemId = uuid();
+	const draft = reconciliationDraftOf(
+		[
+			{
+				baseUnit: "m",
+				displayPrecision: 2,
+				label: "Crepe · Preto",
+				plannedMicros: 3_400_000n,
+				reservedMicros: 2_500_000n,
+				shortageMicros: 900_000n,
+				variantId: crepe,
+			},
+		],
+		[
+			{
+				baseUnit: "m",
+				displayPrecision: 2,
+				points: [
+					{
+						locationId: closet,
+						locationName: "Armário",
+						lotCreatedAt: null,
+						lotId: null,
+						lotLabel: null,
+						quantityMicros: "2500000",
+						valueCents: "7500",
+					},
+				],
+				referenceCostCents: "3000",
+				tracksLots: false,
+				variantId: crepe,
+			},
+			{
+				baseUnit: "m",
+				displayPrecision: 2,
+				points: [
+					{
+						locationId: shelf,
+						locationName: "Prateleira",
+						lotCreatedAt: "2026-09-01T12:00:00.000Z",
+						lotId: lot,
+						lotLabel: "Rolo 1",
+						quantityMicros: "5000000",
+						valueCents: "10000",
+					},
+				],
+				referenceCostCents: null,
+				tracksLots: true,
+				variantId: lining,
+			},
+		],
+		"2026-09-25",
+		uuid
+	);
+
+	test("reconciliação sem troca passa no schema, com motivo e lote nulos", () => {
+		const fields = reconciliationFields(draft, itemId);
+		expect(fields.lines[0]).toMatchObject({
+			parts: [{ lotId: null }],
+			swapReason: null,
+		});
+		expect(reconciliationCreatePayload.parse(fields)).toEqual(fields);
+	});
+
+	test("reconciliação com troca e lote passa no schema", () => {
+		const withLot = reconciliationFields(
+			withSwapReason(
+				withSwap(
+					draft,
+					0,
+					{
+						baseUnit: "m",
+						displayPrecision: 2,
+						id: lining,
+						label: "Forro · Bege",
+						tracksLots: true,
+					},
+					[
+						{
+							baseUnit: "m",
+							displayPrecision: 2,
+							points: [
+								{
+									locationId: shelf,
+									locationName: "Prateleira",
+									lotCreatedAt: "2026-09-01T12:00:00.000Z",
+									lotId: lot,
+									lotLabel: "Rolo 1",
+									quantityMicros: "5000000",
+									valueCents: "10000",
+								},
+							],
+							referenceCostCents: null,
+							tracksLots: true,
+							variantId: lining,
+						},
+					],
+					uuid
+				),
+				0,
+				"Crepe acabou"
+			),
+			itemId
+		);
+		expect(withLot.lines[0]).toMatchObject({
+			parts: [{ locationId: shelf, lotId: lot, quantityMicros: "3400000" }],
+			swapReason: "Crepe acabou",
+			variantId: lining,
+		});
+		expect(reconciliationCreatePayload.parse(withLot)).toEqual(withLot);
+	});
+
+	test("estorno da reconciliação passa no schema", () => {
+		const fields = reverseReconciliationFields({
+			movementIds: [uuid(), uuid()],
+			occurredOn: "2026-09-25",
+			reason: " Lançado errado ",
+			reconciliationId: uuid(),
+		});
+		expect(reconciliationReversePayload.parse(fields)).toEqual(fields);
 	});
 });

@@ -22,8 +22,11 @@ import {
 	financialSummary,
 	itemMaterials,
 	listProductionSummary,
+	materialCostRows,
 	productionSummary,
+	type ReconciliationView,
 	receivableLabel,
+	reconciledRows,
 	type ServiceOrderDetailView,
 	type ServiceOrderItemView,
 	type ServiceOrderListItemView,
@@ -44,6 +47,7 @@ function sequence(start: number): () => string {
 const maria = id(50);
 const crepe = id(81);
 const zipper = id(89);
+const lining = id(90);
 
 const cut = "c0000000-0000-4000-8000-000000000001";
 const assembly = "c0000000-0000-4000-8000-000000000002";
@@ -501,6 +505,8 @@ function detailOf(
 			measurements: [],
 			position,
 			productionStatus: "notStarted",
+			reconciled: false,
+			reconciliation: null,
 			reservations:
 				position === 1
 					? [
@@ -719,6 +725,12 @@ describe("resumo de produção da OS", () => {
 		).toEqual({ text: "em produção · 1 atrasado · bloqueado", tone: "danger" });
 		expect(
 			productionSummary(
+				[serviceItem, { ...pieceItem, reconciled: true }, materialItem],
+				today
+			)
+		).toEqual({ text: "não iniciada", tone: "default" });
+		expect(
+			productionSummary(
 				[ready({ ...serviceItem, ...late }), ready(pieceItem)],
 				today
 			)
@@ -754,5 +766,202 @@ describe("resumo de produção na lista de OS", () => {
 		expect(
 			listProductionSummary({ ...order, itemCount: 1, productionCount: 0 })
 		).toBe("sem produção");
+	});
+});
+
+function part(
+	n: number,
+	quantityMicros: string,
+	valueCents: string,
+	provisional: [string, string] = ["0", "0"]
+): ReconciliationView["lines"][number]["parts"][number] {
+	return {
+		locationId: id(30 + n),
+		locationName: `Local ${n}`,
+		lotId: null,
+		lotLabel: null,
+		movementId: id(1000 + n),
+		provisionalCents: provisional[1],
+		provisionalMicros: provisional[0],
+		quantityMicros,
+		valueCents,
+	};
+}
+
+const swapped: ReconciliationView = {
+	id: id(950),
+	lines: [
+		{
+			baseUnit: "m",
+			consumedMicros: "3000000",
+			displayPrecision: 2,
+			lostMicros: "200000",
+			materialName: "Forro",
+			parts: [part(1, "1000000", "2000"), part(2, "2200000", "4400")],
+			plannedCostCents: "10200",
+			plannedMicros: "3400000",
+			plannedVariantId: crepe,
+			swapReason: "Crepe acabou",
+			variantId: lining,
+			variantName: "Bege",
+		},
+		{
+			baseUnit: "un",
+			consumedMicros: "2000000",
+			displayPrecision: 0,
+			lostMicros: "0",
+			materialName: "Zíper",
+			parts: [part(3, "2000000", "740")],
+			plannedCostCents: "370",
+			plannedMicros: "1000000",
+			plannedVariantId: zipper,
+			swapReason: null,
+			variantId: zipper,
+			variantName: "20 cm",
+		},
+	],
+	note: null,
+	occurredOn: "2026-09-25",
+};
+
+const withProvisional: ReconciliationView = {
+	id: id(951),
+	lines: [
+		{
+			baseUnit: "m",
+			consumedMicros: "3400000",
+			displayPrecision: 2,
+			lostMicros: "0",
+			materialName: "Crepe",
+			parts: [part(4, "3400000", "10200", ["900000", "2700"])],
+			plannedCostCents: null,
+			plannedMicros: "3400000",
+			plannedVariantId: crepe,
+			swapReason: null,
+			variantId: crepe,
+			variantName: "Preto",
+		},
+		{
+			baseUnit: "un",
+			consumedMicros: "1000000",
+			displayPrecision: 0,
+			lostMicros: "0",
+			materialName: "Zíper",
+			parts: [part(5, "1000000", "370")],
+			plannedCostCents: "370",
+			plannedMicros: "1000000",
+			plannedVariantId: zipper,
+			swapReason: null,
+			variantId: zipper,
+			variantName: "20 cm",
+		},
+	],
+	note: null,
+	occurredOn: "2026-09-25",
+};
+
+describe("subitem reconciliado", () => {
+	const [serviceItem, pieceItem] = detailOf().items as [
+		ServiceOrderItemView,
+		ServiceOrderItemView,
+	];
+	const reconciled: ServiceOrderItemView = {
+		...pieceItem,
+		productionStatus: "ready",
+		reconciled: true,
+		reconciliation: swapped,
+		stageIds: [finishing],
+	};
+
+	test("materiais do reconciliado sem falta, com o reservado", () => {
+		expect(
+			itemMaterials({ ...pieceItem, reconciled: true }).map((row) => [
+				row.label,
+				row.reservedMicros,
+				row.shortageMicros,
+			])
+		).toEqual([
+			["Crepe · Preto", 1_500_000n, 0n],
+			["Zíper · 20 cm", 1_000_000n, 0n],
+		]);
+	});
+
+	test("linhas com sobra, a mais e troca", () => {
+		expect(reconciledRows(reconciled)).toEqual([
+			{
+				consumed: "3,00 m",
+				extra: null,
+				label: "Forro · Bege",
+				leftover: "0,20 m",
+				lost: "0,20 m",
+				planned: "3,40 m",
+				swap: "Crepe Preto → Forro Bege · Crepe acabou",
+			},
+			{
+				consumed: "2 un",
+				extra: "1 un",
+				label: "Zíper · 20 cm",
+				leftover: "0 un",
+				lost: "0 un",
+				planned: "1 un",
+				swap: null,
+			},
+		]);
+		expect(reconciledRows(pieceItem)).toEqual([]);
+	});
+
+	test("custo previsto contra o real por material, com provisório", () => {
+		expect(materialCostRows([serviceItem, reconciled])).toEqual({
+			plannedTotal: 10_570n,
+			realTotal: 7140n,
+			rows: [
+				{
+					label: "Forro · Bege",
+					plannedCents: 10_200n,
+					provisional: false,
+					realCents: 6400n,
+				},
+				{
+					label: "Zíper · 20 cm",
+					plannedCents: 370n,
+					provisional: false,
+					realCents: 740n,
+				},
+			],
+		});
+		expect(
+			materialCostRows([
+				reconciled,
+				{ ...pieceItem, reconciled: true, reconciliation: withProvisional },
+			])
+		).toEqual({
+			plannedTotal: null,
+			realTotal: 17_710n,
+			rows: [
+				{
+					label: "Forro · Bege",
+					plannedCents: 10_200n,
+					provisional: false,
+					realCents: 6400n,
+				},
+				{
+					label: "Zíper · 20 cm",
+					plannedCents: 740n,
+					provisional: false,
+					realCents: 1110n,
+				},
+				{
+					label: "Crepe · Preto",
+					plannedCents: null,
+					provisional: true,
+					realCents: 10_200n,
+				},
+			],
+		});
+		expect(materialCostRows([serviceItem, pieceItem])).toEqual({
+			plannedTotal: 0n,
+			realTotal: 0n,
+			rows: [],
+		});
 	});
 });

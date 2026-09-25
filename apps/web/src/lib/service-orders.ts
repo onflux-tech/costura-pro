@@ -1,6 +1,7 @@
 import { type Pricing, pricingOf } from "@costura-pro/domain/pricing";
 import type { ProductionStatus } from "@costura-pro/domain/production";
 import { quoteLineOfText } from "@costura-pro/domain/quote";
+import { reconciliationOutcome } from "@costura-pro/domain/reconciliation";
 import { planReservations } from "@costura-pro/domain/reservation";
 import {
 	type ApprovalChannel,
@@ -32,6 +33,7 @@ import {
 	type QuoteDetailView,
 	type QuoteRevisionView,
 } from "./quotes";
+import { pointQuantity } from "./stock";
 
 export const approvalChannelLabels: Record<ApprovalChannel, string> = {
 	email: "E-mail",
@@ -377,6 +379,40 @@ export function approvalFields({
 	};
 }
 
+export type ReconciliationPartView = {
+	locationId: string;
+	locationName: string;
+	lotId: string | null;
+	lotLabel: string | null;
+	movementId: string;
+	provisionalCents: string;
+	provisionalMicros: string;
+	quantityMicros: string;
+	valueCents: string;
+};
+
+export type ReconciliationLineView = {
+	baseUnit: BaseUnitCode;
+	consumedMicros: string;
+	displayPrecision: number;
+	lostMicros: string;
+	materialName: string;
+	parts: ReconciliationPartView[];
+	plannedCostCents: string | null;
+	plannedMicros: string;
+	plannedVariantId: string;
+	swapReason: string | null;
+	variantId: string;
+	variantName: string;
+};
+
+export type ReconciliationView = {
+	id: string;
+	lines: ReconciliationLineView[];
+	note: string | null;
+	occurredOn: string;
+};
+
 export type ServiceOrderItemView = {
 	createdAt: string;
 	dueOn: string | null;
@@ -387,6 +423,8 @@ export type ServiceOrderItemView = {
 	measurements: MeasurementSnapshotView[];
 	position: number;
 	productionStatus: ProductionStatus;
+	reconciled: boolean;
+	reconciliation: ReconciliationView | null;
 	reservations: { reservedMicros: string; variantId: string }[];
 	serviceOrderId: string;
 	stageId: string | null;
@@ -466,7 +504,7 @@ export type ServiceOrderListItemView = {
 };
 
 export function itemMaterials(
-	item: Pick<ServiceOrderItemView, "line" | "reservations">
+	item: Pick<ServiceOrderItemView, "line" | "reconciled" | "reservations">
 ): MaterialRowView[] {
 	const reserved = new Map(
 		item.reservations.map((row) => [row.variantId, BigInt(row.reservedMicros)])
@@ -478,10 +516,122 @@ export function itemMaterials(
 			...citation(item.line, material.variantId),
 			plannedMicros: material.quantityMicros,
 			reservedMicros,
-			shortageMicros: shortageMicros > 0n ? shortageMicros : 0n,
+			shortageMicros:
+				shortageMicros > 0n && !item.reconciled ? shortageMicros : 0n,
 			variantId: material.variantId,
 		};
 	});
+}
+
+export type ReconciledRow = {
+	consumed: string;
+	extra: string | null;
+	label: string;
+	leftover: string;
+	lost: string;
+	planned: string;
+	swap: string | null;
+};
+
+function plannedName(line: WorkLineView, variantId: string): string {
+	const component =
+		line.kind === "custom"
+			? line.components.find(
+					(item) =>
+						item.kind === "material" && item.materialVariantId === variantId
+				)
+			: undefined;
+	return component?.kind === "material"
+		? `${component.materialName} ${component.variantName}`
+		: variantId;
+}
+
+export function reconciledRows(
+	item: Pick<ServiceOrderItemView, "line" | "reconciliation">
+): ReconciledRow[] {
+	return (item.reconciliation?.lines ?? []).map((row) => {
+		const quantity = (micros: bigint) =>
+			pointQuantity(micros.toString(), row.baseUnit, row.displayPrecision);
+		const outcome = reconciliationOutcome(
+			BigInt(row.plannedMicros),
+			BigInt(row.consumedMicros),
+			BigInt(row.lostMicros)
+		);
+		return {
+			consumed: quantity(BigInt(row.consumedMicros)),
+			extra: outcome.extraMicros > 0n ? quantity(outcome.extraMicros) : null,
+			label: `${row.materialName} · ${row.variantName}`,
+			leftover: quantity(outcome.leftoverMicros),
+			lost: quantity(BigInt(row.lostMicros)),
+			planned: quantity(BigInt(row.plannedMicros)),
+			swap:
+				row.swapReason === null
+					? null
+					: `${plannedName(item.line, row.plannedVariantId)} → ${row.materialName} ${row.variantName} · ${row.swapReason}`,
+		};
+	});
+}
+
+export type MaterialCostRow = {
+	label: string;
+	plannedCents: bigint | null;
+	provisional: boolean;
+	realCents: bigint;
+};
+
+export type MaterialCosts = {
+	plannedTotal: bigint | null;
+	realTotal: bigint;
+	rows: MaterialCostRow[];
+};
+
+function addCents(left: bigint | null, right: bigint | null): bigint | null {
+	return left === null || right === null ? null : left + right;
+}
+
+export function materialCostRows(
+	items: readonly Pick<ServiceOrderItemView, "reconciliation">[]
+): MaterialCosts {
+	const rows = new Map<string, MaterialCostRow>();
+	for (const line of items.flatMap(
+		(item) => item.reconciliation?.lines ?? []
+	)) {
+		const planned =
+			line.plannedCostCents === null ? null : BigInt(line.plannedCostCents);
+		const real = line.parts.reduce(
+			(total, part) => total + BigInt(part.valueCents),
+			0n
+		);
+		const provisional = line.parts.some(
+			(part) => BigInt(part.provisionalMicros) > 0n
+		);
+		const current = rows.get(line.variantId);
+		rows.set(
+			line.variantId,
+			current === undefined
+				? {
+						label: `${line.materialName} · ${line.variantName}`,
+						plannedCents: planned,
+						provisional,
+						realCents: real,
+					}
+				: {
+						label: current.label,
+						plannedCents: addCents(current.plannedCents, planned),
+						provisional: current.provisional || provisional,
+						realCents: current.realCents + real,
+					}
+		);
+	}
+	const list = [...rows.values()];
+	return {
+		plannedTotal: list.reduce<bigint | null>(
+			(total, row) => addCents(total, row.plannedCents),
+			0n
+		),
+		realTotal: list.reduce((total, row) => total + row.realCents, 0n),
+		rows: list,
+	};
 }
 
 export function subitemsLabel(count: number): string {
@@ -531,7 +681,12 @@ function productionStage(counts: {
 export function productionSummary(
 	items: readonly Pick<
 		ServiceOrderItemView,
-		"dueOn" | "kind" | "line" | "productionStatus" | "reservations"
+		| "dueOn"
+		| "kind"
+		| "line"
+		| "productionStatus"
+		| "reconciled"
+		| "reservations"
 	>[],
 	today: string
 ): { text: string; tone: "danger" | "default" | "success" } {

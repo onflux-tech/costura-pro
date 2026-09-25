@@ -177,6 +177,7 @@ function card(
 		line: serviceLine,
 		position: 0,
 		productionStatus: "notStarted",
+		reconciled: false,
 		reservations: [],
 		serviceOrderId: id(600),
 		stageId: null,
@@ -549,6 +550,7 @@ describe("produção do subitem", () => {
 					kind: "material",
 					line: materialLine,
 					productionStatus: "notStarted",
+					reconciled: false,
 					stageId: null,
 					stageIds: null,
 				},
@@ -602,7 +604,7 @@ describe("produção do subitem", () => {
 		});
 	});
 
-	test("na última etapa, pronto sem material e barrado com material", () => {
+	test("na última etapa, pronto sem material e reconciliação com material", () => {
 		const service = itemProduction(
 			card(1, {
 				productionStatus: "inProgress",
@@ -624,9 +626,23 @@ describe("produção do subitem", () => {
 			}),
 			v1
 		);
-		expect(piece.next).toEqual({ kind: "blocked" });
+		expect(piece.next).toEqual({ kind: "reconcile" });
 		expect(piece.label).toBe("Acabamento");
 		expect(piece.back).toBe(true);
+		expect(
+			itemProduction(
+				card(2, {
+					kind: "custom",
+					line: pieceLine,
+					productionStatus: "inProgress",
+					reconciled: true,
+					reservations: fullReservations,
+					stageId: finishing,
+					stageIds: [cut, assembly, finishing],
+				}),
+				v1
+			).next
+		).toEqual({ kind: "ready" });
 	});
 
 	test("pronto marca a última posição da trilha e só volta", () => {
@@ -738,10 +754,19 @@ describe("atraso e bloqueio", () => {
 				kind: "material",
 				line: materialLine,
 				productionStatus: "notStarted",
+				reconciled: false,
 				reservations: [],
 			})
 		).toBeNull();
 		expect(productionBlocked(card(1))).toBeNull();
+		expect(productionBlocked({ ...piece, reconciled: true })).toBeNull();
+		expect(
+			productionBlocked({
+				...piece,
+				productionStatus: "inProgress",
+				reconciled: true,
+			})
+		).toBeNull();
 	});
 });
 
@@ -934,7 +959,7 @@ describe("próxima ação do subitem", () => {
 
 	function domainNext(next: ProductionState | null): ProductionAction {
 		if (next === null) {
-			return { kind: "blocked" };
+			return { kind: "reconcile" };
 		}
 		return next.stageId === null
 			? { kind: "ready" }

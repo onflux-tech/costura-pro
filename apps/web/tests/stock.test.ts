@@ -8,6 +8,7 @@ import {
 	balanceValue,
 	locationFormErrors,
 	lotFormErrors,
+	movementAction,
 	movementKindLabel,
 	movementQuantity,
 	openingValueCents,
@@ -150,6 +151,7 @@ describe("movementKindLabel", () => {
 		expect(movementKindLabel("transferIn")).toBe("Transferência (entrada)");
 		expect(movementKindLabel("reversal")).toBe("Estorno");
 		expect(movementKindLabel("inventory")).toBe("Inventário");
+		expect(movementKindLabel("consumption")).toBe("Consumo");
 	});
 });
 
@@ -198,5 +200,44 @@ describe("reservado e disponível", () => {
 			short: false,
 		});
 		expect(reservationNote({ ...crepe, reservedMicros: "0" }, true)).toBeNull();
+	});
+});
+
+describe("movementAction", () => {
+	const plain = {
+		kind: "adjustment" as const,
+		purchaseId: null,
+		reversedByMovementId: null,
+		serviceOrderId: null,
+	};
+
+	test("compra e reconciliação levam à origem, mesmo estornadas", () => {
+		expect(
+			movementAction({ ...plain, kind: "purchase", purchaseId: "c1" })
+		).toEqual({ id: "c1", kind: "purchase" });
+		expect(
+			movementAction({ ...plain, kind: "consumption", serviceOrderId: "os1" })
+		).toEqual({ id: "os1", kind: "serviceOrder" });
+		expect(
+			movementAction({
+				...plain,
+				kind: "consumption",
+				reversedByMovementId: "m2",
+				serviceOrderId: "os1",
+			})
+		).toEqual({ id: "os1", kind: "serviceOrder" });
+		expect(
+			movementAction({ ...plain, kind: "reversal", serviceOrderId: "os1" })
+		).toEqual({ id: "os1", kind: "serviceOrder" });
+	});
+
+	test("estornado e estorno não têm ação, o ajuste se estorna", () => {
+		expect(movementAction({ ...plain, reversedByMovementId: "m2" })).toEqual({
+			kind: "none",
+		});
+		expect(movementAction({ ...plain, kind: "reversal" })).toEqual({
+			kind: "none",
+		});
+		expect(movementAction(plain)).toEqual({ kind: "reverse" });
 	});
 });

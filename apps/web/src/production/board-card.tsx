@@ -149,9 +149,9 @@ export function BoardCard({
 					)}
 				</div>
 			) : null}
-			{view.next.kind === "blocked" ? (
+			{view.next.kind === "reconcile" ? (
 				<Text size="xs" tone="warning">
-					Pronto espera a reconciliação.
+					Reconcilie os materiais para marcar pronto.
 				</Text>
 			) : null}
 			<div className="flex flex-wrap gap-2 empty:hidden">

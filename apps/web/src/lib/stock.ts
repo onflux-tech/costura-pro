@@ -379,3 +379,26 @@ export function movementQuantity(
 	const sign = value < 0n ? "" : "+";
 	return `${sign}${pointQuantity(micros, unit, precision)}`;
 }
+
+export type MovementAction =
+	| { id: string; kind: "purchase" }
+	| { id: string; kind: "serviceOrder" }
+	| { kind: "none" }
+	| { kind: "reverse" };
+
+export function movementAction(movement: {
+	kind: StockMovementKind;
+	purchaseId: string | null;
+	reversedByMovementId: string | null;
+	serviceOrderId: string | null;
+}): MovementAction {
+	if (movement.purchaseId !== null) {
+		return { id: movement.purchaseId, kind: "purchase" };
+	}
+	if (movement.serviceOrderId !== null) {
+		return { id: movement.serviceOrderId, kind: "serviceOrder" };
+	}
+	return movement.reversedByMovementId !== null || movement.kind === "reversal"
+		? { kind: "none" }
+		: { kind: "reverse" };
+}
