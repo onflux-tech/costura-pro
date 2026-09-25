@@ -332,7 +332,7 @@ Cada spike responde uma pergunta que muda o desenho antes de construir em cima d
 
 **Pendente:**
 - PDF da revisão (A4 e 80 mm) com o preço por linha ou o total agrupado (RF-COM-02).
-- Revisão comercial com nova aprovação lançando só a diferença, cancelamento e liquidação, ajuste de custo na compra que cobre um ponto negativo (com a lista de compras), consumo do subitem de material (com a entrega), entrega parcial e comprovante, recebíveis com parcelas e pagamentos, encerramento da OS, lista de compras consolidada, documentos, agenda com o calendário de prazos e custódia.
+- Revisão comercial com nova aprovação lançando só a diferença, cancelamento e liquidação, ajuste de custo na compra que cobre um ponto negativo e da transferência que sai de ponto sem custo médio (com a lista de compras), consumo do subitem de material (com a entrega), entrega parcial e comprovante, recebíveis com parcelas e pagamentos, encerramento da OS, lista de compras consolidada, documentos, agenda com o calendário de prazos e custódia.
 - Redação de OS encerrada e de documento emitido na anonimização, decidida quando o encerramento existir.
 - Produto acabado como linha do orçamento, com o saldo de acabado (F5).
 
