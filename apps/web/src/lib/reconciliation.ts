@@ -647,25 +647,35 @@ function exitLabel(
 	index: number,
 	labels: ExitLabels
 ): string {
+	const position = `Saída ${index + 1}`;
 	const location =
 		part === undefined ? undefined : labels.locations.get(part.locationId);
 	if (part === undefined || location === undefined) {
-		return `Saída ${index + 1}`;
+		return position;
 	}
 	const lot = part.lotId === null ? undefined : labels.lots.get(part.lotId);
-	return lot === undefined ? location : `${location} · lote ${lot}`;
+	return lot === undefined
+		? `${position} · ${location}`
+		: `${position} · ${location} · lote ${lot}`;
 }
+
+export type ProvisionalNotice = { key: string; text: string };
 
 export function provisionalTexts(
 	line: LineDraft,
 	preview: LinePreview,
 	labels: ExitLabels
-): string[] {
+): ProvisionalNotice[] {
 	return preview.provisional.map((exit) => {
+		const part = line.parts[exit.part];
 		const text = provisionalText(line, exit);
-		return line.parts.length > 1
-			? `${exitLabel(line.parts[exit.part], exit.part, labels)}: ${text}`
-			: text;
+		return {
+			key: part?.movementId ?? String(exit.part),
+			text:
+				line.parts.length > 1
+					? `${exitLabel(part, exit.part, labels)}: ${text}`
+					: text,
+		};
 	});
 }
 

@@ -12,6 +12,7 @@ import {
 	type LineDraft,
 	type LinePreview,
 	lineOutcomeText,
+	type PartDraft,
 	provisionalTexts,
 	type ReconciliationDraft,
 	reconcileCommandFailure,
@@ -241,6 +242,46 @@ function previewOf(
 		throw new Error("prévia ausente");
 	}
 	return preview;
+}
+
+const button = id(91);
+const otherCloset = id(34);
+
+const zipperVariant: LineDraft["variant"] = {
+	baseUnit: "un",
+	displayPrecision: 0,
+	id: zipper,
+	label: "Zíper · 20 cm",
+	tracksLots: false,
+};
+
+const unstocked: VariantPointsView[] = [
+	{ ...crepePoints, points: [] },
+	{ ...zipperPoints, points: [] },
+];
+
+const closetAndShelf: VariantPointsView = {
+	...crepePoints,
+	points: [
+		{
+			...(crepePoints.points[0] as VariantPointsView["points"][number]),
+			quantityMicros: "2000000",
+			valueCents: "5000",
+		},
+		{
+			locationId: shelf,
+			locationName: "Prateleira",
+			lotCreatedAt: null,
+			lotId: null,
+			lotLabel: null,
+			quantityMicros: "100000",
+			valueCents: "-700",
+		},
+	],
+};
+
+function noticeTexts(notices: readonly { text: string }[]): string[] {
+	return notices.map((notice) => notice.text);
 }
 
 function line(draft: ReconciliationDraft, index = 0): LineDraft {
@@ -1298,28 +1339,180 @@ describe("textos do diálogo de reconciliação", () => {
 
 	test("aviso de ponto negativo pela média, pela referência e sem custo", () => {
 		const crepeLine = line(freshDraft());
+		const [part] = crepeLine.parts;
 		expect(
 			provisionalTexts(crepeLine, previewOf(crepeLine, crepePoints), labels)
 		).toEqual([
-			"Fica negativo em 0,90 m: custo provisório R$ 30,00/m (média do ponto)",
+			{
+				key: part?.movementId ?? "",
+				text: "Fica negativo em 0,90 m: custo provisório R$ 30,00/m (média do ponto)",
+			},
 		]);
 		const empty = { ...crepePoints, points: [] };
 		expect(
-			provisionalTexts(crepeLine, previewOf(crepeLine, empty), labels)
+			noticeTexts(
+				provisionalTexts(crepeLine, previewOf(crepeLine, empty), labels)
+			)
 		).toEqual([
 			"Fica negativo em 3,40 m: custo provisório R$ 30,00/m (custo de referência)",
 		]);
 		expect(
-			provisionalTexts(
-				crepeLine,
-				previewOf(crepeLine, { ...empty, referenceCostCents: null }),
-				labels
+			noticeTexts(
+				provisionalTexts(
+					crepeLine,
+					previewOf(crepeLine, { ...empty, referenceCostCents: null }),
+					labels
+				)
 			)
 		).toEqual(["Fica negativo em 3,40 m: sem custo"]);
 		const zipperLine = line(freshDraft(), 1);
 		expect(
 			provisionalTexts(zipperLine, previewOf(zipperLine, zipperPoints), labels)
 		).toEqual([]);
+	});
+
+	test("cada linha usa a referência da própria variante", () => {
+		const draft = withSwapReason(
+			withSwap(
+				reconciliationDraftOf(
+					[
+						rows[0] as MaterialRowView,
+						{
+							baseUnit: "un",
+							displayPrecision: 0,
+							label: "Botão · Preto",
+							plannedMicros: 1_000_000n,
+							reservedMicros: 0n,
+							shortageMicros: 1_000_000n,
+							variantId: button,
+						},
+					],
+					unstocked,
+					"2026-09-25",
+					sequence(500)
+				),
+				1,
+				zipperVariant,
+				unstocked,
+				sequence(600)
+			),
+			1,
+			"Botão acabou"
+		);
+		const previews = reconciliationPreview(draft, unstocked);
+		expect(
+			noticeTexts(
+				provisionalTexts(line(draft), previews[0] as LinePreview, labels)
+			)
+		).toEqual([
+			"Fica negativo em 3,40 m: custo provisório R$ 30,00/m (custo de referência)",
+		]);
+		expect(
+			noticeTexts(
+				provisionalTexts(line(draft, 1), previews[1] as LinePreview, labels)
+			)
+		).toEqual([
+			"Fica negativo em 1 un: custo provisório R$ 3,70/un (custo de referência)",
+		]);
+	});
+
+	test("o aviso de cada saída cita a saída que ficou provisória", () => {
+		const crepeLine: LineDraft = {
+			...line(freshDraft()),
+			consumed: "2,50",
+			parts: [
+				{
+					locationId: closet,
+					lotId: null,
+					movementId: id(701),
+					quantity: "2,00",
+				},
+				{
+					locationId: shelf,
+					lotId: null,
+					movementId: id(702),
+					quantity: "0,50",
+				},
+			],
+		};
+		expect(
+			provisionalTexts(crepeLine, previewOf(crepeLine, closetAndShelf), labels)
+		).toEqual([
+			{
+				key: id(702),
+				text: "Saída 2 · Prateleira: Ponto sem custo médio: 0,50 m a custo provisório R$ 30,00/m (custo de referência)",
+			},
+		]);
+		const firstInvalid: LineDraft = {
+			...crepeLine,
+			parts: [
+				{ ...(crepeLine.parts[0] as PartDraft), quantity: "" },
+				crepeLine.parts[1] as PartDraft,
+			],
+		};
+		expect(
+			provisionalTexts(
+				firstInvalid,
+				previewOf(firstInvalid, closetAndShelf),
+				labels
+			)
+		).toEqual([
+			{
+				key: id(702),
+				text: "Saída 2 · Prateleira: Ponto sem custo médio: 0,50 m a custo provisório R$ 30,00/m (custo de referência)",
+			},
+		]);
+	});
+
+	test("dois locais com o mesmo nome saem com chave e número próprios", () => {
+		const crepeLine: LineDraft = {
+			...line(freshDraft()),
+			consumed: "0,20",
+			parts: [
+				{
+					locationId: closet,
+					lotId: null,
+					movementId: id(701),
+					quantity: "0,10",
+				},
+				{
+					locationId: otherCloset,
+					lotId: null,
+					movementId: id(702),
+					quantity: "0,10",
+				},
+			],
+		};
+		const twin: VariantPointsView = {
+			...crepePoints,
+			points: [
+				{
+					...(crepePoints.points[0] as VariantPointsView["points"][number]),
+					quantityMicros: "100000",
+					valueCents: "-700",
+				},
+				{
+					...(crepePoints.points[0] as VariantPointsView["points"][number]),
+					locationId: otherCloset,
+					quantityMicros: "100000",
+					valueCents: "-700",
+				},
+			],
+		};
+		const notices = provisionalTexts(crepeLine, previewOf(crepeLine, twin), {
+			...labels,
+			locations: new Map([...labels.locations, [otherCloset, "Armário"]]),
+		});
+		expect(notices).toEqual([
+			{
+				key: id(701),
+				text: "Saída 1 · Armário: Ponto sem custo médio: 0,10 m a custo provisório R$ 30,00/m (custo de referência)",
+			},
+			{
+				key: id(702),
+				text: "Saída 2 · Armário: Ponto sem custo médio: 0,10 m a custo provisório R$ 30,00/m (custo de referência)",
+			},
+		]);
 	});
 
 	test("aviso de ponto sem custo médio, com e sem referência", () => {
@@ -1335,15 +1528,19 @@ describe("textos do diálogo de reconciliação", () => {
 			],
 		};
 		expect(
-			provisionalTexts(crepeLine, previewOf(crepeLine, noAverage), labels)
+			noticeTexts(
+				provisionalTexts(crepeLine, previewOf(crepeLine, noAverage), labels)
+			)
 		).toEqual([
 			"Ponto sem custo médio: 3,40 m a custo provisório R$ 30,00/m (custo de referência)",
 		]);
 		expect(
-			provisionalTexts(
-				crepeLine,
-				previewOf(crepeLine, { ...noAverage, referenceCostCents: null }),
-				labels
+			noticeTexts(
+				provisionalTexts(
+					crepeLine,
+					previewOf(crepeLine, { ...noAverage, referenceCostCents: null }),
+					labels
+				)
 			)
 		).toEqual(["Ponto sem custo médio: 3,40 m sem custo"]);
 	});
@@ -1365,9 +1562,9 @@ describe("textos do diálogo de reconciliação", () => {
 			[shelf, "1,40"],
 		]);
 		const preview = previewOf(crepeLine, splitCrepePoints);
-		expect(provisionalTexts(crepeLine, preview, labels)).toEqual([
-			"Armário: Ponto sem custo médio: 0,10 m a custo provisório R$ 30,00/m (custo de referência)",
-			"Prateleira: Fica negativo em 0,40 m: custo provisório R$ 25,00/m (média do ponto)",
+		expect(noticeTexts(provisionalTexts(crepeLine, preview, labels))).toEqual([
+			"Saída 1 · Armário: Ponto sem custo médio: 0,10 m a custo provisório R$ 30,00/m (custo de referência)",
+			"Saída 2 · Prateleira: Fica negativo em 0,40 m: custo provisório R$ 25,00/m (média do ponto)",
 		]);
 		const lotted = {
 			...crepeLine,
@@ -1376,10 +1573,10 @@ describe("textos do diálogo de reconciliação", () => {
 			),
 		};
 		expect(
-			provisionalTexts(lotted, preview, labels).map(
+			noticeTexts(provisionalTexts(lotted, preview, labels)).map(
 				(text) => text.split(":")[0]
 			)
-		).toEqual(["Armário · lote Rolo 1", "Saída 2"]);
+		).toEqual(["Saída 1 · Armário · lote Rolo 1", "Saída 2"]);
 	});
 
 	test("troca só com a mesma unidade", () => {

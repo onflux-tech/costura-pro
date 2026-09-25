@@ -679,10 +679,21 @@ export function closingSteps({
 	items,
 	receivable,
 }: Pick<ServiceOrderDetailView, "items" | "receivable">): ClosingStep[] {
-	const work = items.length === 0 ? "done" : "pending";
+	const reconciled = items.every(
+		(item) =>
+			item.kind !== "custom" ||
+			item.reconciled ||
+			linePlannedMaterials(quoteLineOfText(item.line)).length === 0
+	);
 	return [
-		{ label: "Todos os subitens reconciliados", state: work },
-		{ label: "Todos entregues ou cancelados", state: work },
+		{
+			label: "Todos os subitens reconciliados",
+			state: reconciled ? "done" : "pending",
+		},
+		{
+			label: "Todos entregues ou cancelados",
+			state: items.length === 0 ? "done" : "pending",
+		},
 		{
 			label: "Financeiro resolvido",
 			state: receivable === null ? "done" : "pending",

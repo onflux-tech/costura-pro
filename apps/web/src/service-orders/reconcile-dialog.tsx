@@ -350,8 +350,8 @@ function OutParts({
 				</Text>
 			) : null}
 			{notices.map((notice) => (
-				<Text key={notice} size="xs" tone="warning">
-					{notice}
+				<Text key={notice.key} size="xs" tone="warning">
+					{notice.text}
 				</Text>
 			))}
 		</Fieldset>

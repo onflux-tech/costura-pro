@@ -359,16 +359,24 @@ function exitEstimate(
 	outcome: CountOutcome,
 	point: PointBalance | null
 ): bigint | null {
-	if (outcome.kind !== "shortage") {
+	if (
+		outcome.kind !== "shortage" ||
+		point === null ||
+		!hasAverageCost(BigInt(point.quantityMicros), BigInt(point.valueCents))
+	) {
 		return null;
 	}
-	return point
-		? exitValueCents(
-				BigInt(point.quantityMicros),
-				BigInt(point.valueCents),
-				-outcome.quantityMicros
-			)
-		: 0n;
+	return exitValueCents(
+		BigInt(point.quantityMicros),
+		BigInt(point.valueCents),
+		-outcome.quantityMicros
+	);
+}
+
+export function shortageValueText(line: ReviewLine): string {
+	return line.exitEstimateCents === null
+		? "Sai sem custo: o ponto não tem custo médio."
+		: `Sai pela média do ponto, cerca de R$ ${formatMoney(line.exitEstimateCents)}`;
 }
 
 function reviewLine(

@@ -24,6 +24,7 @@ import {
 	reviewOf,
 	serializeDraft,
 	sessionSummary,
+	shortageValueText,
 	startDraft,
 	surplusSuggestion,
 	surplusValueText,
@@ -394,6 +395,20 @@ describe("reviewOf", () => {
 		).toBe(false);
 	});
 
+	test("diz o valor da falta pela média e sem custo no ponto sem média", () => {
+		const averaged = byMaterial("Linha 120");
+		expect(averaged ? shortageValueText(averaged) : "").toBe(
+			"Sai pela média do ponto, cerca de R$ 4,00"
+		);
+		const [negative] = reviewOf(
+			withCount(base, draftPointOf(linhaPoint), "3", "4000000", "mov"),
+			[{ ...linhaPoint, quantityMicros: "4000000", valueCents: "-700" }]
+		).divergent;
+		expect(negative ? shortageValueText(negative) : "").toBe(
+			"Sai sem custo: o ponto não tem custo médio."
+		);
+	});
+
 	test("mantém a linha de um ponto que sumiu da lista, com saldo atual zero", () => {
 		const gone = reviewOf(
 			withCount(base, draftPointOf(linhaPoint), "3", "4000000", "mov"),
@@ -402,9 +417,13 @@ describe("reviewOf", () => {
 		expect(gone.divergent[0]).toMatchObject({
 			changedSinceCount: true,
 			currentMicros: 0n,
-			exitEstimateCents: 0n,
+			exitEstimateCents: null,
 			outcome: { kind: "shortage", quantityMicros: -1_000_000n },
 		});
+		const [line] = gone.divergent;
+		expect(line ? shortageValueText(line) : "").toBe(
+			"Sai sem custo: o ponto não tem custo médio."
+		);
 	});
 
 	test("mostra o valor digitado, senão a sugestão, senão vazio", () => {

@@ -16,7 +16,6 @@ import { NumberField } from "@costura-pro/ui/components/number-field";
 import { Text } from "@costura-pro/ui/components/typography";
 import { useState } from "react";
 
-import { moneyLabel } from "@/lib/finance";
 import {
 	type DraftPoint,
 	type FinalizeField,
@@ -24,6 +23,7 @@ import {
 	pointKey,
 	pointLabel,
 	type ReviewLine,
+	shortageValueText,
 	surplusValueText,
 	valueHint,
 } from "@/lib/inventory";
@@ -76,7 +76,7 @@ function ValueCell({
 	if (line.outcome.kind === "shortage") {
 		return (
 			<Text size="sm" tone="subtle">
-				{`Sai pela média do ponto, cerca de ${moneyLabel(line.exitEstimateCents ?? 0n)}`}
+				{shortageValueText(line)}
 			</Text>
 		);
 	}

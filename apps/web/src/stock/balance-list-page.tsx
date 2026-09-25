@@ -206,10 +206,10 @@ export function BalanceListPage() {
 						{items.map((item) => (
 							<DataListRow key={item.variantId}>
 								<DataListCell label="Variante">
-									<div className="flex flex-col gap-1">
-										<div className="flex flex-wrap items-center gap-2">
+									<div className="flex min-w-0 flex-col gap-1">
+										<div className="flex min-w-0 flex-wrap items-center gap-2">
 											<Button
-												className="h-auto min-h-11 justify-start whitespace-normal px-0 text-left font-semibold md:min-h-0"
+												className="h-auto min-h-11 min-w-0 shrink justify-start whitespace-normal break-words px-0 text-left font-semibold md:min-h-0"
 												onClick={() =>
 													setOpened(
 														opened === item.variantId ? null : item.variantId

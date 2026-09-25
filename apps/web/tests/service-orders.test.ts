@@ -642,6 +642,38 @@ describe("textos da lista e do encerramento da OS", () => {
 			closingSteps({ items: [], receivable: null }).map((step) => step.state)
 		).toEqual(["done", "done", "done"]);
 	});
+
+	test("reconciliação conta só as peças com material planejado", () => {
+		const [serviceItem, pieceItem, materialItem] = detailOf().items as [
+			ServiceOrderItemView,
+			ServiceOrderItemView,
+			ServiceOrderItemView,
+		];
+		const states = (items: ServiceOrderItemView[]) =>
+			closingSteps({ items, receivable: null }).map((step) => step.state);
+		expect(states([{ ...pieceItem, reconciled: true }])).toEqual([
+			"done",
+			"pending",
+			"done",
+		]);
+		expect(states([pieceItem])).toEqual(["pending", "pending", "done"]);
+		expect(
+			states([serviceItem, { ...pieceItem, reconciled: true }, materialItem])
+		).toEqual(["done", "pending", "done"]);
+		expect(states([serviceItem, materialItem])).toEqual([
+			"done",
+			"pending",
+			"done",
+		]);
+		const bare: ServiceOrderItemView = {
+			...pieceItem,
+			line: {
+				...pieceItem.line,
+				components: [],
+			} as ServiceOrderItemView["line"],
+		};
+		expect(states([bare])).toEqual(["done", "pending", "done"]);
+	});
 });
 
 describe("resumo de produção da OS", () => {
