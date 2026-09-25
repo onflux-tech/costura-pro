@@ -12,8 +12,9 @@ import {
 // Com este arquivo presente, o guard global do dono (~/.claude/hooks/bash-guard.js)
 // deixa de rodar neste repositório; por isso as regras dele estão todas aqui.
 // Início de comando: prefixos de shell que não mudam o que roda (laço, env, npx e afins).
-const LEAD =
-	"^\\s*(?:\\(\\s*)?(?:(?:do|then|else|time)\\s+)?(?:\\w+=\\S*\\s+)*(?:(?:npx|bunx|pnpm\\s+(?:exec|dlx)|yarn\\s+dlx)\\s+)?";
+const SHELL_VALUE = "(?:[^\\s\"']|\"[^\"]*\"|'[^']*')+";
+const SHELL_START = "^\\s*(?:\\(\\s*)?(?:(?:do|then|else|time)\\s+)?";
+const LEAD = `${SHELL_START}(?:\\w+=${SHELL_VALUE}?\\s+)*(?:(?:npx|bunx|pnpm\\s+(?:exec|dlx)|yarn\\s+dlx)\\s+)?`;
 const TEST_RUNNER = new RegExp(
 	`${LEAD}(?:(?:bun|pnpm|npm|yarn)\\b[^|]*?\\s(?:run\\s+)?(?:harness:)?test(?![\\w-])|turbo\\s+(?:run\\s+)?test\\b|node\\s+(?:[^|]*\\s)?--test\\b|vitest\\b|jest\\b)`,
 	"i"
@@ -101,6 +102,70 @@ const TRACEABILITY_MESSAGE =
 	"BLOQUEADO: mensagem de commit cita fase, spike, spec, plano ou ID de requisito, decisão ou questão. Descreva a mudança; a rastreabilidade fica nos docs curados.";
 const COMMENT_MESSAGE =
 	"BLOQUEADO: comentário novo em código. O código fica sem comentários; registre o porquê como armadilha no docs/HARNESS.md §8, na rule da área ou na SPEC.";
+
+export const IMPLEMENTER_ROLE = "implementer";
+const XARGS =
+	"(?:xargs(?:\\s+-\\S+(?:\\s+(?!git(?:\\s|$))[^\\s-]\\S*)?)*\\s+)?";
+const GIT_OPTIONS = `(?:\\s+-[Cc]\\s+${SHELL_VALUE}|\\s+--(?:git-dir|work-tree|namespace)\\s+${SHELL_VALUE}|\\s+--[\\w-]+(?:=${SHELL_VALUE})?)*`;
+const GIT_WRITE_SUBCOMMAND = [
+	"commit",
+	"add",
+	"stash",
+	"reset",
+	"checkout",
+	"switch",
+	"restore",
+	"clean",
+	"merge",
+	"rebase",
+	"cherry-pick",
+	"revert",
+	"push",
+	"pull",
+	"rm",
+	"mv",
+	"am",
+	"apply",
+	"update-index",
+	"bisect",
+	"update-ref",
+	"symbolic-ref",
+	"read-tree",
+	"checkout-index",
+	"worktree\\s+(?:add|remove|move|prune)",
+	"tag(?!(?:\\s+(?:-l|--list))*\\s*$)",
+	"branch(?=[^|]*?\\s(?:-[dmfc]|--(?:delete|move|force|copy))(?:\\s|$))",
+].join("|");
+const GIT_WRITE = new RegExp(
+	`${LEAD}${XARGS}git${GIT_OPTIONS}\\s+(?:${GIT_WRITE_SUBCOMMAND})(?![\\w-])`,
+	"i"
+);
+const DB_MIGRATE = new RegExp(
+	`${LEAD}(?:(?:bun|pnpm|npm|yarn|turbo)\\b[^|]*?\\s(?:run\\s+)?db:migrate\\b|drizzle-kit\\s+migrate\\b|(?:bun(?:\\s+run)?|node|tsx)\\s+["']?[^\\s|"']*migrate\\.ts["']?(?=\\s|$))`,
+	"i"
+);
+const DATABASE_FILE_PREFIX = new RegExp(
+	`${SHELL_START}(?:\\w+=${SHELL_VALUE}?\\s+)*DATABASE_FILE=(${SHELL_VALUE})\\s`
+);
+const DATABASE_FILE_EXPORT = {
+	Bash: new RegExp(`^\\s*export\\s+DATABASE_FILE=(${SHELL_VALUE})\\s*$`),
+	PowerShell: new RegExp(
+		`^\\s*\\$env:DATABASE_FILE\\s*=\\s*(${SHELL_VALUE})\\s*$`,
+		"i"
+	),
+};
+const ALL_QUOTES = /["']/g;
+const OWNER_DATABASE = /local\.db$/i;
+const ENV_FILE = /(?:^|\/)\.env(?:\.[^/]+)?$/;
+const ENV_TEMPLATE = /\.(?:schema|example)$/;
+const LOCAL_DB = /(?:^|\/)local\.db(?:-wal|-shm|-journal)?$/;
+const MEDIA = /^media\//;
+const GIT_WRITE_MESSAGE =
+	"BLOQUEADO: o implementer não muda índice, branch nem histórico do git; commits e branch são do agente principal.";
+const DB_MIGRATE_MESSAGE =
+	"BLOQUEADO: db:migrate do implementer só com DATABASE_FILE temporário no próprio comando; o banco do dono migra no /entrega-fechar.";
+const OWNER_DATA_MESSAGE =
+	"BLOQUEADO: o implementer não edita .env, banco local nem mídia do dono.";
 
 const countDashes = (text) => (String(text ?? "").match(DASH) ?? []).length;
 const countComments = (text) =>
@@ -194,6 +259,33 @@ function statementMessage(statement, root) {
 	return null;
 }
 
+const isTemporaryDatabase = (value) =>
+	Boolean(value) && !OWNER_DATABASE.test(value.replace(ALL_QUOTES, ""));
+
+function implementerCommandMessage(command, shell) {
+	let exported = null;
+	for (const statement of command.split(COMMAND_SEPARATOR)) {
+		for (const stage of statement.split("|")) {
+			if (GIT_WRITE.test(stage)) {
+				return GIT_WRITE_MESSAGE;
+			}
+			if (
+				DB_MIGRATE.test(stage) &&
+				!isTemporaryDatabase(stage.match(DATABASE_FILE_PREFIX)?.[1] ?? exported)
+			) {
+				return DB_MIGRATE_MESSAGE;
+			}
+		}
+		exported = statement.match(DATABASE_FILE_EXPORT[shell])?.[1] ?? exported;
+	}
+	return null;
+}
+
+const isOwnerData = (rel) =>
+	(ENV_FILE.test(rel) && !ENV_TEMPLATE.test(rel)) ||
+	LOCAL_DB.test(rel) ||
+	MEDIA.test(rel);
+
 function evaluateCommand(command, root) {
 	for (const statement of command.split(COMMAND_SEPARATOR)) {
 		const message = statementMessage(statement, root);
@@ -252,6 +344,9 @@ function evaluateFileChange(input, root) {
 	if (!rel) {
 		return null;
 	}
+	if (input.agent_type === IMPLEMENTER_ROLE && isOwnerData(rel)) {
+		return OWNER_DATA_MESSAGE;
+	}
 	if (GENERATED_PORT.test(rel)) {
 		return `BLOQUEADO: ${rel} é porta gerada do harness. Edite a fonte (.agents/agents, .agents/skills, .mcp.json ou scripts/harness.mjs) e rode pnpm harness:sync.`;
 	}
@@ -282,7 +377,14 @@ export function evaluate(input, options = {}) {
 		case "Bash":
 		case "PowerShell": {
 			const command = input.tool_input?.command;
-			return command ? evaluateCommand(command, root) : null;
+			if (!command) {
+				return null;
+			}
+			return (
+				(input.agent_type === IMPLEMENTER_ROLE
+					? implementerCommandMessage(command, input.tool_name)
+					: null) ?? evaluateCommand(command, root)
+			);
 		}
 		case "Edit":
 		case "MultiEdit":
