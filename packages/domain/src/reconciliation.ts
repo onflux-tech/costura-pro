@@ -88,7 +88,7 @@ export function hasAverageCost(
 	pointQuantityMicros: bigint,
 	pointValueCents: bigint
 ): boolean {
-	return pointQuantityMicros > 0n && pointValueCents > 0n;
+	return pointQuantityMicros > 0n && pointValueCents >= 0n;
 }
 
 export function consumptionPartValue(

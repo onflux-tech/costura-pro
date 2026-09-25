@@ -1,6 +1,10 @@
 import { describe, expect, test } from "bun:test";
 import { commandMessages } from "@costura-pro/api/command-messages";
-import { reconciliationLimits } from "@costura-pro/domain/reconciliation";
+import { multiplyHalfUp } from "@costura-pro/domain/quantity";
+import {
+	reconciliationLimits,
+	valueConsumptionParts,
+} from "@costura-pro/domain/reconciliation";
 import { ORPCError } from "@orpc/client";
 
 import {
@@ -8,9 +12,10 @@ import {
 	type LineDraft,
 	type LinePreview,
 	lineOutcomeText,
-	negativeText,
+	provisionalTexts,
 	type ReconciliationDraft,
 	reconcileCommandFailure,
+	reconcileDialogNotice,
 	reconcileSettlement,
 	reconciliationDraftOf,
 	reconciliationErrors,
@@ -33,7 +38,10 @@ import {
 	withSwap,
 	withSwapReason,
 } from "../src/lib/reconciliation";
-import { reconciliationDrafts } from "../src/lib/reconciliation-drafts";
+import {
+	reconciliationDrafts,
+	submitDraft,
+} from "../src/lib/reconciliation-drafts";
 import type { MaterialRowView } from "../src/lib/service-orders";
 
 const id = (n: number) =>
@@ -145,6 +153,38 @@ const liningPoints: VariantPointsView = {
 };
 
 const points = [crepePoints, zipperPoints, liningPoints];
+
+const splitCrepePoints: VariantPointsView = {
+	...crepePoints,
+	points: [
+		{
+			...(crepePoints.points[0] as VariantPointsView["points"][number]),
+			quantityMicros: "100000",
+			valueCents: "-700",
+		},
+		{
+			locationId: shelf,
+			locationName: "Prateleira",
+			lotCreatedAt: null,
+			lotId: null,
+			lotLabel: null,
+			quantityMicros: "1000000",
+			valueCents: "2500",
+		},
+	],
+};
+
+const labels = {
+	locations: new Map([
+		[closet, "Armário"],
+		[drawer, "Gaveta"],
+		[shelf, "Prateleira"],
+	]),
+	lots: new Map([
+		[oldLot, "Rolo 1"],
+		[newLot, "Rolo 2"],
+	]),
+};
 
 const liningVariant: LineDraft["variant"] = {
 	baseUnit: "m",
@@ -937,12 +977,15 @@ describe("prévia da linha", () => {
 		expect(previewOf(line(freshDraft()), crepePoints)).toEqual({
 			extraMicros: 0n,
 			leftoverMicros: 0n,
-			negative: {
-				kind: "overdraw",
-				micros: 900_000n,
-				source: "average",
-				unitCents: 3000n,
-			},
+			provisional: [
+				{
+					kind: "overdraw",
+					micros: 900_000n,
+					part: 0,
+					source: "average",
+					unitCents: 3000n,
+				},
+			],
 			valueCents: 10_200n,
 		});
 	});
@@ -952,12 +995,15 @@ describe("prévia da linha", () => {
 		expect(previewOf(line(freshDraft()), empty)).toEqual({
 			extraMicros: 0n,
 			leftoverMicros: 0n,
-			negative: {
-				kind: "overdraw",
-				micros: 3_400_000n,
-				source: "reference",
-				unitCents: 3000n,
-			},
+			provisional: [
+				{
+					kind: "overdraw",
+					micros: 3_400_000n,
+					part: 0,
+					source: "reference",
+					unitCents: 3000n,
+				},
+			],
 			valueCents: 10_200n,
 		});
 		expect(
@@ -965,20 +1011,26 @@ describe("prévia da linha", () => {
 		).toEqual({
 			extraMicros: 0n,
 			leftoverMicros: 0n,
-			negative: {
+			provisional: [
+				{
+					kind: "overdraw",
+					micros: 3_400_000n,
+					part: 0,
+					source: "none",
+					unitCents: null,
+				},
+			],
+			valueCents: 0n,
+		});
+		expect(previewOf(line(freshDraft()), undefined).provisional).toEqual([
+			{
 				kind: "overdraw",
 				micros: 3_400_000n,
+				part: 0,
 				source: "none",
 				unitCents: null,
 			},
-			valueCents: 0n,
-		});
-		expect(previewOf(line(freshDraft()), undefined).negative).toEqual({
-			kind: "overdraw",
-			micros: 3_400_000n,
-			source: "none",
-			unitCents: null,
-		});
+		]);
 	});
 
 	test("coberto pelo ponto não fica negativo, com sobra e a mais", () => {
@@ -993,7 +1045,7 @@ describe("prévia da linha", () => {
 		expect(previewOf(line(less), crepePoints)).toEqual({
 			extraMicros: 0n,
 			leftoverMicros: 1_400_000n,
-			negative: null,
+			provisional: [],
 			valueCents: 6000n,
 		});
 		const more = withQuantities(
@@ -1007,12 +1059,12 @@ describe("prévia da linha", () => {
 		expect(previewOf(line(more, 1), zipperPoints)).toEqual({
 			extraMicros: 1_000_000n,
 			leftoverMicros: 0n,
-			negative: null,
+			provisional: [],
 			valueCents: 740n,
 		});
 	});
 
-	test("ponto com quantidade e sem valor positivo usa a referência", () => {
+	test("ponto com quantidade e valor negativo usa a referência", () => {
 		const noValue: VariantPointsView = {
 			...crepePoints,
 			points: [
@@ -1026,13 +1078,112 @@ describe("prévia da linha", () => {
 		expect(previewOf(line(freshDraft()), noValue)).toEqual({
 			extraMicros: 0n,
 			leftoverMicros: 0n,
-			negative: {
-				kind: "noAverage",
-				micros: 3_400_000n,
-				source: "reference",
-				unitCents: 3000n,
-			},
+			provisional: [
+				{
+					kind: "noAverage",
+					micros: 3_400_000n,
+					part: 0,
+					source: "reference",
+					unitCents: 3000n,
+				},
+			],
 			valueCents: 10_200n,
+		});
+	});
+
+	test("ponto com valor zero tem média zero e não avisa", () => {
+		const gift: VariantPointsView = {
+			...crepePoints,
+			points: [
+				{
+					...(crepePoints.points[0] as VariantPointsView["points"][number]),
+					quantityMicros: "5000000",
+					valueCents: "0",
+				},
+			],
+		};
+		expect(previewOf(line(freshDraft()), gift)).toEqual({
+			extraMicros: 0n,
+			leftoverMicros: 0n,
+			provisional: [],
+			valueCents: 0n,
+		});
+	});
+
+	test("cada saída provisória da linha tem o próprio aviso, com os valores gravados", () => {
+		const crepeLine = line(
+			withQuantities(
+				freshDraft(),
+				0,
+				"1,50",
+				"0",
+				[splitCrepePoints, zipperPoints],
+				sequence(600)
+			)
+		);
+		expect(previewOf(crepeLine, splitCrepePoints)).toEqual({
+			extraMicros: 0n,
+			leftoverMicros: 1_900_000n,
+			provisional: [
+				{
+					kind: "noAverage",
+					micros: 100_000n,
+					part: 0,
+					source: "reference",
+					unitCents: 3000n,
+				},
+				{
+					kind: "overdraw",
+					micros: 400_000n,
+					part: 1,
+					source: "average",
+					unitCents: 2500n,
+				},
+			],
+			valueCents: 3800n,
+		});
+		const valued = valueConsumptionParts(
+			new Map([
+				["armario", { quantityMicros: 100_000n, valueCents: -700n }],
+				["prateleira", { quantityMicros: 1_000_000n, valueCents: 2500n }],
+			]),
+			[
+				{
+					pointKey: "armario",
+					quantityMicros: 100_000n,
+					referenceCostCents: 3000n,
+				},
+				{
+					pointKey: "prateleira",
+					quantityMicros: 1_400_000n,
+					referenceCostCents: 3000n,
+				},
+			]
+		);
+		expect(
+			valued.map((part) => [
+				part.provisionalMicros,
+				part.provisionalCents,
+				part.valueCents,
+			])
+		).toEqual([
+			[100_000n, multiplyHalfUp(100_000n, 3000n), 300n],
+			[400_000n, multiplyHalfUp(400_000n, 2500n), 3500n],
+		]);
+	});
+
+	test("saída com mais casas que a precisão da variante entra na prévia", () => {
+		const draft = withPart(
+			withQuantities(freshDraft(), 0, "0,125", "0", points, sequence(600)),
+			0,
+			0,
+			{ quantity: "0,125" }
+		);
+		expect(previewOf(line(draft), crepePoints)).toEqual({
+			extraMicros: 0n,
+			leftoverMicros: 3_275_000n,
+			provisional: [],
+			valueCents: 375n,
 		});
 	});
 
@@ -1068,18 +1219,21 @@ describe("prévia da linha", () => {
 			{
 				extraMicros: 0n,
 				leftoverMicros: 0n,
-				negative: null,
+				provisional: [],
 				valueCents: 6000n,
 			},
 			{
 				extraMicros: 0n,
 				leftoverMicros: 0n,
-				negative: {
-					kind: "overdraw",
-					micros: 500_000n,
-					source: "average",
-					unitCents: 3000n,
-				},
+				provisional: [
+					{
+						kind: "overdraw",
+						micros: 500_000n,
+						part: 0,
+						source: "average",
+						unitCents: 3000n,
+					},
+				],
 				valueCents: 3000n,
 			},
 		]);
@@ -1144,23 +1298,28 @@ describe("textos do diálogo de reconciliação", () => {
 
 	test("aviso de ponto negativo pela média, pela referência e sem custo", () => {
 		const crepeLine = line(freshDraft());
-		expect(negativeText(crepeLine, previewOf(crepeLine, crepePoints))).toBe(
-			"Fica negativo em 0,90 m: custo provisório R$ 30,00/m (média do ponto)"
-		);
-		const empty = { ...crepePoints, points: [] };
-		expect(negativeText(crepeLine, previewOf(crepeLine, empty))).toBe(
-			"Fica negativo em 3,40 m: custo provisório R$ 30,00/m (custo de referência)"
-		);
 		expect(
-			negativeText(
+			provisionalTexts(crepeLine, previewOf(crepeLine, crepePoints), labels)
+		).toEqual([
+			"Fica negativo em 0,90 m: custo provisório R$ 30,00/m (média do ponto)",
+		]);
+		const empty = { ...crepePoints, points: [] };
+		expect(
+			provisionalTexts(crepeLine, previewOf(crepeLine, empty), labels)
+		).toEqual([
+			"Fica negativo em 3,40 m: custo provisório R$ 30,00/m (custo de referência)",
+		]);
+		expect(
+			provisionalTexts(
 				crepeLine,
-				previewOf(crepeLine, { ...empty, referenceCostCents: null })
+				previewOf(crepeLine, { ...empty, referenceCostCents: null }),
+				labels
 			)
-		).toBe("Fica negativo em 3,40 m: sem custo");
+		).toEqual(["Fica negativo em 3,40 m: sem custo"]);
 		const zipperLine = line(freshDraft(), 1);
 		expect(
-			negativeText(zipperLine, previewOf(zipperLine, zipperPoints))
-		).toBeNull();
+			provisionalTexts(zipperLine, previewOf(zipperLine, zipperPoints), labels)
+		).toEqual([]);
 	});
 
 	test("aviso de ponto sem custo médio, com e sem referência", () => {
@@ -1171,19 +1330,56 @@ describe("textos do diálogo de reconciliação", () => {
 				{
 					...(crepePoints.points[0] as VariantPointsView["points"][number]),
 					quantityMicros: "100000",
-					valueCents: "0",
+					valueCents: "-700",
 				},
 			],
 		};
-		expect(negativeText(crepeLine, previewOf(crepeLine, noAverage))).toBe(
-			"Ponto sem custo médio: 3,40 m a custo provisório R$ 30,00/m (custo de referência)"
-		);
 		expect(
-			negativeText(
+			provisionalTexts(crepeLine, previewOf(crepeLine, noAverage), labels)
+		).toEqual([
+			"Ponto sem custo médio: 3,40 m a custo provisório R$ 30,00/m (custo de referência)",
+		]);
+		expect(
+			provisionalTexts(
 				crepeLine,
-				previewOf(crepeLine, { ...noAverage, referenceCostCents: null })
+				previewOf(crepeLine, { ...noAverage, referenceCostCents: null }),
+				labels
 			)
-		).toBe("Ponto sem custo médio: 3,40 m sem custo");
+		).toEqual(["Ponto sem custo médio: 3,40 m sem custo"]);
+	});
+
+	test("linha com várias saídas avisa cada saída provisória pelo local", () => {
+		const draft = withQuantities(
+			freshDraft(),
+			0,
+			"1,50",
+			"0",
+			[splitCrepePoints, zipperPoints],
+			sequence(600)
+		);
+		const crepeLine = line(draft);
+		expect(
+			crepeLine.parts.map((part) => [part.locationId, part.quantity])
+		).toEqual([
+			[closet, "0,10"],
+			[shelf, "1,40"],
+		]);
+		const preview = previewOf(crepeLine, splitCrepePoints);
+		expect(provisionalTexts(crepeLine, preview, labels)).toEqual([
+			"Armário: Ponto sem custo médio: 0,10 m a custo provisório R$ 30,00/m (custo de referência)",
+			"Prateleira: Fica negativo em 0,40 m: custo provisório R$ 25,00/m (média do ponto)",
+		]);
+		const lotted = {
+			...crepeLine,
+			parts: crepeLine.parts.map((part, index) =>
+				index === 0 ? { ...part, lotId: oldLot } : { ...part, locationId: "" }
+			),
+		};
+		expect(
+			provisionalTexts(lotted, preview, labels).map(
+				(text) => text.split(":")[0]
+			)
+		).toEqual(["Armário · lote Rolo 1", "Saída 2"]);
 	});
 
 	test("troca só com a mesma unidade", () => {
@@ -1353,6 +1549,21 @@ describe("desfecho dos comandos da reconciliação", () => {
 		});
 	});
 
+	test("reconciliação aberta cuja peça já aparece reconciliada fecha com aviso, fora do envio", () => {
+		expect(
+			reconcileDialogNotice({ open: true, reconciled: true, sending: false })
+		).toBe("Esta peça já foi reconciliada.");
+		expect(
+			reconcileDialogNotice({ open: true, reconciled: true, sending: true })
+		).toBeNull();
+		expect(
+			reconcileDialogNotice({ open: false, reconciled: true, sending: false })
+		).toBeNull();
+		expect(
+			reconcileDialogNotice({ open: true, reconciled: false, sending: false })
+		).toBeNull();
+	});
+
 	test("estorno aberto cuja reconciliação sumiu da leitura fecha com aviso, fora do envio", () => {
 		expect(
 			reverseDialogNotice({ open: true, reconciliation: null, sending: false })
@@ -1406,6 +1617,29 @@ describe("rascunho guardado da página", () => {
 		drafts.keep(itemId, freshDraft());
 		expect(drafts.draftOf({ ...open, reconciled: true })).toBeNull();
 		expect(drafts.draftOf(open)).toBeNull();
+	});
+
+	test("o envio depois do descarte pela leitura manda e guarda as saídas novas", () => {
+		const drafts = reconciliationDrafts(sequence(900));
+		const first = drafts.keep(itemId, freshDraft());
+		const local = first.draft;
+		drafts.forgetSettled([{ ...open, reconciled: true }]);
+		const sent = submitDraft(drafts, itemId, local);
+		expect(sent.reconciliationId).not.toBe(first.reconciliationId);
+		const renewed = movementIdsOf(sent.draft);
+		expect(
+			renewed.some((movementId) => movementIdsOf(local).includes(movementId))
+		).toBe(false);
+		expect(
+			sent.fields.lines.flatMap((current) =>
+				current.parts.map((part) => part.movementId)
+			)
+		).toEqual(renewed);
+		const again = submitDraft(drafts, itemId, sent.draft);
+		expect(again.reconciliationId).toBe(sent.reconciliationId);
+		expect(again.fields).toEqual(sent.fields);
+		expect(movementIdsOf(again.draft)).toEqual(renewed);
+		expect(again.opId).toBe(sent.opId);
 	});
 
 	test("depois do descarte, o id, as saídas e o opId são novos", () => {

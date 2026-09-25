@@ -9,13 +9,15 @@ import {
 	type CommandSettlement,
 	type ReconciliationDraft,
 	reconcileSettlement,
-	reconciliationFields,
-	reconciliationOpKey,
 	reverseOpKey,
 	reverseReconciliationFields,
 	reverseSettlement,
 } from "@/lib/reconciliation";
-import { reconciliationDrafts } from "@/lib/reconciliation-drafts";
+import {
+	type ReconcileSubmission,
+	reconciliationDrafts,
+	submitDraft,
+} from "@/lib/reconciliation-drafts";
 import type {
 	ReconciliationView,
 	ServiceOrderItemView,
@@ -74,6 +76,12 @@ export function useReconciliationActions() {
 		[drafts]
 	);
 
+	const prepare = useCallback(
+		(item: Pick<ReconcileTarget, "id">, draft: ReconciliationDraft) =>
+			submitDraft(drafts, item.id, draft),
+		[drafts]
+	);
+
 	const forgetSettled = useCallback(
 		(items: readonly Pick<ReconcileTarget, "id" | "reconciled">[]) =>
 			drafts.forgetSettled(items),
@@ -82,15 +90,13 @@ export function useReconciliationActions() {
 
 	const reconcile = async (
 		item: ReconcileTarget,
-		draft: ReconciliationDraft
+		submission: ReconcileSubmission
 	): Promise<ClientCommandFailure | null> => {
-		const kept = drafts.keep(item.id, draft);
-		const fields = reconciliationFields(kept.draft, item.id);
 		try {
 			await api.serviceOrderItems.reconcile({
-				...fields,
-				opId: kept.opIdFor(reconciliationOpKey(kept.reconciliationId, fields)),
-				reconciliationId: kept.reconciliationId,
+				...submission.fields,
+				opId: submission.opId,
+				reconciliationId: submission.reconciliationId,
 			});
 		} catch (error) {
 			const outcome = await settled(queryClient, error, reconcileSettlement);
@@ -148,7 +154,7 @@ export function useReconciliationActions() {
 		return null;
 	};
 
-	return { draftOf, forgetSettled, keepDraft, reconcile, reverse };
+	return { draftOf, forgetSettled, keepDraft, prepare, reconcile, reverse };
 }
 
 export type ReconciliationActions = ReturnType<typeof useReconciliationActions>;

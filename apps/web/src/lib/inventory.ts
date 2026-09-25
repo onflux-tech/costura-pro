@@ -8,6 +8,7 @@ import {
 	multiplyHalfUp,
 	parseQuantity,
 } from "@costura-pro/domain/quantity";
+import { hasAverageCost } from "@costura-pro/domain/reconciliation";
 import {
 	balancePointId,
 	type CountOutcome,
@@ -315,7 +316,10 @@ export function surplusSuggestion(
 	referenceCostCents: string | null,
 	surplusMicros: bigint
 ): Suggestion {
-	if (point && BigInt(point.quantityMicros) > 0n) {
+	if (
+		point &&
+		hasAverageCost(BigInt(point.quantityMicros), BigInt(point.valueCents))
+	) {
 		return {
 			cents: exitValueCents(
 				BigInt(point.quantityMicros),

@@ -1,5 +1,10 @@
 import { nextOpId, type OpIdSlot } from "./op-id";
-import type { ReconciliationDraft } from "./reconciliation";
+import {
+	type ReconcileFields,
+	type ReconciliationDraft,
+	reconciliationFields,
+	reconciliationOpKey,
+} from "./reconciliation";
 
 export type KeptReconciliation = {
 	draft: ReconciliationDraft;
@@ -64,5 +69,29 @@ export function reconciliationDrafts(create: () => string) {
 			entries.set(itemId, next);
 			return next;
 		},
+	};
+}
+
+export type ReconciliationDrafts = ReturnType<typeof reconciliationDrafts>;
+
+export type ReconcileSubmission = {
+	draft: ReconciliationDraft;
+	fields: ReconcileFields;
+	opId: string;
+	reconciliationId: string;
+};
+
+export function submitDraft(
+	drafts: ReconciliationDrafts,
+	itemId: string,
+	localDraft: ReconciliationDraft
+): ReconcileSubmission {
+	const kept = drafts.keep(itemId, localDraft);
+	const fields = reconciliationFields(kept.draft, itemId);
+	return {
+		draft: kept.draft,
+		fields,
+		opId: kept.opIdFor(reconciliationOpKey(kept.reconciliationId, fields)),
+		reconciliationId: kept.reconciliationId,
 	};
 }

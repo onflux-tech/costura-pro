@@ -88,4 +88,8 @@ describe("exitValueCents", () => {
 	test("ponto sem valor não inventa custo", () => {
 		expect(exitValueCents(5_000_000n, 0n, 1_000_000n)).toBe(0n);
 	});
+
+	test("ponto com valor negativo não sai com o sinal trocado", () => {
+		expect(exitValueCents(100_000n, -700n, 50_000n)).toBe(0n);
+	});
 });

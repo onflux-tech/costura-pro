@@ -200,15 +200,18 @@ describe("consumptionPartValue", () => {
 		});
 	});
 
-	test("ponto com quantidade e valor não positivo não tem média", () => {
+	test("ponto com quantidade e valor negativo não tem média", () => {
 		expect(consumptionPartValue(100_000n, -700n, 500_000n, 3000n)).toEqual({
 			provisionalCents: 1500n,
 			provisionalMicros: 500_000n,
 			valueCents: 1500n,
 		});
-		expect(consumptionPartValue(100_000n, 0n, 50_000n, null)).toEqual({
+	});
+
+	test("ponto com quantidade e valor zero tem média zero e sai coberto", () => {
+		expect(consumptionPartValue(5_000_000n, 0n, 1_000_000n, 1000n)).toEqual({
 			provisionalCents: 0n,
-			provisionalMicros: 50_000n,
+			provisionalMicros: 0n,
 			valueCents: 0n,
 		});
 	});

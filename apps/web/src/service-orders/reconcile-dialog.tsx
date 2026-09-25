@@ -26,6 +26,7 @@ import {
 	useQueryClient,
 } from "@tanstack/react-query";
 import { type ComponentProps, useEffect, useState } from "react";
+import { toast } from "sonner";
 
 import type { ClientCommandFailure } from "@/lib/client-command-error";
 import { unitAbbreviation } from "@/lib/materials";
@@ -36,11 +37,12 @@ import {
 	type LineDraft,
 	type LinePreview,
 	lineOutcomeText,
-	negativeText,
 	type PartDraft,
+	provisionalTexts,
 	quantityOf,
 	type ReconciliationDraft,
 	type ReconciliationErrors,
+	reconcileDialogNotice,
 	reconciliationDraftOf,
 	reconciliationErrors,
 	reconciliationPreview,
@@ -81,7 +83,7 @@ const noPoints: VariantPointsView[] = [];
 const noPreview: LinePreview = {
 	extraMicros: 0n,
 	leftoverMicros: 0n,
-	negative: null,
+	provisional: [],
 	valueCents: 0n,
 };
 
@@ -269,6 +271,7 @@ function OutParts({
 	line,
 	locations,
 	points,
+	preview,
 }: {
 	change: (next: ReconciliationDraft) => void;
 	draft: ReconciliationDraft;
@@ -278,6 +281,7 @@ function OutParts({
 	line: LineDraft;
 	locations: SelectItem[];
 	points: VariantPointsView | undefined;
+	preview: LinePreview;
 }) {
 	const lots = useQuery({
 		...stockLotsQuery(line.variant.id),
@@ -299,6 +303,10 @@ function OutParts({
 		}))
 	);
 	const full = line.parts.length >= reconciliationLimits.parts.max;
+	const notices = provisionalTexts(line, preview, {
+		locations: new Map(locationItems.map((item) => [item.value, item.label])),
+		lots: new Map(lotItems.map((item) => [item.value, item.label])),
+	});
 	return (
 		<Fieldset
 			aria-invalid={error ? true : undefined}
@@ -341,6 +349,11 @@ function OutParts({
 					{error}
 				</Text>
 			) : null}
+			{notices.map((notice) => (
+				<Text key={notice} size="xs" tone="warning">
+					{notice}
+				</Text>
+			))}
 		</Fieldset>
 	);
 }
@@ -440,7 +453,6 @@ function LineFieldset({
 	const { baseUnit, displayPrecision } = line.variant;
 	const unit = unitAbbreviation(baseUnit);
 	const variantPoints = pointsOf(points, line.variant.id);
-	const negative = negativeText(line, preview);
 	const quantitiesError = errors?.quantities ?? null;
 	const invalid = (value: string) =>
 		quantitiesError !== null && quantityOf(value) === null ? true : undefined;
@@ -519,12 +531,8 @@ function LineFieldset({
 				line={line}
 				locations={locations}
 				points={variantPoints}
+				preview={preview}
 			/>
-			{negative ? (
-				<Text size="xs" tone="warning">
-					{negative}
-				</Text>
-			) : null}
 		</Fieldset>
 	);
 }
@@ -542,9 +550,11 @@ function ReconcileForm({
 	orderCode,
 	points,
 	pointsFailed,
-	reconcile,
 	retryPoints,
 	rows,
+	send,
+	sending,
+	setSending,
 	today,
 }: {
 	change: (next: ReconciliationDraft) => void;
@@ -560,14 +570,15 @@ function ReconcileForm({
 	points: readonly VariantPointsView[];
 	pointsFailed: boolean;
 	retryPoints: () => void;
-	reconcile: ReconciliationActions["reconcile"];
 	rows: MaterialRowView[];
+	send: (draft: ReconciliationDraft) => Promise<ClientCommandFailure | null>;
+	sending: boolean;
+	setSending: (sending: boolean) => void;
 	today: string;
 }) {
 	const locations = useQuery(stockLocationsQuery());
 	const [checked, setChecked] = useState(false);
 	const [failure, setFailure] = useState<ClientCommandFailure | null>(null);
-	const [sending, setSending] = useState(false);
 	const { fieldRef, focusFirst } = useFieldTargets<string>();
 	const bounds = { openedOn, today };
 	const errors = checked ? reconciliationErrors(draft, bounds) : null;
@@ -590,7 +601,7 @@ function ReconcileForm({
 		}
 		setFailure(null);
 		setSending(true);
-		const failed = await reconcile(item, draft);
+		const failed = await send(draft);
 		setSending(false);
 		if (failed) {
 			setFailure(failed);
@@ -738,6 +749,8 @@ function ReconcileContent({
 	itemTitle,
 	openedOn,
 	orderCode,
+	sending,
+	setSending,
 }: {
 	actions: ReconciliationActions;
 	close: () => void;
@@ -745,6 +758,8 @@ function ReconcileContent({
 	itemTitle: string;
 	openedOn: string;
 	orderCode: string;
+	sending: boolean;
+	setSending: (sending: boolean) => void;
 }) {
 	const queryClient = useQueryClient();
 	const { keepDraft } = actions;
@@ -871,9 +886,15 @@ function ReconcileContent({
 			orderCode={orderCode}
 			points={points}
 			pointsFailed={read.isError && !fresh}
-			reconcile={actions.reconcile}
 			retryPoints={() => read.refetch()}
 			rows={rows}
+			send={(current) => {
+				const submission = actions.prepare(item, current);
+				setDraft(submission.draft);
+				return actions.reconcile(item, submission);
+			}}
+			sending={sending}
+			setSending={setSending}
 			today={today}
 		/>
 	);
@@ -898,6 +919,20 @@ export function ReconcileDialog({
 	openedOn: string;
 	orderCode: string;
 }) {
+	const [sending, setSending] = useState(false);
+	const notice = reconcileDialogNotice({
+		open,
+		reconciled: item.reconciled,
+		sending,
+	});
+
+	useEffect(() => {
+		if (notice !== null) {
+			toast.info(notice);
+			onOpenChange(false);
+		}
+	}, [notice, onOpenChange]);
+
 	return (
 		<Dialog onOpenChange={onOpenChange} open={open}>
 			<DialogContent className="md:max-w-2xl" finalFocus={finalFocus}>
@@ -909,6 +944,8 @@ export function ReconcileDialog({
 						itemTitle={itemTitle}
 						openedOn={openedOn}
 						orderCode={orderCode}
+						sending={sending}
+						setSending={setSending}
 					/>
 				) : null}
 			</DialogContent>

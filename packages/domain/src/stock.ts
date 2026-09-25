@@ -56,7 +56,7 @@ export function exitValueCents(
 	pointValueCents: bigint,
 	exitMicros: bigint
 ): bigint {
-	if (pointQuantityMicros <= 0n) {
+	if (pointQuantityMicros <= 0n || pointValueCents < 0n) {
 		return 0n;
 	}
 	return (

@@ -320,6 +320,23 @@ describe("surplusSuggestion", () => {
 			source: "none",
 		});
 	});
+
+	test("ponto com valor negativo não tem média e cai no custo de referência", () => {
+		expect(
+			surplusSuggestion(
+				{ quantityMicros: "100000", valueCents: "-700" },
+				"3000",
+				50_000n
+			)
+		).toEqual({ cents: 150n, source: "reference" });
+		expect(
+			surplusSuggestion(
+				{ quantityMicros: "5000000", valueCents: "0" },
+				"3000",
+				1_000_000n
+			)
+		).toEqual({ cents: 0n, source: "average" });
+	});
 });
 
 describe("reviewOf", () => {

@@ -466,22 +466,25 @@ export function reconciliationOpKey(
 	return `${reconciliationId}:${canonicalJson(fields)}`;
 }
 
+export type ProvisionalExit = {
+	kind: "noAverage" | "overdraw";
+	micros: bigint;
+	part: number;
+	source: "average" | "none" | "reference";
+	unitCents: bigint | null;
+};
+
 export type LinePreview = {
 	extraMicros: bigint;
 	leftoverMicros: bigint;
-	negative: {
-		kind: "noAverage" | "overdraw";
-		micros: bigint;
-		source: "average" | "none" | "reference";
-		unitCents: bigint | null;
-	} | null;
+	provisional: ProvisionalExit[];
 	valueCents: bigint;
 };
 
 function negativeSource(
 	before: PointBalance,
 	referenceCostCents: bigint | null
-): Omit<NonNullable<LinePreview["negative"]>, "micros"> {
+): Omit<ProvisionalExit, "micros" | "part"> {
 	if (hasAverageCost(before.quantityMicros, before.valueCents)) {
 		return {
 			kind: "overdraw",
@@ -535,13 +538,14 @@ export function reconciliationPreview(
 		pointBalances(points),
 		draft.lines.flatMap((line, index) => {
 			const referenceCostCents = referenceOf(points, line.variant.id);
-			return line.parts.flatMap((part) => {
+			return line.parts.flatMap((part, position) => {
 				const quantity = quantityOf(part.quantity);
 				return quantity === null || quantity <= 0n
 					? []
 					: [
 							{
 								line: index,
+								part: position,
 								pointKey: pointKey(
 									line.variant.id,
 									part.locationId,
@@ -561,21 +565,16 @@ export function reconciliationPreview(
 			quantityOf(line.lost) ?? 0n
 		);
 		const parts = valued.filter((part) => part.line === index);
-		const provisional = parts.filter((part) => part.provisionalMicros > 0n);
-		const [first] = provisional;
 		return {
 			extraMicros: outcome.extraMicros,
 			leftoverMicros: outcome.leftoverMicros,
-			negative:
-				first === undefined
-					? null
-					: {
-							micros: provisional.reduce(
-								(total, part) => total + part.provisionalMicros,
-								0n
-							),
-							...negativeSource(first.before, first.referenceCostCents),
-						},
+			provisional: parts
+				.filter((part) => part.provisionalMicros > 0n)
+				.map((part) => ({
+					micros: part.provisionalMicros,
+					part: part.part,
+					...negativeSource(part.before, part.referenceCostCents),
+				})),
 			valueCents: parts.reduce((total, part) => total + part.valueCents, 0n),
 		};
 	});
@@ -617,32 +616,57 @@ export function lineOutcomeText(line: LineDraft, preview: LinePreview): string {
 }
 
 const negativeSources: Record<
-	Exclude<NonNullable<LinePreview["negative"]>["source"], "none">,
+	Exclude<ProvisionalExit["source"], "none">,
 	string
 > = {
 	average: "média do ponto",
 	reference: "custo de referência",
 };
 
-export function negativeText(
-	line: LineDraft,
-	preview: LinePreview
-): string | null {
-	const { negative } = preview;
-	if (negative === null) {
-		return null;
-	}
-	const quantity = lineQuantity(line, negative.micros);
+export type ExitLabels = {
+	locations: ReadonlyMap<string, string>;
+	lots: ReadonlyMap<string, string>;
+};
+
+function provisionalText(line: LineDraft, exit: ProvisionalExit): string {
+	const quantity = lineQuantity(line, exit.micros);
 	const cost =
-		negative.source === "none" || negative.unitCents === null
+		exit.source === "none" || exit.unitCents === null
 			? null
-			: `custo provisório ${moneyLabel(negative.unitCents)}/${unitAbbreviation(line.variant.baseUnit)} (${negativeSources[negative.source]})`;
-	if (negative.kind === "noAverage") {
+			: `custo provisório ${moneyLabel(exit.unitCents)}/${unitAbbreviation(line.variant.baseUnit)} (${negativeSources[exit.source]})`;
+	if (exit.kind === "noAverage") {
 		return cost === null
 			? `Ponto sem custo médio: ${quantity} sem custo`
 			: `Ponto sem custo médio: ${quantity} a ${cost}`;
 	}
 	return `Fica negativo em ${quantity}: ${cost ?? "sem custo"}`;
+}
+
+function exitLabel(
+	part: PartDraft | undefined,
+	index: number,
+	labels: ExitLabels
+): string {
+	const location =
+		part === undefined ? undefined : labels.locations.get(part.locationId);
+	if (part === undefined || location === undefined) {
+		return `Saída ${index + 1}`;
+	}
+	const lot = part.lotId === null ? undefined : labels.lots.get(part.lotId);
+	return lot === undefined ? location : `${location} · lote ${lot}`;
+}
+
+export function provisionalTexts(
+	line: LineDraft,
+	preview: LinePreview,
+	labels: ExitLabels
+): string[] {
+	return preview.provisional.map((exit) => {
+		const text = provisionalText(line, exit);
+		return line.parts.length > 1
+			? `${exitLabel(line.parts[exit.part], exit.part, labels)}: ${text}`
+			: text;
+	});
 }
 
 export function swapUnitHint(
@@ -717,6 +741,16 @@ export function reverseDialogNotice(state: {
 }): string | null {
 	return state.open && !state.sending && state.reconciliation === null
 		? "Esta reconciliação já tinha sido estornada."
+		: null;
+}
+
+export function reconcileDialogNotice(state: {
+	open: boolean;
+	reconciled: boolean;
+	sending: boolean;
+}): string | null {
+	return state.open && !state.sending && state.reconciled
+		? "Esta peça já foi reconciliada."
 		: null;
 }
 
