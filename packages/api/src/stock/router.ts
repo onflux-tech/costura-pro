@@ -11,8 +11,10 @@ import {
 	listStockLots,
 	listStockMovements,
 	listStockPoints,
+	listVariantPoints,
 	stockBalanceListInput,
 	stockPointsInput,
+	variantPointsInput,
 } from "./queries";
 import {
 	stockLocationCreatePayload,
@@ -249,4 +251,9 @@ export const stockBalancesRouter = {
 	points: readyProcedure
 		.input(stockPointsInput)
 		.handler(({ context, input }) => listStockPoints(context.db, input)),
+	variantPoints: readyProcedure
+		.input(variantPointsInput)
+		.handler(({ context, input }) =>
+			listVariantPoints(context.db, input.variantIds)
+		),
 };

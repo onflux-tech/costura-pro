@@ -1,5 +1,10 @@
 import type { Database } from "@costura-pro/db";
 import { material, materialVariant } from "@costura-pro/db/schema/materials";
+import { materialReconciliation } from "@costura-pro/db/schema/reconciliation";
+import {
+	serviceOrder,
+	serviceOrderItem,
+} from "@costura-pro/db/schema/service-orders";
 import {
 	stockBalance,
 	stockLocation,
@@ -179,6 +184,94 @@ export function getVariantBalance(
 	};
 }
 
+export const variantPointsInput = z.object({
+	variantIds: z.array(z.uuid()).min(1).max(60),
+});
+
+export type VariantPoints = {
+	baseUnit: BaseUnitCode;
+	displayPrecision: number;
+	points: (StockBalancePoint & { lotCreatedAt: string | null })[];
+	referenceCostCents: string | null;
+	tracksLots: boolean;
+	variantId: string;
+};
+
+export function listVariantPoints(
+	db: Reader,
+	variantIds: readonly string[]
+): { variants: VariantPoints[] } {
+	const points = Map.groupBy(
+		db
+			.select({
+				locationId: stockBalance.locationId,
+				locationName: stockLocation.name,
+				lotCreatedAt: stockLot.createdAt,
+				lotId: stockBalance.lotId,
+				lotLabel: stockLot.label,
+				quantityMicros: stockBalance.quantityMicros,
+				valueCents: stockBalance.valueCents,
+				variantId: stockBalance.variantId,
+			})
+			.from(stockBalance)
+			.innerJoin(stockLocation, eq(stockLocation.id, stockBalance.locationId))
+			.leftJoin(stockLot, eq(stockLot.id, stockBalance.lotId))
+			.where(
+				and(
+					inArray(stockBalance.variantId, [...variantIds]),
+					or(
+						ne(stockBalance.quantityMicros, 0n),
+						ne(stockBalance.valueCents, 0n)
+					)
+				)
+			)
+			.orderBy(
+				asc(stockLocation.name),
+				asc(stockLocation.id),
+				asc(stockLot.label),
+				asc(stockBalance.id)
+			)
+			.all(),
+		(row) => row.variantId
+	);
+	const variants = new Map(
+		db
+			.select({
+				baseUnit: materialVariant.baseUnit,
+				displayPrecision: materialVariant.displayPrecision,
+				referenceCostCents: materialVariant.referenceCostCents,
+				tracksLots: materialVariant.tracksLots,
+				variantId: materialVariant.id,
+			})
+			.from(materialVariant)
+			.where(inArray(materialVariant.id, [...variantIds]))
+			.all()
+			.map((row) => [row.variantId, row])
+	);
+	return {
+		variants: variantIds.flatMap((variantId) => {
+			const variant = variants.get(variantId);
+			if (!variant) {
+				return [];
+			}
+			return [
+				{
+					...variant,
+					points: (points.get(variantId) ?? []).map(
+						({ lotCreatedAt, variantId: _variantId, ...point }) => ({
+							...point,
+							lotCreatedAt: lotCreatedAt?.toISOString() ?? null,
+							quantityMicros: point.quantityMicros.toString(),
+							valueCents: point.valueCents.toString(),
+						})
+					),
+					referenceCostCents: variant.referenceCostCents?.toString() ?? null,
+				},
+			];
+		}),
+	};
+}
+
 export const stockPointsInput = z.object({
 	locationIds: z
 		.array(z.uuid())
@@ -267,9 +360,12 @@ export function listStockPoints(
 }
 
 export type StockMovementListItem = StockMovementSnapshot & {
+	itemPosition: number | null;
 	locationName: string;
 	lotLabel: string | null;
 	reversedByMovementId: string | null;
+	serviceOrderCode: string | null;
+	serviceOrderId: string | null;
 };
 
 export function listStockMovements(
@@ -279,16 +375,31 @@ export function listStockMovements(
 	return {
 		items: db
 			.select({
+				itemPosition: serviceOrderItem.position,
 				locationName: stockLocation.name,
 				lotLabel: stockLot.label,
 				movement: stockMovement,
 				reversedByMovementId: sql<
 					string | null
 				>`(SELECT reversal.id FROM stock_movement AS reversal WHERE reversal.reverses_movement_id = "stock_movement"."id")`,
+				serviceOrderCode: serviceOrder.code,
+				serviceOrderId: serviceOrder.id,
 			})
 			.from(stockMovement)
 			.innerJoin(stockLocation, eq(stockLocation.id, stockMovement.locationId))
 			.leftJoin(stockLot, eq(stockLot.id, stockMovement.lotId))
+			.leftJoin(
+				materialReconciliation,
+				eq(materialReconciliation.id, stockMovement.materialReconciliationId)
+			)
+			.leftJoin(
+				serviceOrderItem,
+				eq(serviceOrderItem.id, materialReconciliation.serviceOrderItemId)
+			)
+			.leftJoin(
+				serviceOrder,
+				eq(serviceOrder.id, serviceOrderItem.serviceOrderId)
+			)
 			.where(eq(stockMovement.variantId, variantId))
 			.limit(movementPageSize)
 			.orderBy(
@@ -299,9 +410,12 @@ export function listStockMovements(
 			.all()
 			.map((row) => ({
 				...stockMovementSnapshot(row.movement),
+				itemPosition: row.itemPosition,
 				locationName: row.locationName,
 				lotLabel: row.lotLabel,
 				reversedByMovementId: row.reversedByMovementId,
+				serviceOrderCode: row.serviceOrderCode,
+				serviceOrderId: row.serviceOrderId,
 			})),
 	};
 }

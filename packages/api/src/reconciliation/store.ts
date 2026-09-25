@@ -76,6 +76,33 @@ export function readActiveReconciliation(
 		.get()?.reconciliation;
 }
 
+export function readActiveReconciliations(
+	db: Reader,
+	itemIds: readonly string[]
+): MaterialReconciliationRow[] {
+	if (itemIds.length === 0) {
+		return [];
+	}
+	return db
+		.select({ reconciliation: materialReconciliation })
+		.from(materialReconciliation)
+		.leftJoin(
+			materialReconciliationReversal,
+			eq(
+				materialReconciliationReversal.reconciliationId,
+				materialReconciliation.id
+			)
+		)
+		.where(
+			and(
+				inArray(materialReconciliation.serviceOrderItemId, [...itemIds]),
+				isNull(materialReconciliationReversal.id)
+			)
+		)
+		.all()
+		.map((row) => row.reconciliation);
+}
+
 export function reconciledItemIds(
 	db: Reader,
 	itemIds: readonly string[]

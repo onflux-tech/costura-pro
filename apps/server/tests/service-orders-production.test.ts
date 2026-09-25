@@ -611,6 +611,31 @@ describe("production reads", () => {
 		});
 	});
 
+	test("the started and ready counts leave a material item out", async () => {
+		const { approve, items, owner, server, serviceOrderId } =
+			await productionSetup();
+		const other = await approve();
+		const forceStatus = (itemId: string, status: string) =>
+			server
+				.native()
+				.query(
+					"UPDATE service_order_item SET production_status = ? WHERE id = ?"
+				)
+				.run(status, itemId);
+		forceStatus(items.material, "ready");
+		forceStatus(other.items[2]?.itemId ?? "", "inProgress");
+		const counts = Object.fromEntries(
+			(await owner.serviceOrders.list({})).items.map((item) => [
+				item.id,
+				[item.productionCount, item.startedCount, item.readyCount],
+			])
+		);
+		expect(counts).toEqual({
+			[other.serviceOrderId]: [2, 0, 0],
+			[serviceOrderId]: [2, 0, 0],
+		});
+	});
+
 	test("the board lists service and piece items by due date, order code and position", async () => {
 		const { catalog, clientId, owner, person, stages, stock } =
 			await suggestionSetup();
@@ -663,6 +688,7 @@ describe("production reads", () => {
 				flowStages: detail.serviceOrder.flowStages,
 				flowVersion: detail.serviceOrder.flowVersion,
 				id: detail.serviceOrder.id,
+				openedOn: detail.serviceOrder.openedOn,
 			}))
 		);
 		expect(board.orders.map((order) => order.flowVersion)).toEqual([
@@ -679,6 +705,7 @@ describe("production reads", () => {
 						line: item.line,
 						position: item.position,
 						productionStatus: item.productionStatus,
+						reconciled: item.reconciled,
 						reservations: item.reservations,
 						serviceOrderId: item.serviceOrderId,
 						stageId: item.stageId,

@@ -22,7 +22,13 @@ import {
 	seedStock,
 	serviceLine,
 } from "./service-order-fixtures";
-import { inSequence, newOpId, rpc, type TestServer } from "./support";
+import {
+	inSequence,
+	manualClock,
+	newOpId,
+	rpc,
+	type TestServer,
+} from "./support";
 
 const servers: TestServer[] = [];
 
@@ -176,6 +182,7 @@ async function reconciliationSetup() {
 		owner,
 		person,
 		server,
+		serviceOrderId: input.serviceOrderId,
 		stages,
 		stock,
 		target,
@@ -1153,6 +1160,378 @@ describe("material reconciliation reversal", () => {
 			rpc(server).serviceOrderItems.reverseReconciliation(
 				reverseInput(reconciled)
 			)
+		).rejects.toMatchObject({ code: "UNAUTHORIZED" });
+	});
+});
+
+function stockOpening(
+	owner: Owner,
+	variantId: string,
+	locationId: string,
+	lotId: string | null,
+	quantityMicros: string,
+	valueCents: string
+) {
+	return owner.stockMovements.create({
+		kind: "opening",
+		locationId,
+		lotId,
+		movementId: crypto.randomUUID(),
+		occurredOn: "2026-09-01",
+		opId: newOpId(),
+		quantityMicros,
+		reason: null,
+		valueCents,
+		variantId,
+	});
+}
+
+async function lotNamed(owner: Owner, variantId: string, label: string) {
+	const { id } = await owner.stockLots.create({
+		label,
+		lotId: crypto.randomUUID(),
+		notes: null,
+		opId: newOpId(),
+		variantId,
+	});
+	return id;
+}
+
+function linhoVariant(owner: Owner) {
+	return createVariant(owner, "Linho", {
+		baseUnit: "m",
+		code: null,
+		displayPrecision: 2,
+		name: "Cru",
+		referenceCostCents: "2500",
+		tracksLots: true,
+	});
+}
+
+describe("material reconciliation reads", () => {
+	test("the order shows the reconciliation of the piece until it is reversed", async () => {
+		const { items, owner, serviceOrderId, stock, target } = await readySetup();
+		const reconciled = reconcileInput(target);
+		await owner.serviceOrderItems.reconcile(reconciled);
+		const detail = await owner.serviceOrders.get({ serviceOrderId });
+		expect(detail.items.map((item) => [item.id, item.reconciled])).toEqual([
+			[items.service, false],
+			[items.piece, true],
+			[items.material, false],
+		]);
+		expect(detail.items.map((item) => item.reconciliation?.id ?? null)).toEqual(
+			[null, reconciled.reconciliationId, null]
+		);
+		const [crepePart, zipperPart] = reconciled.lines.map(
+			(line) => line.parts[0]
+		);
+		expect(detail.items[1]?.reconciliation).toEqual({
+			id: reconciled.reconciliationId,
+			lines: [
+				{
+					baseUnit: "m",
+					consumedMicros: "3400000",
+					displayPrecision: 2,
+					lostMicros: "0",
+					materialName: "Crepe",
+					parts: [
+						{
+							locationId: stock.locationId,
+							locationName: "Armário",
+							lotId: null,
+							lotLabel: null,
+							movementId: crepePart?.movementId ?? "",
+							provisionalCents: "2700",
+							provisionalMicros: "900000",
+							quantityMicros: "3400000",
+							valueCents: "10200",
+						},
+					],
+					plannedCostCents: "10200",
+					plannedMicros: "3400000",
+					plannedVariantId: stock.crepeId,
+					swapReason: null,
+					variantId: stock.crepeId,
+					variantName: "Preto",
+				},
+				{
+					baseUnit: "un",
+					consumedMicros: "1000000",
+					displayPrecision: 0,
+					lostMicros: "0",
+					materialName: "Zíper",
+					parts: [
+						{
+							locationId: stock.locationId,
+							locationName: "Armário",
+							lotId: null,
+							lotLabel: null,
+							movementId: zipperPart?.movementId ?? "",
+							provisionalCents: "0",
+							provisionalMicros: "0",
+							quantityMicros: "1000000",
+							valueCents: "370",
+						},
+					],
+					plannedCostCents: "370",
+					plannedMicros: "1000000",
+					plannedVariantId: stock.zipperId,
+					swapReason: null,
+					variantId: stock.zipperId,
+					variantName: "20 cm",
+				},
+			],
+			note: null,
+			occurredOn: "2026-09-25",
+		});
+		await owner.serviceOrderItems.reverseReconciliation(
+			reverseInput(reconciled)
+		);
+		const after = await owner.serviceOrders.get({ serviceOrderId });
+		expect(
+			after.items.map((item) => [item.reconciled, item.reconciliation])
+		).toEqual([
+			[false, null],
+			[false, null],
+			[false, null],
+		]);
+	});
+
+	test("a swapped line reads the names of the used material and the lot of the part", async () => {
+		const { owner, serviceOrderId, stock, target } = await readySetup();
+		const linho = await linhoVariant(owner);
+		const lotId = await lotNamed(owner, linho, "Rolo 3");
+		await stockOpening(
+			owner,
+			linho,
+			stock.locationId,
+			lotId,
+			"5000000",
+			"12500"
+		);
+		const swapped = reconcileLine(linho, stock.locationId, "3400000", {
+			plannedVariantId: stock.crepeId,
+			swapReason: "Cliente trocou o tecido",
+		});
+		const [part] = swapped.parts;
+		await owner.serviceOrderItems.reconcile(
+			reconcileInput(target, {
+				lines: [{ ...swapped, parts: [{ ...part, lotId }] }, zipperLine(stock)],
+			})
+		);
+		const detail = await owner.serviceOrders.get({ serviceOrderId });
+		const [line] = detail.items[1]?.reconciliation?.lines ?? [];
+		expect(line).toMatchObject({
+			baseUnit: "m",
+			materialName: "Linho",
+			parts: [
+				{
+					locationName: "Armário",
+					lotId,
+					lotLabel: "Rolo 3",
+					valueCents: "8500",
+				},
+			],
+			plannedCostCents: "10200",
+			plannedVariantId: stock.crepeId,
+			swapReason: "Cliente trocou o tecido",
+			variantId: linho,
+			variantName: "Cru",
+		});
+	});
+
+	test("the planned cost multiplies by the pieces and is empty without a unit cost", async () => {
+		const { clientId, owner, person, stages, stock } = await readySetup();
+		const piece = pieceLine(stock, person.profileId);
+		const approval = await approvedQuote(owner, clientId, [
+			{
+				...piece,
+				components: piece.components.map((component) =>
+					component.kind === "material" && component.materialName === "Zíper"
+						? { ...component, unitCostCents: null }
+						: component
+				),
+				quantity: 2,
+			},
+		]);
+		const itemId = approval.items[0]?.itemId ?? "";
+		await readyToReconcile(owner, itemId, [stages.corte, stages.acabamento]);
+		await owner.serviceOrderItems.reconcile(
+			reconcileInput(
+				{ itemId, stock },
+				{
+					lines: [
+						reconcileLine(stock.crepeId, stock.locationId, "6800000"),
+						reconcileLine(stock.zipperId, stock.locationId, "2000000"),
+					],
+				}
+			)
+		);
+		const detail = await owner.serviceOrders.get({
+			serviceOrderId: approval.serviceOrderId,
+		});
+		expect(
+			detail.items[0]?.reconciliation?.lines.map((line) => [
+				line.plannedMicros,
+				line.plannedCostCents,
+			])
+		).toEqual([
+			["6800000", "20400"],
+			["2000000", null],
+		]);
+	});
+
+	test("the board marks the reconciled piece and carries the opening day of the order", async () => {
+		const { items, owner, serviceOrderId, target } = await readySetup();
+		const reconciled = reconcileInput(target);
+		await owner.serviceOrderItems.reconcile(reconciled);
+		const board = await owner.serviceOrderItems.board({});
+		expect(board.items.map((item) => [item.id, item.reconciled])).toEqual([
+			[items.service, false],
+			[items.piece, true],
+		]);
+		expect(board.orders.map((order) => [order.id, order.openedOn])).toEqual([
+			[serviceOrderId, "2026-09-22"],
+		]);
+		await owner.serviceOrderItems.reverseReconciliation(
+			reverseInput(reconciled)
+		);
+		const after = await owner.serviceOrderItems.board({});
+		expect(after.items.map((item) => item.reconciled)).toEqual([false, false]);
+	});
+
+	test("lists the balance points of the asked variants with the lot creation", async () => {
+		const clock = manualClock();
+		const { owner } = await ownerSetup(servers, { now: clock.now });
+		const stock = await seedStock(owner);
+		const { id: araraId } = await owner.stockLocations.create({
+			locationId: crypto.randomUUID(),
+			name: "Arara",
+			notes: null,
+			opId: newOpId(),
+		});
+		await stockOpening(owner, stock.crepeId, araraId, null, "1000000", "3000");
+		const linho = await linhoVariant(owner);
+		const lotB = await lotNamed(owner, linho, "Rolo B");
+		clock.advance(60_000);
+		const lotA = await lotNamed(owner, linho, "Rolo A");
+		const lotC = await lotNamed(owner, linho, "Rolo C");
+		await stockOpening(owner, linho, stock.locationId, lotB, "2000000", "5000");
+		await stockOpening(owner, linho, stock.locationId, lotA, "1000000", "2600");
+		await stockOpening(owner, linho, stock.locationId, lotC, "500000", "1000");
+		await owner.stockMovements.create({
+			kind: "adjustment",
+			locationId: stock.locationId,
+			lotId: lotC,
+			movementId: crypto.randomUUID(),
+			occurredOn: "2026-09-02",
+			opId: newOpId(),
+			quantityMicros: "-500000",
+			reason: "Retalho",
+			variantId: linho,
+		});
+		const { variants } = await owner.stockBalances.variantPoints({
+			variantIds: [linho, crypto.randomUUID(), stock.crepeId],
+		});
+		expect(variants).toEqual([
+			{
+				baseUnit: "m",
+				displayPrecision: 2,
+				points: [
+					{
+						locationId: stock.locationId,
+						locationName: "Armário",
+						lotCreatedAt: "2026-09-16T12:01:00.000Z",
+						lotId: lotA,
+						lotLabel: "Rolo A",
+						quantityMicros: "1000000",
+						valueCents: "2600",
+					},
+					{
+						locationId: stock.locationId,
+						locationName: "Armário",
+						lotCreatedAt: "2026-09-16T12:00:00.000Z",
+						lotId: lotB,
+						lotLabel: "Rolo B",
+						quantityMicros: "2000000",
+						valueCents: "5000",
+					},
+				],
+				referenceCostCents: "2500",
+				tracksLots: true,
+				variantId: linho,
+			},
+			{
+				baseUnit: "m",
+				displayPrecision: 2,
+				points: [
+					{
+						locationId: araraId,
+						locationName: "Arara",
+						lotCreatedAt: null,
+						lotId: null,
+						lotLabel: null,
+						quantityMicros: "1000000",
+						valueCents: "3000",
+					},
+					{
+						locationId: stock.locationId,
+						locationName: "Armário",
+						lotCreatedAt: null,
+						lotId: null,
+						lotLabel: null,
+						quantityMicros: "2500000",
+						valueCents: "7500",
+					},
+				],
+				referenceCostCents: "3000",
+				tracksLots: false,
+				variantId: stock.crepeId,
+			},
+		]);
+	});
+
+	test("the stock history shows the order of a reconciliation movement and of its reversal", async () => {
+		const { owner, serviceOrderId, stock, target } = await readySetup();
+		const reconciled = reconcileInput(target);
+		await owner.serviceOrderItems.reconcile(reconciled);
+		await owner.serviceOrderItems.reverseReconciliation(
+			reverseInput(reconciled)
+		);
+		const { serviceOrder } = await owner.serviceOrders.get({ serviceOrderId });
+		const { items: movements } = await owner.stockMovements.list({
+			variantId: stock.crepeId,
+		});
+		const order = {
+			itemPosition: 1,
+			serviceOrderCode: serviceOrder.code,
+			serviceOrderId,
+		};
+		const none = {
+			itemPosition: null,
+			serviceOrderCode: null,
+			serviceOrderId: null,
+		};
+		expect(
+			movements.map((movement) => [
+				movement.kind,
+				{
+					itemPosition: movement.itemPosition,
+					serviceOrderCode: movement.serviceOrderCode,
+					serviceOrderId: movement.serviceOrderId,
+				},
+			])
+		).toEqual([
+			["reversal", order],
+			["consumption", order],
+			["opening", none],
+		]);
+	});
+
+	test("needs a session to read the balance points of variants", async () => {
+		const { server, stock } = await readySetup();
+		await expect(
+			rpc(server).stockBalances.variantPoints({ variantIds: [stock.crepeId] })
 		).rejects.toMatchObject({ code: "UNAUTHORIZED" });
 	});
 });

@@ -1,15 +1,23 @@
 import type { Database } from "@costura-pro/db";
 import { client } from "@costura-pro/db/schema/clients";
+import { material, materialVariant } from "@costura-pro/db/schema/materials";
 import type { FlowStageRow } from "@costura-pro/db/schema/production";
+import type {
+	ReconciliationLineRow,
+	ReconciliationPartRow,
+} from "@costura-pro/db/schema/reconciliation";
 import {
 	serviceOrder,
 	serviceOrderItem,
 } from "@costura-pro/db/schema/service-orders";
 import { service } from "@costura-pro/db/schema/services";
+import { stockLocation, stockLot } from "@costura-pro/db/schema/stock";
 import { suggestedStageIds } from "@costura-pro/domain/production";
-import { quoteLineOfText } from "@costura-pro/domain/quote";
+import { multiplyHalfUp } from "@costura-pro/domain/quantity";
+import { type QuoteLine, quoteLineOfText } from "@costura-pro/domain/quote";
 import { searchTokens } from "@costura-pro/domain/search";
 import { linePlannedMaterials } from "@costura-pro/domain/service-order";
+import type { BaseUnitCode } from "@costura-pro/domain/unit";
 import { ORPCError } from "@orpc/server";
 import { and, asc, desc, eq, inArray, or, type SQL, sql } from "drizzle-orm";
 import z from "zod";
@@ -23,7 +31,10 @@ import {
 } from "../finance/receivables";
 import { readCurrentProductionFlow } from "../production/store";
 import { readQuote, readQuoteRevision } from "../quotes/store";
-import { reconciledItemIds } from "../reconciliation/store";
+import {
+	readActiveReconciliations,
+	reconciledItemIds,
+} from "../reconciliation/store";
 import { containing } from "../search";
 import { reservationsOfItems } from "../stock/reservations";
 import {
@@ -56,9 +67,9 @@ const itemCount = sql<number>`(SELECT count(*) FROM service_order_item AS item W
 
 const productionCount = sql<number>`(SELECT count(*) FROM service_order_item AS item WHERE item.service_order_id = "service_order"."id" AND item.kind IN ('service', 'custom'))`;
 
-const startedCount = sql<number>`(SELECT count(*) FROM service_order_item AS item WHERE item.service_order_id = "service_order"."id" AND item.production_status = 'inProgress')`;
+const startedCount = sql<number>`(SELECT count(*) FROM service_order_item AS item WHERE item.service_order_id = "service_order"."id" AND item.production_status = 'inProgress' AND item.kind IN ('service', 'custom'))`;
 
-const readyCount = sql<number>`(SELECT count(*) FROM service_order_item AS item WHERE item.service_order_id = "service_order"."id" AND item.production_status = 'ready')`;
+const readyCount = sql<number>`(SELECT count(*) FROM service_order_item AS item WHERE item.service_order_id = "service_order"."id" AND item.production_status = 'ready' AND item.kind IN ('service', 'custom'))`;
 
 const receivableTotal = sql<
 	string | null
@@ -130,9 +141,9 @@ export function shortageOf(
 				(item) =>
 					!reconciled.has(item.id) &&
 					linePlannedMaterials(quoteLineOfText(item.line)).some(
-						(material) =>
-							material.quantityMicros >
-							(reserved.get(`${item.id}|${material.variantId}`) ?? 0n)
+						(planned) =>
+							planned.quantityMicros >
+							(reserved.get(`${item.id}|${planned.variantId}`) ?? 0n)
 					)
 			)
 			.map((item) => item.serviceOrderId)
@@ -190,11 +201,34 @@ export function listServiceOrders(
 
 type ItemReservation = { reservedMicros: string; variantId: string };
 
+export type ReconciliationPartDetail = ReconciliationPartRow & {
+	locationName: string;
+	lotLabel: string | null;
+};
+
+export type ReconciliationLineDetail = Omit<ReconciliationLineRow, "parts"> & {
+	baseUnit: BaseUnitCode;
+	displayPrecision: number;
+	materialName: string;
+	parts: ReconciliationPartDetail[];
+	plannedCostCents: string | null;
+	variantName: string;
+};
+
+export type ReconciliationDetail = {
+	id: string;
+	lines: ReconciliationLineDetail[];
+	note: string | null;
+	occurredOn: string;
+};
+
 export type ServiceOrderDetail = {
 	approval: QuoteApprovalSnapshot;
 	client: { anonymized: boolean; archived: boolean; id: string; name: string };
 	currentFlowVersion: number | null;
 	items: (ServiceOrderItemSnapshot & {
+		reconciled: boolean;
+		reconciliation: ReconciliationDetail | null;
 		reservations: ItemReservation[];
 		suggestedStageIds: string[];
 	})[];
@@ -287,7 +321,7 @@ function itemReservations(
 	return new Map(
 		items.map((item) => {
 			const order = linePlannedMaterials(quoteLineOfText(item.line)).map(
-				(material) => material.variantId
+				(planned) => planned.variantId
 			);
 			return [
 				item.id,
@@ -295,6 +329,121 @@ function itemReservations(
 					(left, right) =>
 						order.indexOf(left.variantId) - order.indexOf(right.variantId)
 				),
+			];
+		})
+	);
+}
+
+function plannedCostOf(line: QuoteLine, variantId: string): string | null {
+	if (line.kind !== "custom") {
+		return null;
+	}
+	let total = 0n;
+	for (const component of line.components) {
+		if (
+			component.kind === "material" &&
+			component.materialVariantId === variantId
+		) {
+			if (component.unitCostCents === null) {
+				return null;
+			}
+			total += multiplyHalfUp(
+				component.quantityMicros * BigInt(line.quantity),
+				component.unitCostCents
+			);
+		}
+	}
+	return total.toString();
+}
+
+function known<T>(values: ReadonlyMap<string, T>, id: string): T {
+	const value = values.get(id);
+	if (value === undefined) {
+		throw new ORPCError("INTERNAL_SERVER_ERROR");
+	}
+	return value;
+}
+
+function reconciliationsOf(
+	db: Reader,
+	items: readonly ServiceOrderItemRow[]
+): Map<string, ReconciliationDetail> {
+	const rows = readActiveReconciliations(
+		db,
+		items.map((item) => item.id)
+	);
+	if (rows.length === 0) {
+		return new Map();
+	}
+	const lines = rows.flatMap((row) => row.lines);
+	const parts = lines.flatMap((line) => line.parts);
+	const variants = new Map(
+		db
+			.select({
+				baseUnit: materialVariant.baseUnit,
+				displayPrecision: materialVariant.displayPrecision,
+				id: materialVariant.id,
+				materialName: material.name,
+				variantName: materialVariant.name,
+			})
+			.from(materialVariant)
+			.innerJoin(material, eq(material.id, materialVariant.materialId))
+			.where(
+				inArray(materialVariant.id, [
+					...new Set(lines.map((line) => line.variantId)),
+				])
+			)
+			.all()
+			.map(({ id, ...names }) => [id, names])
+	);
+	const locations = new Map(
+		db
+			.select({ id: stockLocation.id, name: stockLocation.name })
+			.from(stockLocation)
+			.where(
+				inArray(stockLocation.id, [
+					...new Set(parts.map((part) => part.locationId)),
+				])
+			)
+			.all()
+			.map((row) => [row.id, row.name])
+	);
+	const lotIds = [
+		...new Set(parts.flatMap((part) => (part.lotId ? [part.lotId] : []))),
+	];
+	const lots = new Map(
+		lotIds.length === 0
+			? []
+			: db
+					.select({ id: stockLot.id, label: stockLot.label })
+					.from(stockLot)
+					.where(inArray(stockLot.id, lotIds))
+					.all()
+					.map((row) => [row.id, row.label])
+	);
+	const itemLines = new Map(
+		items.map((item) => [item.id, quoteLineOfText(item.line)])
+	);
+	return new Map(
+		rows.map((row) => {
+			const itemLine = known(itemLines, row.serviceOrderItemId);
+			return [
+				row.serviceOrderItemId,
+				{
+					id: row.id,
+					lines: row.lines.map((line) => ({
+						...line,
+						...known(variants, line.variantId),
+						parts: line.parts.map((part) => ({
+							...part,
+							locationName: known(locations, part.locationId),
+							lotLabel: part.lotId ? known(lots, part.lotId) : null,
+						})),
+						plannedCostCents: plannedCostOf(itemLine, line.plannedVariantId),
+					})),
+					note: row.note,
+					occurredOn: row.occurredOn,
+				},
 			];
 		})
 	);
@@ -325,6 +474,7 @@ export function getServiceOrder(
 	const items = listServiceOrderItems(db, row.id);
 	const reservations = itemReservations(db, items);
 	const suggestions = suggestionsOf(db, row.flowStages, items);
+	const reconciliations = reconciliationsOf(db, items);
 	const receivable = readReceivableOfServiceOrder(db, row.id);
 	return {
 		approval: quoteApprovalSnapshot(approval),
@@ -337,6 +487,8 @@ export function getServiceOrder(
 		currentFlowVersion: readCurrentProductionFlow(db)?.version ?? null,
 		items: items.map((item) => ({
 			...serviceOrderItemSnapshot(item),
+			reconciled: reconciliations.has(item.id),
+			reconciliation: reconciliations.get(item.id) ?? null,
 			reservations: reservations.get(item.id) ?? [],
 			suggestedStageIds: suggestions.get(item.id) ?? [],
 		})),
@@ -366,6 +518,7 @@ type BoardOrder = {
 	flowStages: FlowStageRow[] | null;
 	flowVersion: number | null;
 	id: string;
+	openedOn: string;
 };
 
 export type ProductionBoard = {
@@ -374,6 +527,7 @@ export type ProductionBoard = {
 		ServiceOrderItemSnapshot,
 		"createdAt" | "lineId" | "measurements"
 	> & {
+		reconciled: boolean;
 		reservations: ItemReservation[];
 		suggestedStageIds: string[];
 	})[];
@@ -409,6 +563,10 @@ export function boardOf(db: Reader): ProductionBoard {
 		.all();
 	const items = rows.map((row) => row.item);
 	const reservations = itemReservations(db, items);
+	const reconciled = reconciledItemIds(
+		db,
+		items.map((item) => item.id)
+	);
 	const lists = suggestedListsOf(db, items);
 	const orders = new Map<string, BoardOrder>();
 	for (const { clientName, order } of rows) {
@@ -419,6 +577,7 @@ export function boardOf(db: Reader): ProductionBoard {
 				flowStages: order.flowStages,
 				flowVersion: order.flowVersion,
 				id: order.id,
+				openedOn: order.openedOn,
 			});
 		}
 	}
@@ -433,6 +592,7 @@ export function boardOf(db: Reader): ProductionBoard {
 			} = serviceOrderItemSnapshot(item);
 			return {
 				...snapshot,
+				reconciled: reconciled.has(item.id),
 				reservations: reservations.get(item.id) ?? [],
 				suggestedStageIds: itemSuggestion(order.flowStages, item, lists),
 			};
