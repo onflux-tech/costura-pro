@@ -3,7 +3,7 @@
 | Campo | Valor |
 |---|---|
 | Para que serve | Guia para sessões de Claude Code (padrão), Codex e clientes genéricos: fontes, portas geradas, papéis, ciclo de entrega, evolução do harness, hooks, verificação e armadilhas |
-| Atualizado | 2026-09-18 |
+| Atualizado | 2026-09-24 |
 | Gerador e checagens | `scripts/harness.mjs` (`pnpm harness:sync`, `pnpm harness:check`), `scripts/docs-check.mjs` (`pnpm docs:check`) e `pnpm harness:test` |
 
 ## Sumário
@@ -38,7 +38,7 @@
 - **Hooks só no Claude por enquanto** (§5). Codex é coberto pelas regras do `AGENTS.md`, pelo Lefthook e pelo CI.
 - **Integração:** automática ao fim de cada entrega, com merge local na `main`, push e CI acompanhado, sem confirmação (autorização permanente do dono); não há PR.
 - **Interface validada com browser-harness** em navegador real. Playwright não entra no projeto.
-- **No máximo 2 subagentes por tarefa**, todos somente leitura.
+- **Implementação por subagente:** o `implementer` executa os checkpoints de um plano aprovado, um por vez, numa sessão de execução separada da de design e plano; `explorer`, `reviewer` e `contract` são somente leitura e rodam em paralelo quando o trabalho é independente. Nunca dois `implementer` ao mesmo tempo; não há outro teto.
 
 ## 2. Matriz ferramenta × artefato
 
@@ -51,7 +51,7 @@
 | Hooks de sessão | `.claude/settings.json` e `.claude/hooks/` | Não se aplica | Não se aplica |
 | MCP | `.mcp.json`, habilitados em `.claude/settings.json` | `.codex/config.toml` | `.mcp.json` |
 | Modelo principal | Escolhido na sessão | `gpt-5.6-terra`, esforço `medium` | Do cliente |
-| Limite de subagentes | Regra do `AGENTS.md` (2) | `max_concurrent_threads_per_session = 2` | Regra do `AGENTS.md` (2) |
+| Limite de subagentes | Nunca dois `implementer` ao mesmo tempo (`AGENTS.md`) | `max_concurrent_threads_per_session = 2` | Regra do `AGENTS.md` |
 | Git e CI | Lefthook e `.github/workflows/ci.yml` | Idem | Idem |
 
 **Skills vendorizadas da stack** (versões em `skills-lock.json`):
@@ -75,21 +75,25 @@ Para adicionar ou atualizar uma skill vendorizada, use a CLI `skills` (que mant�
 | Papel | Quando despachar | Claude | Codex |
 |---|---|---|---|
 | `explorer` | Mapear um fluxo desconhecido e devolver evidência com caminho e linha | `sonnet` | `gpt-5.6-luna`, `medium` |
-| `reviewer` | Revisar diff importante: dinheiro, quantidade, dados, autenticação, offline | `opus` | `gpt-5.6-terra`, `high` |
-| `contract` | Conferir produtor e consumidor entre web, API, domínio, banco e offline | `opus` | `gpt-5.6-terra`, `high` |
+| `reviewer` | Revisar diff importante: dinheiro, quantidade, dados, autenticação, offline | `opus`, `max` | `gpt-5.6-terra`, `high` |
+| `contract` | Conferir produtor e consumidor entre web, API, domínio, banco e offline | `opus`, `max` | `gpt-5.6-terra`, `high` |
+| `implementer` | Executar um checkpoint de plano aprovado, pelo `/implementar` | `opus`, `high` | `gpt-5.6-terra`, `high` |
 
-- Os três são somente leitura: no Claude, `tools: Read, Grep, Glob`; no Codex, `sandbox_mode = "read-only"`. O agente principal implementa e verifica.
+- `explorer`, `reviewer` e `contract` são somente leitura: no Claude, `tools: Read, Grep, Glob`; no Codex, `sandbox_mode = "read-only"`.
+- O `implementer` tem escrita: no Claude herda as ferramentas da sessão menos `Agent`, `Artifact` e `Workflow`; no Codex, `sandbox_mode = "workspace-write"`. O guard barra nele git que muda índice, branch ou histórico, as ferramentas de edição nos dados do dono e a migração sem banco temporário (§5); pelo shell, a fronteira dos dados do dono é a regra escrita no corpo do papel. O agente principal coordena, confere e fecha.
+- O esforço de cada papel fica no frontmatter, porque a chamada da tool não aceita esforço: `reviewer` e `contract` em `max` mantêm a revisão igual mesmo com a sessão de execução em `high`.
 - O `reviewer` no Claude não tem shell: entregue o diff salvo em arquivo e diga o caminho (a skill `revisar` faz isso).
 - Cliente sem seleção de papel: passe o corpo de `.agents/agents/<papel>/agent.md` no despacho e informe modelo e esforço.
-- Mudar modelo ou papel: edite `ROLE_MODELS` ou o `agent.md`, rode `pnpm harness:sync` e versione fonte e portas juntas.
+- Mudar modelo, esforço, ferramentas ou sandbox de um papel: edite `ROLE_MODELS`, que recusa `tools` junto com `disallowedTools` e esforço ou sandbox fora da lista; para o texto, edite o `agent.md`. Rode `pnpm harness:sync` e versione fonte e portas juntas.
 
 ## 4. Ciclo de entrega e evolução do harness
 
-Toda implementação passa por quatro skills do projeto, fonte em `.agents/skills/`:
+Toda entrega passa pelas skills do projeto, fonte em `.agents/skills/`:
 
 | Skill | Quando | O que garante |
 |---|---|---|
-| `/entrega-iniciar` | Começo de toda sessão de implementação | Entrega escolhida no ROADMAP, branch, rota (enxuta ou completa), spec local com DoD e mutações, rules da área lidas |
+| `/entrega-iniciar` | Começo de toda entrega, na sessão de design | Entrega escolhida no ROADMAP, branch, rota (enxuta ou completa), spec local com DoD e mutações, rules da área lidas, plano em checkpoints e prompt da sessão de execução |
+| `/implementar` | Sessão de execução aberta pelo handoff, com `claude --effort high` | Um `implementer` por checkpoint, conferido por diff, evidência vermelha e verde, capturas de tela e `check-types` por camada; o plano marcado é o registro de progresso |
 | `/verificar` | Antes de declarar pronto, commit ou integração | Bateria completa com saída em arquivo |
 | `/revisar` | Entrega que toca dinheiro, quantidade, dados, autenticação, sync ou contrato entre camadas | `reviewer` e, se cruzar camadas, `contract`, com desafio de mutação |
 | `/entrega-fechar` | Fim da implementação; o hook de Stop cobra | Verificação, docs curadas e índice atualizados, harness evoluído, banco de desenvolvimento do dono migrado e com dados de exemplo da entrega, handoff da próxima sessão e `/integrar-branch` em seguida |
@@ -97,10 +101,10 @@ Toda implementação passa por quatro skills do projeto, fonte em `.agents/skill
 
 | Rota | Quando | Passos |
 |---|---|---|
-| Enxuta | Correção pequena, causa óbvia, sem mudar comportamento | TDD quando houver lógica, `/verificar`, `/entrega-fechar` |
-| Completa | Entrega do ROADMAP, mudança de comportamento, regra de negócio ou contrato | `/entrega-iniciar`, brainstorming, spec, grilling, plano, TDD por checkpoint, `/revisar`, `/entrega-fechar` |
+| Enxuta | Correção pequena, causa óbvia, sem mudar comportamento | Na mesma sessão, sem implementer: TDD quando houver lógica, `/verificar`, `/entrega-fechar` |
+| Completa | Entrega do ROADMAP, mudança de comportamento, regra de negócio ou contrato | Sessão de design: `/entrega-iniciar`, brainstorming, spec, grilling, plano e handoff. Sessão de execução: `/implementar`, `/revisar` e `/entrega-fechar` |
 
-**Orçamento de subagentes** (2 por tarefa, contando pesquisa e revisão): entrega com código reserva o orçamento para o `/revisar`. Entrega só documental que registra contrato revisa inline, sem subagente, com DoD por grep e desafio de mutação no `docs:check`; o `/revisar` com `reviewer` e `contract` fica para a entrega que implementa o contrato.
+**Subagentes no ciclo.** A sessão de design termina no handoff porque no fim do plano o contexto já passava de 500 mil tokens e toda entrega compactava; a de execução começa enxuta e só coordena. O `implementer` roda um por vez; `reviewer` e `contract` rodam em paralelo no `/revisar`; o `explorer` mapeia um fluxo quando o design pede. Entrega só documental que registra contrato revisa inline, com DoD por grep e desafio de mutação no `docs:check`; o `/revisar` fica para a entrega que implementa o contrato.
 
 **Critérios de evolução** (aplicados no passo "Evoluir o harness" do `/entrega-fechar`):
 
@@ -110,6 +114,7 @@ Toda implementação passa por quatro skills do projeto, fonte em `.agents/skill
 | Convenção que se repete numa área | Rule em `.claude/rules/` com `paths:`, listada no `AGENTS.md` | Agente, direto |
 | Área com conhecimento que não cabe numa rule | Doc em `docs/areas/<area>.md`, no índice `docs/README.md` | Agente, direto |
 | Lente de revisão recorrente | "Armadilhas conhecidas" no corpo do papel em `.agents/agents/` | Agente, direto |
+| Desvio recorrente do `implementer` (regra que ele erra, contexto que faltou no despacho) | "Armadilhas conhecidas" do `implementer` ou passo do `/implementar` que o evitaria | Agente, direto |
 | Revisão que exige um olhar que nenhum papel cobre | Papel novo em `.agents/agents/` e `ROLE_MODELS` | Dono, pelo `AskUserQuestion` |
 | Procedimento repetido em duas entregas | Skill nova em `.agents/skills/` | Dono, pelo `AskUserQuestion` |
 | Documentação externa recorrente que o context7 não cobre | MCP no `.mcp.json`, sem credencial | Dono, pelo `AskUserQuestion` |
@@ -124,10 +129,11 @@ Configurados em `.claude/settings.json`. Cada script em `.claude/hooks/` exporta
 | Evento | Script | Faz |
 |---|---|---|
 | SessionStart | `session-start.mjs` | Foto do git da sessão (a primeira prevalece no resume), limpeza de sessões com mais de 7 dias e 3 a 5 linhas de contexto: branch, arquivos com mudança, harness divergente e lembrete do ciclo de entrega |
-| PreToolUse (Bash, PowerShell, Edit, MultiEdit, Write) | `guard.mjs` | Bloqueia suíte de teste com pipe (inclusive `Select-Object`), kill geral de node, force-push em branch protegida (inclusive `--force-with-lease`, `-fu` e refspec com `+`), `--no-verify`, trailer `Claude-Session` e `Co-Authored-By`, mensagem de commit que cita fase (F0 a F7), spike (S1 a S6 ou a palavra), spec, plano ou ID `DEC-`, `RF-` ou `Q-` (inclusive via `-F`; `spec.json` passa), arquivo de código ou migration com fase ou spike como segmento do nome (`f2-...`, `..._s5_...`), `rm -rf` na raiz, `db:push`, travessão em commit, PR ou markdown do projeto, comentário novo em código (`.ts`, `.tsx`, `.js`, `.jsx`, `.mjs`, `.cjs`, fora das skills vendorizadas e do próprio `.claude/hooks/guard.test.mjs`, cujos casos parecem comentário; `biome-ignore`, `@ts-expect-error` e `/// <reference` passam) e edição direta de porta gerada. Em Edit conta só o que a edição acrescenta, e em Write compara com o arquivo atual. Suíte, `db:push` e push são reconhecidos só no início de cada comando, então buscas como `grep db:push` passam |
+| PreToolUse (Bash, PowerShell, Edit, MultiEdit, Write) | `guard.mjs` | Bloqueia suíte de teste com pipe (inclusive `Select-Object`), kill geral de node, force-push em branch protegida (inclusive `--force-with-lease`, `-fu` e refspec com `+`), `--no-verify`, trailer `Claude-Session` e `Co-Authored-By`, mensagem de commit que cita fase (F0 a F7), spike (S1 a S6 ou a palavra), spec, plano ou ID `DEC-`, `RF-` ou `Q-` (inclusive via `-F`; `spec.json` passa), arquivo de código ou migration com fase ou spike como segmento do nome (`f2-...`, `..._s5_...`), `rm -rf` na raiz, `db:push`, travessão em commit, PR ou markdown do projeto, comentário novo em código (`.ts`, `.tsx`, `.js`, `.jsx`, `.mjs`, `.cjs`, fora das skills vendorizadas e do próprio `.claude/hooks/guard.test.mjs`, cujos casos parecem comentário; `biome-ignore`, `@ts-expect-error` e `/// <reference` passam) e edição direta de porta gerada. Em Edit conta só o que a edição acrescenta, e em Write compara com o arquivo atual. Suíte, `db:push` e push são reconhecidos só no início de cada comando, então buscas como `grep db:push` passam. Só para o `implementer` (pelo `agent_type` do hook): git que muda índice, branch ou histórico (`commit`, `add`, `stash`, `reset`, `checkout`, `switch`, `restore`, `clean`, `merge`, `rebase`, `push`, `bisect`, `worktree` que muda algo, `tag` que não lista, `branch` que apaga, move, força ou copia, e afins), em qualquer estágio de pipe ou depois de `xargs` e com opções globais como `-C` e `--git-dir`; Edit, MultiEdit e Write em `.env` (os moldes `.env.schema` passam), `local.db` e `media/`; e migração (`db:migrate`, `drizzle-kit migrate` ou `migrate.ts`) sem `DATABASE_FILE` temporário como prefixo do próprio trecho ou definido antes por `export` (Bash) ou `$env:` (PowerShell), e nunca com valor terminado em `local.db` |
 | PostToolUse (Edit, MultiEdit, Write) | `format.mjs` | Só formata com `biome format` e avisa o modelo para reler quando o arquivo mudou; lint fica para o Lefthook e o `pnpm check` |
 | PostToolUse (Bash, PowerShell, Edit, MultiEdit, Write) | `touch.mjs` | Registra arquivos tocados, inclusive os editados pelo shell |
-| Stop | `stop-check.mjs` | Sobre o que a sessão mudou: cobra `/entrega-fechar` quando houve código sem docs curadas, e acusa harness divergente e falha do docs-check. Insiste duas vezes, libera na terceira e rearma, com uma cobrança só, quando as linhas de código dobram |
+| Stop | `stop-check.mjs` | Sobre o que a sessão mudou: cobra `/entrega-fechar` quando houve código sem docs curadas, e acusa harness divergente e falha do docs-check. Insiste duas vezes, libera na terceira e rearma, com uma cobrança só, quando as linhas de código dobram. Com subagente rodando (registro de menos de 3 h), não cobra nem gasta insistência |
+| SubagentStart e SubagentStop | `subagents.mjs` | Acrescenta o início e o fim de cada subagente num log só de acréscimo no diretório temporário da sessão, para o Stop esperar o `implementer` ou os revisores em background; hooks simultâneos não perdem entrada |
 
 `session.mjs` guarda os utilitários comuns; o estado da sessão fica no diretório temporário do sistema, nunca no repositório. Não há hook de SessionEnd: o resume reaproveita o id da sessão e precisa da foto original.
 
@@ -183,7 +189,7 @@ Configurados em `.claude/settings.json`. Cada script em `.claude/hooks/` exporta
 | Codex ignora papéis, modelos e MCPs do projeto | Projeto não marcado como confiável | Confiar no projeto e conferir se os MCPs do projeto aparecem |
 | Claude e Codex se comportam diferente depois de mudar papel ou MCP | Porta editada à mão, sync esquecido ou porta regenerada fora do commit | Editar só fontes; guard bloqueia edição de porta e o pre-commit roda `check --staged` |
 | Regra do guard global do dono deixou de valer neste repositório | Com `.claude/hooks/guard.mjs` presente, o hook global não roda aqui | Regra global nova é copiada para o guard do projeto, com teste |
-| Hook ou `.claude/settings.json` alterado parece não ter efeito | O Claude Code lê hooks no início da sessão | Abrir uma sessão nova depois de mudar hooks |
+| Hook novo no `.claude/settings.json` parece não ter efeito | O Claude Code lê o registro de hooks no início da sessão | Abrir uma sessão nova depois de registrar ou mudar hook no `settings.json`; o conteúdo de um script já registrado vale na chamada seguinte, e papel em `.claude/agents/` recarrega na mesma sessão depois do `pnpm harness:sync` |
 | Import recém-adicionado some antes do Edit que o usa | `biome check --write` aplica o fix seguro de `noUnusedImports` | O hook de format roda só `biome format` |
 | Guard deixa passar tudo sem erro aparente | Hook chamado por junction, symlink ou `subst` não se reconhecia como ponto de entrada e saía com 0 | `isEntrypoint` compara `realpath` dos dois lados; teste chama o hook como processo |
 | Workflow do CI é recusado e nenhum job roda | Contexto `runner` usado no `env` do job, onde ele não existe | Caminho do banco definido num step via `GITHUB_ENV` |
@@ -347,6 +353,10 @@ Configurados em `.claude/settings.json`. Cada script em `.claude/hooks/` exporta
 | Texto de ligação ("· 3 subitens") aparece sozinho numa linha a 320 px | O pedaço com o ponto médio era um nó próprio ao lado de um link, e o `flex-wrap` o jogou para a linha de baixo | Juntar o pedaço ao texto vizinho que não é link (a linha da aprovação no cabeçalho da OS) |
 | OS congela a medida antiga depois de corrigida em outra janela | A aprovação usava a leitura de medidas da página, e com as duas janelas visíveis o TanStack Query não relê | O diálogo lê as medidas ao montar, relê a cada 15 s e só envia com leitura feita depois da abertura (`approvalBlocker`, rule de web) |
 | Emissão numa janela velha diz "Esta revisão já tinha sido emitida" sem revisão nova | "Orçamento já aprovado" virou `exists` para a aprovação, e a emissão tratava todo `exists` como revisão gravada | `quoteAlreadyApproved` separa a recusa na emissão (rule de web) |
+| O Stop cobra `/entrega-fechar` enquanto o `implementer` ou os revisores trabalham | O agente principal para de responder ao esperar subagente em background, e o Stop dispara nessa parada | O `subagents.mjs` registra os subagentes em execução e o stop-check espera por eles (rule de harness) |
+| `effort` no frontmatter de uma skill some no meio do fluxo | O esforço de skill vale até o fim do turno, e esperar subagente em background encerra o turno | Esforço fixo no frontmatter do papel, ou em skill que termina num turno só, como o `/integrar-branch` (rule de harness) |
+| Arquivo alterado pelo agente volta ao conteúdo commitado sem nenhuma operação de git no reflog | O editor tinha o arquivo aberto desde antes da edição e gravou o buffer antigo, ou o dono tirou uma linha por um aviso do editor (o linter do VS Code não conhece o `effort` de skill) | Antes de suspeitar dos testes, conferir no histórico local do VS Code (`entries.json` em `%APPDATA%/Code/User/History`) se houve gravação na mesma hora do mtime; recarregar o arquivo no editor antes de salvar |
+| O `implementer` abre brainstorming ou tenta perguntar ao dono | O subagente recebe o CLAUDE.md global do dono, com os gates de processo e a regra de perguntar pela tool de pergunta | O corpo do papel diz que os gates estão cumpridos e que dúvida vira `NEEDS_CONTEXT` para o agente principal |
 
 ## 9. Registro de evolução
 
@@ -377,9 +387,12 @@ Configurados em `.claude/settings.json`. Cada script em `.claude/hooks/` exporta
 | 2026-09-24 | Doc de área `docs/areas/busca.md` no índice e na §7; rules de domínio (entrada no `exports` por módulo, funções de texto da busca), servidor (filtro de busca compartilhado, perfil casado em memória, mutação de ordem com dois arquivados) e web (campo sem caixa na paleta, marca na linha em destaque, `Empty` sempre montado, `networkMode` da busca, `PYTHONUTF8=1` e service worker na verificação, papel `searchbox`, foco do `Checkbox`, alerta que não rouba o foco, `retry` do `QueryClient`); `focus-ring.test.ts` com a exceção da paleta e a regra da barra verde só para `bg-nav`; §8 com essas falhas; lentes no `reviewer` (procedure nova sem teste de sessão, ordem provada com dois registros invertíveis, marca sobre fundo igual) e no `contract` (leitura paginada com o mesmo item e a mesma ordem da leitura resumida, texto buscado fora da URL e do log) vindas da revisão | Revisão e fechamento da entrega de busca global |
 | 2026-09-24 | Doc de área `docs/areas/orcamentos.md` e ADR 0023 no índice e na §7; rules de domínio (contagens do orçamento como `number`), banco (migration editada depois de aplicada não roda de novo), web (regra que cruza o conteúdo inteiro conferida pela tela, views com arrays mutáveis, código longo visível no painel, rascunho da emissão descartado pela leitura e da criação por cliente, confirmação que espera a leitura, `textContent` e `AlertDialog` no browser-harness) e harness (memória da máquina no limite, CRLF do `write_text` no Windows, `baseVersion` fixa no semeio); §8 com essas falhas; lentes no `reviewer` (fato imutável redigido com versão nova, confirmação calculada com valor padrão, recusa com uma linha só) e no `contract` (rascunho por escolha e descarte pela leitura, regra que cruza o conteúdo conferida pela tela) vindas da revisão | Revisão e fechamento da entrega de orçamento |
 | 2026-09-24 | Doc de área `docs/areas/ordens-de-servico.md` e ADR 0024 no índice e na §7; rules de domínio (plano de reserva acumulado na ordem, a mesma função no servidor e na prévia), servidor (quantidade decidida pelo servidor com ids do aparelho, `GROUP BY` sem ordem, id do grupo na leitura agrupada, recusa por trabalho em aberto antes da escrita) e web (recusa "já feito em outra janela" na aprovação e na emissão, ids num `ref` com o `opId` do payload inteiro, texto de ligação que quebra sozinho, rolagem de -15 px com diálogo aberto, snapshot de leitura velha com leitura depois de abrir o diálogo, recusa `NOT_FOUND` que relê, rota filha de agregado só leitura); §8 com essas falhas; lentes no `reviewer` (snapshot de leitura velha, `exists` que muda de sentido em outro fluxo, rota filha do só leitura, um teste por id extra, ordem que coincide com a criação) e no `contract` (conta refeita fora do domínio, campo aceito e descartado, teto sem aviso, contrato sem o dado aninhado) vindas da revisão | Revisão e fechamento da entrega de aprovação e OS |
+| 2026-09-24 | Papel `implementer` (Opus em esforço high, com escrita) e skill `/implementar`: execução por checkpoint numa sessão separada da de design, aberta com `claude --effort high`; `ROLE_MODELS` com ferramentas, esforço e sandbox por papel, e `reviewer` e `contract` fixos em `max`; hooks `SubagentStart` e `SubagentStop` para o Stop esperar subagente rodando; guard do implementer; `effort: medium` no `/integrar-branch`; fim do limite de 2 subagentes somente leitura por tarefa (DEC-165); §8 com o Stop durante subagente em background, o esforço de skill que acaba com o turno, o CLAUDE.md global no subagente e o arquivo desfeito por gravação do editor; rule de harness com o aviso do linter do VS Code no frontmatter de skill e com o recarregamento de papel e de script de hook na mesma sessão; correções da revisão (registro de subagentes só de acréscimo, guard com todo estágio de pipe, `xargs`, `branch`, `bisect`, `worktree`, `tag` e migração com banco temporário) | Pedido do dono depois de medir as 5 entregas anteriores: compactação em todas e 70% a 80% do tempo de agente gerando texto em esforço `max` |
 
 ## 10. Sessão nova
 
 Abra o cliente na raiz do repositório (`claude` ou `codex`) e comece por `/entrega-iniciar`. Prompt sugerido:
 
 > Leia AGENTS.md e docs/ROADMAP.md e rode /entrega-iniciar para a próxima entrega pendente da fase atual. Siga a rota indicada e feche com /entrega-fechar; a integração com /integrar-branch roda sozinha em seguida.
+
+Na rota completa, essa sessão de design termina no handoff do `/entrega-iniciar`. A sessão de execução abre com `claude --effort high` e o prompt gravado em `docs/superpowers/handoff/`, que manda rodar `/implementar` com o plano.

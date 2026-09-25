@@ -90,6 +90,7 @@ Cada spike responde uma pergunta que muda o desenho antes de construir em cima d
 - Bundle web sem aviso de chunk acima de 500 kB: devtools só em desenvolvimento e React num chunk próprio, com as rotas já divididas (2026-09-16).
 - CI por caminho (2026-09-16): `harness:check`, `docs:check` e `harness:test` rodam sempre, direto no Node e sem install; install, lint, tipos, testes e build só quando o intervalo do push (de `before` ao commit, ou da base do pull request) toca algo fora de `docs/**`, `*.md` e `.claude/rules/**`, com push forçado, `before` zerado, outro evento ou falha ao listar mudanças rodando tudo (`scripts/ci-scope.mjs`).
 - App Tauri removido do scaffold (Q-11, DEC-59): pasta do app, scripts e CLI do Tauri, teste do `frontendDist` (o contrato do proxy do Vite segue em `apps/server/tests/vite-proxy.test.ts`), armadilhas do HARNESS e da rule de web, papel `contract` e instruções de desenvolvimento do README (2026-09-16).
+- Implementação por subagente (DEC-165, 2026-09-24): papel `implementer` com escrita executando cada checkpoint do plano numa sessão de execução separada da de design, skill `/implementar`, ferramentas, esforço e sandbox por papel no gerador, hooks que fazem o Stop esperar subagente rodando e guard do implementer ([HARNESS §4](HARNESS.md#4-ciclo-de-entrega-e-evolução-do-harness)).
 
 **Pendente:**
 - **Build conferido numa máquina Ubuntu 24.04** além do CI (Q-10).

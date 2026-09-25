@@ -12,10 +12,11 @@ App local-first para um único ateliê e um único dono: atendimento, orçamento
 
 Toda implementação segue as skills do projeto (fonte em `.agents/skills/`; no Claude, `/nome`):
 
-1. `entrega-iniciar`: escolhe a entrega do ROADMAP, cria a branch, define a rota e a spec local.
-2. `verificar` e, quando a entrega toca dinheiro, quantidade, dados, autenticação, sync ou contrato entre camadas, `revisar`.
-3. `entrega-fechar`: atualiza docs curadas e índice, evolui o harness pelos critérios do `docs/HARNESS.md` §4 e deixa o `local.db` do dono migrado e com dados de exemplo da entrega, para ele ver com `pnpm dev`. É o que deixa o harness mais especialista a cada entrega.
-4. `integrar-branch`: roda sozinho logo depois do `entrega-fechar` verde, com commits por área, merge `--ff-only` na `main`, push e CI acompanhado, sem pedir confirmação; não há PR.
+1. `entrega-iniciar`: escolhe a entrega do ROADMAP, cria a branch, define a rota, a spec local e o plano, e termina com o prompt da sessão de execução.
+2. `implementar`: na sessão de execução, despacha o papel `implementer` um checkpoint por vez e confere cada um.
+3. `verificar` e, quando a entrega toca dinheiro, quantidade, dados, autenticação, sync ou contrato entre camadas, `revisar`.
+4. `entrega-fechar`: atualiza docs curadas e índice, evolui o harness pelos critérios do `docs/HARNESS.md` §4 e deixa o `local.db` do dono migrado e com dados de exemplo da entrega, para ele ver com `pnpm dev`. É o que deixa o harness mais especialista a cada entrega.
+5. `integrar-branch`: roda sozinho logo depois do `entrega-fechar` verde, com commits por área, merge `--ff-only` na `main`, push e CI acompanhado, sem pedir confirmação; não há PR.
 
 ## Regras por área
 
@@ -52,7 +53,9 @@ Antes de tocar arquivos de uma área, leia a rule dela (no Claude elas carregam 
 
 ## Subagentes
 
-Até 2 por tarefa, somente leitura, para trabalho independente e delimitado: `explorer` para mapear um fluxo, `reviewer` para revisar um diff, `contract` quando a mudança cruza camadas.
+- `implementer` executa os checkpoints de um plano aprovado, um por vez, pela skill `implementar`, numa sessão de execução separada da de design.
+- `explorer`, `reviewer` e `contract` são somente leitura: mapear um fluxo, revisar um diff e conferir contrato entre camadas; rodam em paralelo quando o trabalho é independente.
+- Nunca dois `implementer` ao mesmo tempo, porque a árvore, os testes e as portas são os mesmos; não há outro teto de subagentes.
 
 ## Harness
 

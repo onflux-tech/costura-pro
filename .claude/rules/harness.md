@@ -14,13 +14,19 @@ paths:
 
 - Fontes: `.agents/agents`, `.agents/skills`, `.mcp.json` e `scripts/harness.mjs`. As portas `.claude/agents`, `.claude/skills` e `.codex` são geradas: edite a fonte e rode `pnpm harness:sync` (o guard bloqueia edição direta).
 - Hooks em `.claude/hooks` são módulos puros com teste; regra nova precisa de caso de bloqueio e de falso positivo.
+- Estado que um hook guarda entre chamadas é gravado por acréscimo (`appendFileSync`) e dobrado na leitura, como o manifesto do `touch.mjs` e o log do `subagents.mjs`: hooks disparam em paralelo (dois subagentes despachados juntos), e ler e regravar o arquivo perde entrada.
 - Papel, skill, MCP ou hook que mudou atualiza o [docs/HARNESS.md](../../docs/HARNESS.md) na mesma mudança; o docs-check cobra papéis e skills.
 - Verificação: `pnpm harness:test`, `pnpm harness:check` e `pnpm docs:check`; fonte e porta vão no mesmo commit.
 
 ## Armadilhas conhecidas
 
 - Com `.claude/hooks/guard.mjs` presente, o guard global do dono não roda neste repositório: regra nova do guard global precisa ser copiada para cá.
-- Mudança em `.claude/settings.json` ou nos hooks só vale numa sessão nova do Claude Code.
+- Hook novo ou alterado no `.claude/settings.json` só vale numa sessão nova do Claude Code. O conteúdo de um script já registrado (`guard.mjs`, `stop-check.mjs`) vale na chamada seguinte, porque cada chamada roda um processo novo; papel novo ou alterado em `.claude/agents/` aparece para a tool Agent na mesma sessão, logo depois do `pnpm harness:sync`.
+- Hooks do `settings.json` rodam dentro do subagente: o `touch.mjs` grava no manifesto da sessão principal, e o guard recebe `agent_type`, que é o que faz uma regra valer só para um papel. O Stop dispara quando o agente principal para para esperar subagente em background; o `subagents.mjs` segura a cobrança enquanto houver um rodando.
+- O VS Code avisa campo desconhecido no frontmatter de `SKILL.md`, como `effort`, porque o linter segue o padrão aberto de Agent Skills; o Claude Code aceita também `effort`, `model`, `context`, `agent`, `hooks` e `paths` (doc de skills consultada em 2026-09-24). O aviso não é motivo para tirar o campo.
+- `effort` no frontmatter de skill vale só até o fim do turno, e esperar subagente em background encerra o turno: esforço que precisa valer no fluxo inteiro fica no frontmatter do papel, em `ROLE_MODELS`.
+- Subcomando git no guard termina em `(?![\w-])`: `\b` aceita `-` e barra `merge-base`, mas a fronteira nova libera os compostos, então comando composto perigoso entra na lista pelo nome inteiro (`checkout-index`).
+- O subagente recebe o CLAUDE.md global do dono, com os gates de processo e a regra de perguntar pela tool de pergunta, que ele não tem: papel que executa trabalho já aprovado diz no corpo que os gates estão cumpridos e para onde vai a dúvida.
 - Stop hook que sai com código 0 só fala com o modelo pelo JSON `decision: block`; texto solto não chega.
 - Commit que toca `.claude/rules` roda a checagem do harness contra o que está no stage: com fonte de papel ou skill alterada e porta fora do stage, ele é recusado com "porta gerada fora do commit" mesmo depois do `pnpm harness:sync`. Commite fonte e portas antes do commit de docs, ou no mesmo.
 - `git add -N`, usado para pôr os arquivos novos no diff salvo para o `reviewer`, deixa entradas "intent-to-add" no índice, e o `git stash create` do lefthook recusa o pre-commit com "Failed to save unstaged changes". Antes dos commits por área, desfaça com `git reset` misto, que mexe só no índice e preserva a árvore de trabalho.
