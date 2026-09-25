@@ -16,6 +16,7 @@ import {
 	snapshot,
 	statePath,
 } from "./session.mjs";
+import { readAgents, runningAgents } from "./subagents.mjs";
 
 // O fechamento (/entrega-fechar) é o que evolui docs e harness; este hook cobra quando a
 // sessão mexeu em código sem tocar docs curadas. Escopo = mudou desde a foto E passou pelas
@@ -169,6 +170,9 @@ export function check(input, options = {}) {
 	const root = options.root ?? projectRoot(input);
 	if (!existsSync(baselinePath(id))) {
 		writeFileSync(baselinePath(id), JSON.stringify(snapshot(root)));
+		return null;
+	}
+	if (runningAgents(readAgents(id), options.now ?? Date.now()) > 0) {
 		return null;
 	}
 	const base = JSON.parse(readFileSync(baselinePath(id), "utf8"));

@@ -39,7 +39,7 @@ export function start(input, options = {}) {
 		);
 	}
 	lines.push(
-		"Abra cada entrega com /entrega-iniciar e feche com /entrega-fechar: é o fechamento que atualiza docs curadas, índice e harness."
+		"Abra cada entrega com /entrega-iniciar; a sessão de execução segue o /implementar do handoff; feche com /entrega-fechar: é o fechamento que atualiza docs curadas, índice e harness."
 	);
 	return lines.join("\n");
 }

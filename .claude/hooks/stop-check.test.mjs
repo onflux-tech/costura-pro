@@ -12,6 +12,7 @@ import { dirname, join } from "node:path";
 import { afterEach, test } from "node:test";
 import { baselinePath, clearSession, snapshot } from "./session.mjs";
 import { check } from "./stop-check.mjs";
+import { recordAgentEvent } from "./subagents.mjs";
 import { record } from "./touch.mjs";
 
 const cleanups = [];
@@ -99,6 +100,39 @@ test("código sem docs cobra /entrega-fechar duas vezes e libera na terceira", (
 	assert.ok(second.reason.includes("última vez"));
 
 	assert.equal(stop(), null);
+});
+
+test("subagente rodando segura a cobrança e o SubagentStop a devolve sem gastar a insistência", () => {
+	const { edit, id, stop } = session();
+	edit("apps/web/src/a.ts", lines(12, "a"));
+	recordAgentEvent(
+		id,
+		{ agent_id: "a1", hook_event_name: "SubagentStart" },
+		Date.now() - 60_000
+	);
+
+	assert.equal(stop(), null);
+
+	recordAgentEvent(
+		id,
+		{ agent_id: "a1", hook_event_name: "SubagentStop" },
+		Date.now()
+	);
+	const result = stop();
+	assert.equal(result?.decision, "block");
+	assert.ok(!result.reason.startsWith("Lembrete (última vez)"));
+});
+
+test("entrada de 4 h não segura a cobrança", () => {
+	const { edit, id, stop } = session();
+	edit("apps/web/src/a.ts", lines(12, "a"));
+	recordAgentEvent(
+		id,
+		{ agent_id: "a1", hook_event_name: "SubagentStart" },
+		Date.now() - 4 * 3_600_000
+	);
+
+	assert.equal(stop()?.decision, "block");
 });
 
 test("código acompanhado de doc curada não cobra fechamento", () => {

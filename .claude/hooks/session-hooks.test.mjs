@@ -113,8 +113,7 @@ test("session-start grava a foto uma vez e injeta branch, mudanças e lembrete",
 	for (const fragment of [
 		"branch main",
 		"1 arquivo(s) com mudança",
-		"/entrega-iniciar",
-		"/entrega-fechar",
+		"Abra cada entrega com /entrega-iniciar; a sessão de execução segue o /implementar do handoff; feche com /entrega-fechar: é o fechamento que atualiza docs curadas, índice e harness.",
 	]) {
 		assert.ok(context.includes(fragment), fragment);
 	}

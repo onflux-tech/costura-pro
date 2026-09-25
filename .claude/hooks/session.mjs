@@ -19,10 +19,12 @@ const sessionFile = (id, suffix) =>
 export const baselinePath = (id) => sessionFile(id, "baseline.json");
 export const manifestPath = (id) => sessionFile(id, "touched.txt");
 export const statePath = (id) => sessionFile(id, "stop.json");
+export const agentsPath = (id) => sessionFile(id, "agents.log");
 const sessionFilesOf = (id) => [
 	baselinePath(id),
 	manifestPath(id),
 	statePath(id),
+	agentsPath(id),
 ];
 const SESSION_PREFIX = "costura-pro-claude-";
 const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
