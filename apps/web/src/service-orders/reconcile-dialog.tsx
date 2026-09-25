@@ -1,5 +1,9 @@
-import { parseQuantity } from "@costura-pro/domain/quantity";
 import { reconciliationLimits } from "@costura-pro/domain/reconciliation";
+import {
+	Alert,
+	AlertActions,
+	AlertTitle,
+} from "@costura-pro/ui/components/alert";
 import { Button } from "@costura-pro/ui/components/button";
 import {
 	Dialog,
@@ -30,14 +34,16 @@ import type { VariantOptionView } from "@/lib/purchases";
 import {
 	hasReconciliationErrors,
 	type LineDraft,
+	type LinePreview,
 	lineOutcomeText,
-	linePreview,
 	negativeText,
 	type PartDraft,
+	quantityOf,
 	type ReconciliationDraft,
 	type ReconciliationErrors,
 	reconciliationDraftOf,
 	reconciliationErrors,
+	reconciliationPreview,
 	removePart,
 	splitPart,
 	swapUnitHint,
@@ -71,6 +77,13 @@ type SelectItem = { label: string; value: string };
 const newId = () => crypto.randomUUID();
 
 const noPoints: VariantPointsView[] = [];
+
+const noPreview: LinePreview = {
+	extraMicros: 0n,
+	leftoverMicros: 0n,
+	negative: null,
+	valueCents: 0n,
+};
 
 function pointsOf(
 	points: readonly VariantPointsView[],
@@ -117,6 +130,19 @@ function withExtra(
 		}
 	}
 	return [...items].map(([value, label]) => ({ label, value }));
+}
+
+function PointsFailure({ onRetry }: { onRetry: () => void }) {
+	return (
+		<Alert role="alert" tone="danger">
+			<AlertTitle>Não foi possível carregar os saldos.</AlertTitle>
+			<AlertActions>
+				<Button onClick={onRetry} size="sm" type="button" variant="outline">
+					Tentar de novo
+				</Button>
+			</AlertActions>
+		</Alert>
+	);
 }
 
 function Heading({
@@ -395,6 +421,7 @@ function LineFieldset({
 	onSwap,
 	onUndo,
 	points,
+	preview,
 	row,
 }: {
 	change: (next: ReconciliationDraft) => void;
@@ -407,18 +434,16 @@ function LineFieldset({
 	onSwap: () => void;
 	onUndo: () => void;
 	points: readonly VariantPointsView[];
+	preview: LinePreview;
 	row: MaterialRowView | undefined;
 }) {
 	const { baseUnit, displayPrecision } = line.variant;
 	const unit = unitAbbreviation(baseUnit);
 	const variantPoints = pointsOf(points, line.variant.id);
-	const preview = linePreview(line, variantPoints);
 	const negative = negativeText(line, preview);
 	const quantitiesError = errors?.quantities ?? null;
 	const invalid = (value: string) =>
-		quantitiesError !== null && parseQuantity(value, displayPrecision) === null
-			? true
-			: undefined;
+		quantitiesError !== null && quantityOf(value) === null ? true : undefined;
 	let outcomeTone: "muted" | "subtle" | "warning" = "subtle";
 	if (preview.extraMicros > 0n) {
 		outcomeTone = "warning";
@@ -516,7 +541,9 @@ function ReconcileForm({
 	openedOn,
 	orderCode,
 	points,
+	pointsFailed,
 	reconcile,
+	retryPoints,
 	rows,
 	today,
 }: {
@@ -531,6 +558,8 @@ function ReconcileForm({
 	openedOn: string;
 	orderCode: string;
 	points: readonly VariantPointsView[];
+	pointsFailed: boolean;
+	retryPoints: () => void;
 	reconcile: ReconciliationActions["reconcile"];
 	rows: MaterialRowView[];
 	today: string;
@@ -542,6 +571,7 @@ function ReconcileForm({
 	const { fieldRef, focusFirst } = useFieldTargets<string>();
 	const bounds = { openedOn, today };
 	const errors = checked ? reconciliationErrors(draft, bounds) : null;
+	const previews = reconciliationPreview(draft, points);
 	const locationItems = (locations.data?.items ?? []).map((location) => ({
 		label: location.name,
 		value: location.id,
@@ -614,6 +644,7 @@ function ReconcileForm({
 					onSwap={() => onSwap(index)}
 					onUndo={() => onUndo(index)}
 					points={points}
+					preview={previews[index] ?? noPreview}
 					row={rows.find((row) => row.variantId === line.plannedVariantId)}
 				/>
 			))}
@@ -632,8 +663,9 @@ function ReconcileForm({
 				/>
 			</QuoteField>
 			<FailureAlert failure={failure} heading="Não foi possível reconciliar" />
+			{pointsFailed ? <PointsFailure onRetry={retryPoints} /> : null}
 			<DialogActions className="md:items-center">
-				{fresh ? null : (
+				{fresh || pointsFailed ? null : (
 					<Text role="status" size="xs" tone="muted">
 						Carregando saldos...
 					</Text>
@@ -744,13 +776,11 @@ function ReconcileContent({
 			today,
 			newId
 		);
-		keepDraft(item, built);
-		setDraft(built);
+		setDraft(keepDraft(item, built));
 	}, [draft, fresh, item, keepDraft, points, today]);
 
 	const change = (next: ReconciliationDraft) => {
-		keepDraft(item, next);
-		setDraft(next);
+		setDraft(keepDraft(item, next));
 	};
 
 	if (draft === null) {
@@ -758,19 +788,7 @@ function ReconcileContent({
 			<div className="flex flex-col gap-4">
 				<Heading itemTitle={itemTitle} orderCode={orderCode} />
 				{read.isError ? (
-					<div className="flex flex-wrap items-center gap-2">
-						<Text role="alert" size="xs" tone="danger">
-							Não foi possível ler os saldos. Tente de novo.
-						</Text>
-						<Button
-							onClick={() => read.refetch()}
-							size="sm"
-							type="button"
-							variant="outline"
-						>
-							Tentar de novo
-						</Button>
-					</div>
+					<PointsFailure onRetry={() => read.refetch()} />
 				) : (
 					<>
 						<Text role="status" size="xs" tone="muted">
@@ -852,7 +870,9 @@ function ReconcileContent({
 			openedOn={openedOn}
 			orderCode={orderCode}
 			points={points}
+			pointsFailed={read.isError && !fresh}
 			reconcile={actions.reconcile}
+			retryPoints={() => read.refetch()}
 			rows={rows}
 			today={today}
 		/>

@@ -3,7 +3,10 @@ import type {
 	ReconciliationPartRow,
 } from "@costura-pro/db/schema/reconciliation";
 import { quoteLineOfText } from "@costura-pro/domain/quote";
-import { consumptionPartValue } from "@costura-pro/domain/reconciliation";
+import {
+	type PointBalance,
+	valueConsumptionParts,
+} from "@costura-pro/domain/reconciliation";
 import {
 	linePlannedMaterials,
 	type PlannedMaterial,
@@ -48,8 +51,6 @@ import {
 } from "./store";
 
 type ReconciliationLine = ReconciliationCreateValues["lines"][number];
-
-type PointBalance = { quantityMicros: bigint; valueCents: bigint };
 
 const notFound = (message: string): CreateRejection => ({
 	message,
@@ -116,31 +117,31 @@ function partRejection(
 	return taken ? { reason: "aggregateExists" } : null;
 }
 
-function pointLedger(db: CommandExecutor) {
-	const known = new Map<string, PointBalance>();
-	const keyOf = (place: Place) =>
-		balancePointId(place.variantId, place.locationId, place.lotId);
-	return {
-		read: (place: Place): PointBalance => {
-			const cached = known.get(keyOf(place));
-			if (cached) {
-				return cached;
-			}
+function pointKeyOf(place: Place): string {
+	return balancePointId(place.variantId, place.locationId, place.lotId);
+}
+
+function pointBalances(
+	db: CommandExecutor,
+	places: readonly Place[]
+): Map<string, PointBalance> {
+	return new Map(
+		places.map((place) => {
 			const row = readStockBalancePoint(
 				db,
 				place.variantId,
 				place.locationId,
 				place.lotId
 			);
-			return {
-				quantityMicros: row?.quantityMicros ?? 0n,
-				valueCents: row?.valueCents ?? 0n,
-			};
-		},
-		write: (place: Place, balance: PointBalance) => {
-			known.set(keyOf(place), balance);
-		},
-	};
+			return [
+				pointKeyOf(place),
+				{
+					quantityMicros: row?.quantityMicros ?? 0n,
+					valueCents: row?.valueCents ?? 0n,
+				},
+			];
+		})
+	);
 }
 
 function valuedLines(
@@ -149,34 +150,37 @@ function valuedLines(
 	planned: readonly PlannedMaterial[],
 	used: readonly MaterialVariantRow[]
 ): ReconciliationLineRow[] {
-	const ledger = pointLedger(db);
+	const places = lines.flatMap((line) =>
+		line.parts.map((part) => ({ ...part, variantId: line.variantId }))
+	);
+	const valued = valueConsumptionParts(
+		pointBalances(db, places),
+		lines.flatMap((line, index) =>
+			line.parts.map((part) => ({
+				line: index,
+				part,
+				pointKey: pointKeyOf({ ...part, variantId: line.variantId }),
+				quantityMicros: BigInt(part.quantityMicros),
+				referenceCostCents: used[index]?.referenceCostCents ?? null,
+			}))
+		)
+	);
 	return lines.map((line, index) => ({
 		consumedMicros: line.consumedMicros,
 		lostMicros: line.lostMicros,
-		parts: line.parts.map((part): ReconciliationPartRow => {
-			const place = { ...part, variantId: line.variantId };
-			const quantity = BigInt(part.quantityMicros);
-			const point = ledger.read(place);
-			const value = consumptionPartValue(
-				point.quantityMicros,
-				point.valueCents,
-				quantity,
-				used[index]?.referenceCostCents ?? null
-			);
-			ledger.write(place, {
-				quantityMicros: point.quantityMicros - quantity,
-				valueCents: point.valueCents - value.valueCents,
-			});
-			return {
-				locationId: part.locationId,
-				lotId: part.lotId,
-				movementId: part.movementId,
-				provisionalCents: value.provisionalCents.toString(),
-				provisionalMicros: value.provisionalMicros.toString(),
-				quantityMicros: part.quantityMicros,
-				valueCents: value.valueCents.toString(),
-			};
-		}),
+		parts: valued
+			.filter((entry) => entry.line === index)
+			.map(
+				({ part, ...value }): ReconciliationPartRow => ({
+					locationId: part.locationId,
+					lotId: part.lotId,
+					movementId: part.movementId,
+					provisionalCents: value.provisionalCents.toString(),
+					provisionalMicros: value.provisionalMicros.toString(),
+					quantityMicros: part.quantityMicros,
+					valueCents: value.valueCents.toString(),
+				})
+			),
 		plannedMicros: (planned[index]?.quantityMicros ?? 0n).toString(),
 		plannedVariantId: line.plannedVariantId,
 		swapReason: line.swapReason,

@@ -201,6 +201,9 @@ export function ServiceOrderItemCard({
 							{`Reconciliada em ${formatDay(item.reconciliation.occurredOn)}`}
 						</Text>
 					) : null}
+					{item.reconciliation?.note ? (
+						<Text size="xs">{item.reconciliation.note}</Text>
+					) : null}
 					{line.note ? (
 						<Text size="xs" tone="muted">
 							{line.note}

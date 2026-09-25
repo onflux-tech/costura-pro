@@ -825,4 +825,14 @@ describe("reconciliação de materiais", () => {
 		});
 		expect(reconciliationReversePayload.parse(fields)).toEqual(fields);
 	});
+
+	test("estorno de reconciliação sem saída passa no schema", () => {
+		const fields = reverseReconciliationFields({
+			movementIds: [],
+			occurredOn: "2026-09-25",
+			reason: "Lançado errado",
+			reconciliationId: uuid(),
+		});
+		expect(reconciliationReversePayload.parse(fields)).toEqual(fields);
+	});
 });

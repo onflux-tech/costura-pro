@@ -1,19 +1,21 @@
 import { type QueryClient, useQueryClient } from "@tanstack/react-query";
-import { useCallback, useRef } from "react";
+import { useCallback, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import type { ClientCommandFailure } from "@/lib/client-command-error";
 import { sessionEnded } from "@/lib/command-error";
 import { nextOpId, type OpIdSlot } from "@/lib/op-id";
 import {
+	type CommandSettlement,
 	type ReconciliationDraft,
-	reconcileCommandFailure,
+	reconcileSettlement,
 	reconciliationFields,
 	reconciliationOpKey,
-	reverseCommandFailure,
 	reverseOpKey,
 	reverseReconciliationFields,
+	reverseSettlement,
 } from "@/lib/reconciliation";
+import { reconciliationDrafts } from "@/lib/reconciliation-drafts";
 import type {
 	ReconciliationView,
 	ServiceOrderItemView,
@@ -28,93 +30,62 @@ export type ReconcileTarget = Pick<
 	"id" | "line" | "reconciled" | "reservations"
 >;
 
-type KeptReconciliation = {
-	draft: ReconciliationDraft | null;
-	opIdFor: (key: string) => string;
-	reconciliationId: string;
-};
-
 type KeptReversal = {
 	movementIds: string[];
 	opIdFor: (key: string) => string;
 	reversalId: string;
 };
 
+const newId = () => crypto.randomUUID();
+
 function opIdSource(): (key: string) => string {
 	let slot: OpIdSlot | null = null;
 	return (key) => {
-		slot = nextOpId(slot, key, () => crypto.randomUUID());
+		slot = nextOpId(slot, key, newId);
 		return slot.opId;
 	};
 }
 
-async function failed<Failure>(
+async function settled(
 	queryClient: QueryClient,
 	error: unknown,
-	failureOf: (error: unknown) => Failure
-): Promise<Failure> {
+	settlementOf: (error: unknown) => CommandSettlement
+): Promise<CommandSettlement> {
 	if (sessionEnded(error)) {
 		await queryClient.invalidateQueries({ queryKey: sessionQuery.queryKey });
 	}
 	refreshReconciliation(queryClient);
-	return failureOf(error);
+	return settlementOf(error);
 }
 
 export function useReconciliationActions() {
 	const queryClient = useQueryClient();
-	const drafts = useRef(new Map<string, KeptReconciliation>());
+	const [drafts] = useState(() => reconciliationDrafts(newId));
 	const reversals = useRef(new Map<string, KeptReversal>());
 
-	const keptFor = useCallback(
-		(item: Pick<ReconcileTarget, "id" | "reconciled">) => {
-			const kept = drafts.current.get(item.id);
-			if (kept && item.reconciled) {
-				drafts.current.delete(item.id);
-				return;
-			}
-			return kept;
-		},
-		[]
+	const draftOf = useCallback(
+		(item: Pick<ReconcileTarget, "id" | "reconciled">) => drafts.draftOf(item),
+		[drafts]
 	);
 
 	const keepDraft = useCallback(
-		(
-			item: Pick<ReconcileTarget, "id" | "reconciled">,
-			draft: ReconciliationDraft
-		): KeptReconciliation => {
-			const kept = keptFor(item) ?? {
-				draft: null,
-				opIdFor: opIdSource(),
-				reconciliationId: crypto.randomUUID(),
-			};
-			const next = { ...kept, draft };
-			drafts.current.set(item.id, next);
-			return next;
-		},
-		[keptFor]
-	);
-
-	const draftOf = useCallback(
-		(item: Pick<ReconcileTarget, "id" | "reconciled">) =>
-			keptFor(item)?.draft ?? null,
-		[keptFor]
+		(item: Pick<ReconcileTarget, "id">, draft: ReconciliationDraft) =>
+			drafts.keep(item.id, draft).draft,
+		[drafts]
 	);
 
 	const forgetSettled = useCallback(
-		(items: readonly Pick<ReconcileTarget, "id" | "reconciled">[]) => {
-			for (const item of items) {
-				keptFor(item);
-			}
-		},
-		[keptFor]
+		(items: readonly Pick<ReconcileTarget, "id" | "reconciled">[]) =>
+			drafts.forgetSettled(items),
+		[drafts]
 	);
 
 	const reconcile = async (
 		item: ReconcileTarget,
 		draft: ReconciliationDraft
 	): Promise<ClientCommandFailure | null> => {
-		const kept = keepDraft(item, draft);
-		const fields = reconciliationFields(draft, item.id);
+		const kept = drafts.keep(item.id, draft);
+		const fields = reconciliationFields(kept.draft, item.id);
 		try {
 			await api.serviceOrderItems.reconcile({
 				...fields,
@@ -122,13 +93,18 @@ export function useReconciliationActions() {
 				reconciliationId: kept.reconciliationId,
 			});
 		} catch (error) {
-			const failure = await failed(queryClient, error, reconcileCommandFailure);
-			if (failure.kind === "exists") {
-				drafts.current.delete(item.id);
+			const outcome = await settled(queryClient, error, reconcileSettlement);
+			if (outcome.kind === "notice") {
+				drafts.forget(item.id);
+				toast.info(outcome.message);
+				return null;
 			}
-			return failure;
+			if (outcome.failure.kind === "exists") {
+				drafts.forget(item.id);
+			}
+			return outcome.failure;
 		}
-		drafts.current.delete(item.id);
+		drafts.forget(item.id);
 		await refreshReconciliation(queryClient);
 		toast.success("Materiais reconciliados e peça pronta.");
 		return null;
@@ -140,10 +116,10 @@ export function useReconciliationActions() {
 	): Promise<ClientCommandFailure | null> => {
 		const kept = reversals.current.get(reconciliation.id) ?? {
 			movementIds: reconciliation.lines.flatMap((line) =>
-				line.parts.map(() => crypto.randomUUID())
+				line.parts.map(() => newId())
 			),
 			opIdFor: opIdSource(),
-			reversalId: crypto.randomUUID(),
+			reversalId: newId(),
 		};
 		reversals.current.set(reconciliation.id, kept);
 		const fields = reverseReconciliationFields({
@@ -158,12 +134,12 @@ export function useReconciliationActions() {
 				reversalId: kept.reversalId,
 			});
 		} catch (error) {
-			const failure = await failed(queryClient, error, reverseCommandFailure);
-			if (failure.kind !== "exists") {
-				return failure;
+			const outcome = await settled(queryClient, error, reverseSettlement);
+			if (outcome.kind === "failed") {
+				return outcome.failure;
 			}
 			reversals.current.delete(reconciliation.id);
-			toast.info(failure.message);
+			toast.info(outcome.message);
 			return null;
 		}
 		reversals.current.delete(reconciliation.id);

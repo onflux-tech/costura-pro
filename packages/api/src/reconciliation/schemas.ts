@@ -97,7 +97,6 @@ export const reconciliationReversePayload = z
 	.object({
 		movementIds: z
 			.array(z.uuid())
-			.min(1)
 			.max(reconciliationLimits.lines.max * reconciliationLimits.parts.max),
 		occurredOn: occurredOnField,
 		reason: z

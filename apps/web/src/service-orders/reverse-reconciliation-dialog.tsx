@@ -10,11 +10,15 @@ import {
 } from "@costura-pro/ui/components/dialog";
 import { Input } from "@costura-pro/ui/components/input";
 import { Text } from "@costura-pro/ui/components/typography";
-import { type ComponentProps, useState } from "react";
+import { type ComponentProps, useEffect, useState } from "react";
+import { toast } from "sonner";
 
 import type { ClientCommandFailure } from "@/lib/client-command-error";
 import { localDay } from "@/lib/measurements";
-import { reverseReconciliationErrors } from "@/lib/reconciliation";
+import {
+	reverseDialogNotice,
+	reverseReconciliationErrors,
+} from "@/lib/reconciliation";
 import type { ReconciliationView } from "@/lib/service-orders";
 import {
 	FailureAlert,
@@ -35,18 +39,21 @@ function ReverseForm({
 	itemTitle,
 	reconciliation,
 	reverse,
+	sending,
+	setSending,
 }: {
 	close: () => void;
 	itemTitle: string;
 	reconciliation: ReconciliationView;
 	reverse: ReconciliationActions["reverse"];
+	sending: boolean;
+	setSending: (sending: boolean) => void;
 }) {
 	const [today] = useState(() => localDay(new Date()));
 	const [occurredOn, setOccurredOn] = useState(today);
 	const [reason, setReason] = useState("");
 	const [checked, setChecked] = useState(false);
 	const [failure, setFailure] = useState<ClientCommandFailure | null>(null);
-	const [sending, setSending] = useState(false);
 	const { fieldRef, focusFirst } = useFieldTargets<ReverseField>();
 	const bounds = { reconciledOn: reconciliation.occurredOn, today };
 	const errors = checked
@@ -151,6 +158,16 @@ export function ReverseReconciliationDialog({
 	open: boolean;
 	reconciliation: ReconciliationView | null;
 }) {
+	const [sending, setSending] = useState(false);
+	const notice = reverseDialogNotice({ open, reconciliation, sending });
+
+	useEffect(() => {
+		if (notice !== null) {
+			toast.info(notice);
+			onOpenChange(false);
+		}
+	}, [notice, onOpenChange]);
+
 	return (
 		<Dialog onOpenChange={onOpenChange} open={open}>
 			<DialogContent finalFocus={finalFocus}>
@@ -161,6 +178,8 @@ export function ReverseReconciliationDialog({
 						key={reconciliation.id}
 						reconciliation={reconciliation}
 						reverse={actions.reverse}
+						sending={sending}
+						setSending={setSending}
 					/>
 				) : null}
 			</DialogContent>

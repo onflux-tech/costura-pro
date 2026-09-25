@@ -1,15 +1,18 @@
 import { commandMessages } from "@costura-pro/api/command-messages";
 import { canonicalJson } from "@costura-pro/domain/canonical-json";
 import {
+	displayPrecision,
 	formatQuantityInput,
 	parseQuantity,
 	quantityScale,
 } from "@costura-pro/domain/quantity";
 import {
-	consumptionPartValue,
+	hasAverageCost,
+	type PointBalance,
 	reconciliationLimits,
 	reconciliationOutcome,
 	suggestConsumptionParts,
+	valueConsumptionParts,
 } from "@costura-pro/domain/reconciliation";
 import { exitValueCents } from "@costura-pro/domain/stock";
 import type { BaseUnitCode } from "@costura-pro/domain/unit";
@@ -98,16 +101,43 @@ export type ReverseFields = {
 	reconciliationId: string;
 };
 
+export function quantityOf(text: string): bigint | null {
+	return parseQuantity(text, displayPrecision.max);
+}
+
 function outMicros(line: LineDraft): bigint | null {
-	const consumed = parseQuantity(line.consumed, line.variant.displayPrecision);
-	const lost = parseQuantity(line.lost, line.variant.displayPrecision);
+	const consumed = quantityOf(line.consumed);
+	const lost = quantityOf(line.lost);
 	return consumed === null || lost === null ? null : consumed + lost;
+}
+
+function pointKey(
+	variantId: string,
+	locationId: string,
+	lotId: string | null
+): string {
+	return `${variantId}|${locationId}|${lotId ?? ""}`;
+}
+
+function takenBy(lines: readonly LineDraft[]): Map<string, bigint> {
+	const taken = new Map<string, bigint>();
+	for (const line of lines) {
+		for (const part of line.parts) {
+			const quantity = quantityOf(part.quantity);
+			if (quantity !== null && quantity > 0n) {
+				const key = pointKey(line.variant.id, part.locationId, part.lotId);
+				taken.set(key, (taken.get(key) ?? 0n) + quantity);
+			}
+		}
+	}
+	return taken;
 }
 
 function suggestedParts(
 	variant: LineDraft["variant"],
 	need: bigint,
 	points: readonly VariantPointsView[],
+	earlier: readonly LineDraft[],
 	newId: () => string
 ): PartDraft[] {
 	if (need === 0n) {
@@ -115,13 +145,16 @@ function suggestedParts(
 	}
 	const list =
 		points.find((entry) => entry.variantId === variant.id)?.points ?? [];
+	const taken = takenBy(earlier);
 	const suggested = suggestConsumptionParts(
 		list.map((point) => ({
 			locationId: point.locationId,
 			locationName: point.locationName,
 			lotCreatedAt: point.lotCreatedAt,
 			lotId: point.lotId,
-			quantityMicros: BigInt(point.quantityMicros),
+			quantityMicros:
+				BigInt(point.quantityMicros) -
+				(taken.get(pointKey(variant.id, point.locationId, point.lotId)) ?? 0n),
 		})),
 		need
 	);
@@ -161,14 +194,23 @@ function withLine(
 }
 
 function resuggested(
-	line: LineDraft,
+	draft: ReconciliationDraft,
+	index: number,
+	change: Partial<LineDraft>,
 	points: readonly VariantPointsView[],
 	newId: () => string
-): LineDraft {
-	const need = outMicros(line);
-	return need === null
-		? line
-		: { ...line, parts: suggestedParts(line.variant, need, points, newId) };
+): ReconciliationDraft {
+	const earlier = draft.lines.slice(0, index);
+	return withLine(draft, index, (current) => {
+		const line = { ...current, ...change };
+		const need = outMicros(line);
+		return need === null
+			? line
+			: {
+					...line,
+					parts: suggestedParts(line.variant, need, points, earlier, newId),
+				};
+	});
 }
 
 export function reconciliationDraftOf(
@@ -177,31 +219,29 @@ export function reconciliationDraftOf(
 	today: string,
 	newId: () => string
 ): ReconciliationDraft {
-	return {
-		lines: rows.map((row) => {
-			const variant = {
-				baseUnit: row.baseUnit,
-				displayPrecision: row.displayPrecision,
-				id: row.variantId,
-				label: row.label,
-				tracksLots:
-					points.find((entry) => entry.variantId === row.variantId)
-						?.tracksLots ?? false,
-			};
-			return {
-				consumed: formatQuantityInput(row.plannedMicros, row.displayPrecision),
-				label: row.label,
-				lost: "0",
-				parts: suggestedParts(variant, row.plannedMicros, points, newId),
-				plannedMicros: row.plannedMicros.toString(),
-				plannedVariantId: row.variantId,
-				swapReason: "",
-				variant,
-			};
-		}),
-		note: "",
-		occurredOn: today,
-	};
+	const lines: LineDraft[] = [];
+	for (const row of rows) {
+		const variant = {
+			baseUnit: row.baseUnit,
+			displayPrecision: row.displayPrecision,
+			id: row.variantId,
+			label: row.label,
+			tracksLots:
+				points.find((entry) => entry.variantId === row.variantId)?.tracksLots ??
+				false,
+		};
+		lines.push({
+			consumed: formatQuantityInput(row.plannedMicros, row.displayPrecision),
+			label: row.label,
+			lost: "0",
+			parts: suggestedParts(variant, row.plannedMicros, points, lines, newId),
+			plannedMicros: row.plannedMicros.toString(),
+			plannedVariantId: row.variantId,
+			swapReason: "",
+			variant,
+		});
+	}
+	return { lines, note: "", occurredOn: today };
 }
 
 export function withQuantities(
@@ -212,9 +252,7 @@ export function withQuantities(
 	points: readonly VariantPointsView[],
 	newId: () => string
 ): ReconciliationDraft {
-	return withLine(draft, index, (line) =>
-		resuggested({ ...line, consumed, lost }, points, newId)
-	);
+	return resuggested(draft, index, { consumed, lost }, points, newId);
 }
 
 export function withSwap(
@@ -224,9 +262,7 @@ export function withSwap(
 	points: readonly VariantPointsView[],
 	newId: () => string
 ): ReconciliationDraft {
-	return withLine(draft, index, (line) =>
-		resuggested({ ...line, variant }, points, newId)
-	);
+	return resuggested(draft, index, { variant }, points, newId);
 }
 
 export function withSwapReason(
@@ -320,7 +356,7 @@ function reasonError(reason: string, missing: string): string | null {
 }
 
 function partsError(line: LineDraft): string | null {
-	const { baseUnit, displayPrecision, tracksLots } = line.variant;
+	const { baseUnit, tracksLots } = line.variant;
 	if (line.parts.length > reconciliationLimits.parts.max) {
 		return `Use até ${reconciliationLimits.parts.max} saídas.`;
 	}
@@ -331,9 +367,7 @@ function partsError(line: LineDraft): string | null {
 	) {
 		return "Escolha o local e o lote de cada saída.";
 	}
-	const quantities = line.parts.map((part) =>
-		parseQuantity(part.quantity, displayPrecision)
-	);
+	const quantities = line.parts.map((part) => quantityOf(part.quantity));
 	if (quantities.some((quantity) => quantity === null || quantity <= 0n)) {
 		return "Confira as quantidades.";
 	}
@@ -352,7 +386,7 @@ function partsError(line: LineDraft): string | null {
 		return null;
 	}
 	const text = (value: bigint) =>
-		pointQuantity(value.toString(), baseUnit, displayPrecision);
+		pointQuantity(value.toString(), baseUnit, line.variant.displayPrecision);
 	return `As saídas somam ${text(total)}, e a saída é ${text(need)}.`;
 }
 
@@ -403,9 +437,8 @@ export function reconciliationFields(
 	return {
 		itemId,
 		lines: draft.lines.map((line) => {
-			const { displayPrecision, id } = line.variant;
-			const text = (value: string) =>
-				(parseQuantity(value, displayPrecision) ?? 0n).toString();
+			const { id } = line.variant;
+			const text = (value: string) => (quantityOf(value) ?? 0n).toString();
 			return {
 				consumedMicros: text(line.consumed),
 				lostMicros: text(line.lost),
@@ -437,6 +470,7 @@ export type LinePreview = {
 	extraMicros: bigint;
 	leftoverMicros: bigint;
 	negative: {
+		kind: "noAverage" | "overdraw";
 		micros: bigint;
 		source: "average" | "none" | "reference";
 		unitCents: bigint | null;
@@ -444,82 +478,107 @@ export type LinePreview = {
 	valueCents: bigint;
 };
 
-type PointBalance = { quantityMicros: bigint; valueCents: bigint };
-
 function negativeSource(
-	balance: PointBalance,
+	before: PointBalance,
 	referenceCostCents: bigint | null
 ): Omit<NonNullable<LinePreview["negative"]>, "micros"> {
-	if (balance.quantityMicros > 0n) {
+	if (hasAverageCost(before.quantityMicros, before.valueCents)) {
 		return {
+			kind: "overdraw",
 			source: "average",
 			unitCents: exitValueCents(
-				balance.quantityMicros,
-				balance.valueCents,
+				before.quantityMicros,
+				before.valueCents,
 				quantityScale
 			),
 		};
 	}
+	const kind = before.quantityMicros > 0n ? "noAverage" : "overdraw";
 	return referenceCostCents === null
-		? { source: "none", unitCents: null }
-		: { source: "reference", unitCents: referenceCostCents };
+		? { kind, source: "none", unitCents: null }
+		: { kind, source: "reference", unitCents: referenceCostCents };
 }
 
-export function linePreview(
-	line: LineDraft,
-	points: VariantPointsView | undefined
-): LinePreview {
-	const { displayPrecision } = line.variant;
-	const outcome = reconciliationOutcome(
-		BigInt(line.plannedMicros),
-		parseQuantity(line.consumed, displayPrecision) ?? 0n,
-		parseQuantity(line.lost, displayPrecision) ?? 0n
+function pointBalances(
+	points: readonly VariantPointsView[]
+): Map<string, PointBalance> {
+	return new Map(
+		points.flatMap((variant) =>
+			variant.points.map((point): [string, PointBalance] => [
+				pointKey(variant.variantId, point.locationId, point.lotId),
+				{
+					quantityMicros: BigInt(point.quantityMicros),
+					valueCents: BigInt(point.valueCents),
+				},
+			])
+		)
 	);
-	const reference =
-		points === undefined || points.referenceCostCents === null
-			? null
-			: BigInt(points.referenceCostCents);
-	const balances = new Map<string, PointBalance>(
-		(points?.points ?? []).map((point) => [
-			`${point.locationId}|${point.lotId ?? ""}`,
-			{
-				quantityMicros: BigInt(point.quantityMicros),
-				valueCents: BigInt(point.valueCents),
-			},
-		])
+}
+
+function referenceOf(
+	points: readonly VariantPointsView[],
+	variantId: string
+): bigint | null {
+	const reference = points.find(
+		(entry) => entry.variantId === variantId
+	)?.referenceCostCents;
+	return reference === undefined || reference === null
+		? null
+		: BigInt(reference);
+}
+
+export function reconciliationPreview(
+	draft: Pick<ReconciliationDraft, "lines">,
+	points: readonly VariantPointsView[]
+): LinePreview[] {
+	const valued = valueConsumptionParts(
+		pointBalances(points),
+		draft.lines.flatMap((line, index) => {
+			const referenceCostCents = referenceOf(points, line.variant.id);
+			return line.parts.flatMap((part) => {
+				const quantity = quantityOf(part.quantity);
+				return quantity === null || quantity <= 0n
+					? []
+					: [
+							{
+								line: index,
+								pointKey: pointKey(
+									line.variant.id,
+									part.locationId,
+									part.lotId
+								),
+								quantityMicros: quantity,
+								referenceCostCents,
+							},
+						];
+			});
+		})
 	);
-	let valueCents = 0n;
-	let negativeMicros = 0n;
-	let source: ReturnType<typeof negativeSource> | null = null;
-	for (const part of line.parts) {
-		const quantity = parseQuantity(part.quantity, displayPrecision);
-		if (quantity === null || quantity <= 0n) {
-			continue;
-		}
-		const key = `${part.locationId}|${part.lotId ?? ""}`;
-		const balance = balances.get(key) ?? { quantityMicros: 0n, valueCents: 0n };
-		const value = consumptionPartValue(
-			balance.quantityMicros,
-			balance.valueCents,
-			quantity,
-			reference
+	return draft.lines.map((line, index) => {
+		const outcome = reconciliationOutcome(
+			BigInt(line.plannedMicros),
+			quantityOf(line.consumed) ?? 0n,
+			quantityOf(line.lost) ?? 0n
 		);
-		if (value.provisionalMicros > 0n) {
-			negativeMicros += value.provisionalMicros;
-			source ??= negativeSource(balance, reference);
-		}
-		valueCents += value.valueCents;
-		balances.set(key, {
-			quantityMicros: balance.quantityMicros - quantity,
-			valueCents: balance.valueCents - value.valueCents,
-		});
-	}
-	return {
-		extraMicros: outcome.extraMicros,
-		leftoverMicros: outcome.leftoverMicros,
-		negative: source === null ? null : { micros: negativeMicros, ...source },
-		valueCents,
-	};
+		const parts = valued.filter((part) => part.line === index);
+		const provisional = parts.filter((part) => part.provisionalMicros > 0n);
+		const [first] = provisional;
+		return {
+			extraMicros: outcome.extraMicros,
+			leftoverMicros: outcome.leftoverMicros,
+			negative:
+				first === undefined
+					? null
+					: {
+							micros: provisional.reduce(
+								(total, part) => total + part.provisionalMicros,
+								0n
+							),
+							...negativeSource(first.before, first.referenceCostCents),
+						},
+			valueCents: parts.reduce((total, part) => total + part.valueCents, 0n),
+		};
+	});
 }
 
 export function reconciliationFailure(failure: {
@@ -573,11 +632,17 @@ export function negativeText(
 	if (negative === null) {
 		return null;
 	}
-	const head = `Fica negativo em ${lineQuantity(line, negative.micros)}`;
-	if (negative.source === "none" || negative.unitCents === null) {
-		return `${head}: sem custo`;
+	const quantity = lineQuantity(line, negative.micros);
+	const cost =
+		negative.source === "none" || negative.unitCents === null
+			? null
+			: `custo provisório ${moneyLabel(negative.unitCents)}/${unitAbbreviation(line.variant.baseUnit)} (${negativeSources[negative.source]})`;
+	if (negative.kind === "noAverage") {
+		return cost === null
+			? `Ponto sem custo médio: ${quantity} sem custo`
+			: `Ponto sem custo médio: ${quantity} a ${cost}`;
 	}
-	return `${head}: custo provisório ${moneyLabel(negative.unitCents)}/${unitAbbreviation(line.variant.baseUnit)} (${negativeSources[negative.source]})`;
+	return `Fica negativo em ${quantity}: ${cost ?? "sem custo"}`;
 }
 
 export function swapUnitHint(
@@ -625,6 +690,34 @@ export function reverseCommandFailure(error: unknown): ClientCommandFailure {
 		};
 	}
 	return clientCommandFailure(error, "OS");
+}
+
+export type CommandSettlement =
+	| { failure: ClientCommandFailure; kind: "failed" }
+	| { kind: "notice"; message: string };
+
+export function reconcileSettlement(error: unknown): CommandSettlement {
+	const failure = reconcileCommandFailure(error);
+	return conflictMessage(error) === commandMessages.aggregateExists
+		? { kind: "notice", message: failure.message }
+		: { failure, kind: "failed" };
+}
+
+export function reverseSettlement(error: unknown): CommandSettlement {
+	const failure = reverseCommandFailure(error);
+	return failure.kind === "exists"
+		? { kind: "notice", message: failure.message }
+		: { failure, kind: "failed" };
+}
+
+export function reverseDialogNotice(state: {
+	open: boolean;
+	reconciliation: { id: string } | null;
+	sending: boolean;
+}): string | null {
+	return state.open && !state.sending && state.reconciliation === null
+		? "Esta reconciliação já tinha sido estornada."
+		: null;
 }
 
 export function reverseReconciliationFields(input: {

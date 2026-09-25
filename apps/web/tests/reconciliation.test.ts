@@ -6,21 +6,25 @@ import { ORPCError } from "@orpc/client";
 import {
 	hasReconciliationErrors,
 	type LineDraft,
+	type LinePreview,
 	lineOutcomeText,
-	linePreview,
 	negativeText,
 	type ReconciliationDraft,
 	reconcileCommandFailure,
+	reconcileSettlement,
 	reconciliationDraftOf,
 	reconciliationErrors,
 	reconciliationFailure,
 	reconciliationFields,
 	reconciliationOpKey,
+	reconciliationPreview,
 	removePart,
 	reverseCommandFailure,
+	reverseDialogNotice,
 	reverseOpKey,
 	reverseReconciliationErrors,
 	reverseReconciliationFields,
+	reverseSettlement,
 	splitPart,
 	swapUnitHint,
 	type VariantPointsView,
@@ -29,6 +33,7 @@ import {
 	withSwap,
 	withSwapReason,
 } from "../src/lib/reconciliation";
+import { reconciliationDrafts } from "../src/lib/reconciliation-drafts";
 import type { MaterialRowView } from "../src/lib/service-orders";
 
 const id = (n: number) =>
@@ -149,10 +154,53 @@ const liningVariant: LineDraft["variant"] = {
 	tracksLots: true,
 };
 
+const crepeVariant: LineDraft["variant"] = {
+	baseUnit: "m",
+	displayPrecision: 2,
+	id: crepe,
+	label: "Crepe · Preto",
+	tracksLots: false,
+};
+
+const twoLines: MaterialRowView[] = [
+	{
+		baseUnit: "m",
+		displayPrecision: 2,
+		label: "Crepe · Preto",
+		plannedMicros: 2_000_000n,
+		reservedMicros: 2_000_000n,
+		shortageMicros: 0n,
+		variantId: crepe,
+	},
+	{
+		baseUnit: "m",
+		displayPrecision: 2,
+		label: "Forro · Bege",
+		plannedMicros: 1_000_000n,
+		reservedMicros: 1_000_000n,
+		shortageMicros: 0n,
+		variantId: lining,
+	},
+];
+
 const bounds = { openedOn: "2026-09-22", today: "2026-09-25" };
 
 function freshDraft(): ReconciliationDraft {
 	return reconciliationDraftOf(rows, points, "2026-09-25", sequence(500));
+}
+
+function previewOf(
+	current: LineDraft,
+	variantPoints?: VariantPointsView
+): LinePreview {
+	const [preview] = reconciliationPreview(
+		{ lines: [current] },
+		variantPoints ? [variantPoints] : []
+	);
+	if (preview === undefined) {
+		throw new Error("prévia ausente");
+	}
+	return preview;
 }
 
 function line(draft: ReconciliationDraft, index = 0): LineDraft {
@@ -341,6 +389,158 @@ describe("rascunho da reconciliação", () => {
 		).toBe(false);
 	});
 
+	test("a sugestão da linha seguinte desconta o que a anterior tira do ponto", () => {
+		const withShelf: VariantPointsView = {
+			...crepePoints,
+			points: [
+				...crepePoints.points,
+				{
+					locationId: shelf,
+					locationName: "Prateleira",
+					lotCreatedAt: null,
+					lotId: null,
+					lotLabel: null,
+					quantityMicros: "1000000",
+					valueCents: "3000",
+				},
+			],
+		};
+		const available = [withShelf, liningPoints];
+		const draft = reconciliationDraftOf(
+			twoLines,
+			available,
+			"2026-09-25",
+			sequence(500)
+		);
+		const swapped = withSwap(draft, 1, crepeVariant, available, sequence(600));
+		expect(line(swapped, 1).parts).toEqual([
+			{
+				locationId: closet,
+				lotId: null,
+				movementId: id(601),
+				quantity: "0,50",
+			},
+			{ locationId: shelf, lotId: null, movementId: id(602), quantity: "0,50" },
+		]);
+		const resized = withQuantities(
+			swapped,
+			1,
+			"0,80",
+			"0",
+			available,
+			sequence(700)
+		);
+		expect(line(resized, 1).parts).toEqual([
+			{
+				locationId: closet,
+				lotId: null,
+				movementId: id(701),
+				quantity: "0,50",
+			},
+			{
+				locationId: shelf,
+				lotId: null,
+				movementId: id(702),
+				quantity: "0,30",
+			},
+		]);
+	});
+
+	test("o lote mais antigo vem primeiro mesmo no local de nome maior", () => {
+		const lots: VariantPointsView = {
+			...liningPoints,
+			points: [
+				{
+					locationId: closet,
+					locationName: "Armário",
+					lotCreatedAt: "2026-09-01T12:00:00.000Z",
+					lotId: newLot,
+					lotLabel: "Rolo 1",
+					quantityMicros: "5000000",
+					valueCents: "10000",
+				},
+				{
+					locationId: shelf,
+					locationName: "Prateleira",
+					lotCreatedAt: "2026-08-01T12:00:00.000Z",
+					lotId: oldLot,
+					lotLabel: "Rolo 2",
+					quantityMicros: "1000000",
+					valueCents: "2000",
+				},
+			],
+		};
+		const [lined] = reconciliationDraftOf(
+			[{ ...(twoLines[1] as MaterialRowView), plannedMicros: 1_500_000n }],
+			[lots],
+			"2026-09-25",
+			sequence(500)
+		).lines;
+		expect(lined?.parts).toEqual([
+			{
+				locationId: shelf,
+				lotId: oldLot,
+				movementId: id(501),
+				quantity: "1,00",
+			},
+			{
+				locationId: closet,
+				lotId: newLot,
+				movementId: id(502),
+				quantity: "0,50",
+			},
+		]);
+	});
+
+	test("previsto e ponto com mais casas que a precisão da variante", () => {
+		const small = reconciliationDraftOf(
+			[{ ...(twoLines[0] as MaterialRowView), plannedMicros: 125_000n }],
+			[crepePoints],
+			"2026-09-25",
+			sequence(500)
+		);
+		expect(line(small).consumed).toBe("0,125");
+		expect(hasReconciliationErrors(reconciliationErrors(small, bounds))).toBe(
+			false
+		);
+		expect(reconciliationFields(small, itemId).lines[0]).toMatchObject({
+			consumedMicros: "125000",
+			parts: [{ quantityMicros: "125000" }],
+		});
+		const thin: VariantPointsView = {
+			...crepePoints,
+			points: [
+				{
+					...(crepePoints.points[0] as VariantPointsView["points"][number]),
+					quantityMicros: "144000",
+					valueCents: "432",
+				},
+				{
+					locationId: shelf,
+					locationName: "Prateleira",
+					lotCreatedAt: null,
+					lotId: null,
+					lotLabel: null,
+					quantityMicros: "5000000",
+					valueCents: "15000",
+				},
+			],
+		};
+		const split = reconciliationDraftOf(
+			rows.slice(0, 1),
+			[thin],
+			"2026-09-25",
+			sequence(500)
+		);
+		expect(line(split).parts.map((part) => part.quantity)).toEqual([
+			"0,144",
+			"3,256",
+		]);
+		expect(hasReconciliationErrors(reconciliationErrors(split, bounds))).toBe(
+			false
+		);
+	});
+
 	test("dividir acrescenta uma saída vazia e remover tira a escolhida", () => {
 		const split = splitPart(freshDraft(), 0, sequence(800));
 		expect(line(split).parts).toEqual([
@@ -427,13 +627,24 @@ describe("erros da reconciliação", () => {
 	});
 
 	test("quantidade inválida", () => {
-		const errors = reconciliationErrors(withLine({ lost: "0,123" }), bounds);
+		const errors = reconciliationErrors(
+			withLine({ lost: "0,1234567" }),
+			bounds
+		);
 		expect(errors.lines[0]?.quantities).toBe("Confira as quantidades.");
+		expect(
+			reconciliationErrors(withLine({ consumed: "3,4a" }), bounds).lines[0]
+				?.quantities
+		).toBe("Confira as quantidades.");
 		expect(
 			reconciliationErrors(withLine({ consumed: "" }), bounds).lines[0]
 				?.quantities
 		).toBe("Confira as quantidades.");
 		expect(hasReconciliationErrors(errors)).toBe(true);
+		expect(
+			reconciliationErrors(withLine({ lost: "0,123" }), bounds).lines[0]
+				?.quantities
+		).toBeNull();
 	});
 
 	test("partes que não somam a saída", () => {
@@ -723,31 +934,47 @@ describe("payload e chave da reconciliação", () => {
 
 describe("prévia da linha", () => {
 	test("3,40 m sobre 2,50 m e R$ 75,00 fica negativo pela média", () => {
-		expect(linePreview(line(freshDraft()), crepePoints)).toEqual({
+		expect(previewOf(line(freshDraft()), crepePoints)).toEqual({
 			extraMicros: 0n,
 			leftoverMicros: 0n,
-			negative: { micros: 900_000n, source: "average", unitCents: 3000n },
+			negative: {
+				kind: "overdraw",
+				micros: 900_000n,
+				source: "average",
+				unitCents: 3000n,
+			},
 			valueCents: 10_200n,
 		});
 	});
 
 	test("sobre ponto zerado usa a referência, sem referência fica sem custo", () => {
 		const empty = { ...crepePoints, points: [] };
-		expect(linePreview(line(freshDraft()), empty)).toEqual({
+		expect(previewOf(line(freshDraft()), empty)).toEqual({
 			extraMicros: 0n,
 			leftoverMicros: 0n,
-			negative: { micros: 3_400_000n, source: "reference", unitCents: 3000n },
+			negative: {
+				kind: "overdraw",
+				micros: 3_400_000n,
+				source: "reference",
+				unitCents: 3000n,
+			},
 			valueCents: 10_200n,
 		});
 		expect(
-			linePreview(line(freshDraft()), { ...empty, referenceCostCents: null })
+			previewOf(line(freshDraft()), { ...empty, referenceCostCents: null })
 		).toEqual({
 			extraMicros: 0n,
 			leftoverMicros: 0n,
-			negative: { micros: 3_400_000n, source: "none", unitCents: null },
+			negative: {
+				kind: "overdraw",
+				micros: 3_400_000n,
+				source: "none",
+				unitCents: null,
+			},
 			valueCents: 0n,
 		});
-		expect(linePreview(line(freshDraft()), undefined).negative).toEqual({
+		expect(previewOf(line(freshDraft()), undefined).negative).toEqual({
+			kind: "overdraw",
 			micros: 3_400_000n,
 			source: "none",
 			unitCents: null,
@@ -763,7 +990,7 @@ describe("prévia da linha", () => {
 			points,
 			sequence(600)
 		);
-		expect(linePreview(line(less), crepePoints)).toEqual({
+		expect(previewOf(line(less), crepePoints)).toEqual({
 			extraMicros: 0n,
 			leftoverMicros: 1_400_000n,
 			negative: null,
@@ -777,7 +1004,7 @@ describe("prévia da linha", () => {
 			points,
 			sequence(600)
 		);
-		expect(linePreview(line(more, 1), zipperPoints)).toEqual({
+		expect(previewOf(line(more, 1), zipperPoints)).toEqual({
 			extraMicros: 1_000_000n,
 			leftoverMicros: 0n,
 			negative: null,
@@ -785,30 +1012,77 @@ describe("prévia da linha", () => {
 		});
 	});
 
-	test("as partes anteriores da linha gastam o saldo do ponto", () => {
-		const twice: LineDraft = {
-			...line(freshDraft()),
-			parts: [
+	test("ponto com quantidade e sem valor positivo usa a referência", () => {
+		const noValue: VariantPointsView = {
+			...crepePoints,
+			points: [
 				{
-					locationId: closet,
-					lotId: null,
-					movementId: id(501),
-					quantity: "2,00",
-				},
-				{
-					locationId: closet,
-					lotId: null,
-					movementId: id(502),
-					quantity: "1,40",
+					...(crepePoints.points[0] as VariantPointsView["points"][number]),
+					quantityMicros: "100000",
+					valueCents: "-700",
 				},
 			],
 		};
-		expect(linePreview(twice, crepePoints)).toEqual({
+		expect(previewOf(line(freshDraft()), noValue)).toEqual({
 			extraMicros: 0n,
 			leftoverMicros: 0n,
-			negative: { micros: 900_000n, source: "average", unitCents: 3000n },
+			negative: {
+				kind: "noAverage",
+				micros: 3_400_000n,
+				source: "reference",
+				unitCents: 3000n,
+			},
 			valueCents: 10_200n,
 		});
+	});
+
+	test("a linha seguinte parte do saldo que a anterior deixou no ponto", () => {
+		const draft = withSwapReason(
+			withSwap(
+				reconciliationDraftOf(twoLines, points, "2026-09-25", sequence(500)),
+				1,
+				crepeVariant,
+				points,
+				sequence(600)
+			),
+			1,
+			"Forro manchou"
+		);
+		expect(line(draft).parts).toEqual([
+			{
+				locationId: closet,
+				lotId: null,
+				movementId: id(501),
+				quantity: "2,00",
+			},
+		]);
+		expect(line(draft, 1).parts).toEqual([
+			{
+				locationId: closet,
+				lotId: null,
+				movementId: id(601),
+				quantity: "1,00",
+			},
+		]);
+		expect(reconciliationPreview(draft, points)).toEqual([
+			{
+				extraMicros: 0n,
+				leftoverMicros: 0n,
+				negative: null,
+				valueCents: 6000n,
+			},
+			{
+				extraMicros: 0n,
+				leftoverMicros: 0n,
+				negative: {
+					kind: "overdraw",
+					micros: 500_000n,
+					source: "average",
+					unitCents: 3000n,
+				},
+				valueCents: 3000n,
+			},
+		]);
 	});
 });
 
@@ -850,43 +1124,66 @@ describe("falha da reconciliação", () => {
 describe("textos do diálogo de reconciliação", () => {
 	test("sobra, a mais e a sobra zerada", () => {
 		const exact = line(freshDraft());
-		expect(lineOutcomeText(exact, linePreview(exact, crepePoints))).toBe(
+		expect(lineOutcomeText(exact, previewOf(exact, crepePoints))).toBe(
 			"sem sobra"
 		);
 		const less = line(
 			withQuantities(freshDraft(), 0, "2,00", "0", points, sequence(600))
 		);
-		expect(lineOutcomeText(less, linePreview(less, crepePoints))).toBe(
+		expect(lineOutcomeText(less, previewOf(less, crepePoints))).toBe(
 			"Sobra 1,40 m"
 		);
 		const more = line(
 			withQuantities(freshDraft(), 1, "1", "1", points, sequence(600)),
 			1
 		);
-		expect(lineOutcomeText(more, linePreview(more, zipperPoints))).toBe(
+		expect(lineOutcomeText(more, previewOf(more, zipperPoints))).toBe(
 			"1 un a mais"
 		);
 	});
 
 	test("aviso de ponto negativo pela média, pela referência e sem custo", () => {
 		const crepeLine = line(freshDraft());
-		expect(negativeText(crepeLine, linePreview(crepeLine, crepePoints))).toBe(
+		expect(negativeText(crepeLine, previewOf(crepeLine, crepePoints))).toBe(
 			"Fica negativo em 0,90 m: custo provisório R$ 30,00/m (média do ponto)"
 		);
 		const empty = { ...crepePoints, points: [] };
-		expect(negativeText(crepeLine, linePreview(crepeLine, empty))).toBe(
+		expect(negativeText(crepeLine, previewOf(crepeLine, empty))).toBe(
 			"Fica negativo em 3,40 m: custo provisório R$ 30,00/m (custo de referência)"
 		);
 		expect(
 			negativeText(
 				crepeLine,
-				linePreview(crepeLine, { ...empty, referenceCostCents: null })
+				previewOf(crepeLine, { ...empty, referenceCostCents: null })
 			)
 		).toBe("Fica negativo em 3,40 m: sem custo");
 		const zipperLine = line(freshDraft(), 1);
 		expect(
-			negativeText(zipperLine, linePreview(zipperLine, zipperPoints))
+			negativeText(zipperLine, previewOf(zipperLine, zipperPoints))
 		).toBeNull();
+	});
+
+	test("aviso de ponto sem custo médio, com e sem referência", () => {
+		const crepeLine = line(freshDraft());
+		const noAverage: VariantPointsView = {
+			...crepePoints,
+			points: [
+				{
+					...(crepePoints.points[0] as VariantPointsView["points"][number]),
+					quantityMicros: "100000",
+					valueCents: "0",
+				},
+			],
+		};
+		expect(negativeText(crepeLine, previewOf(crepeLine, noAverage))).toBe(
+			"Ponto sem custo médio: 3,40 m a custo provisório R$ 30,00/m (custo de referência)"
+		);
+		expect(
+			negativeText(
+				crepeLine,
+				previewOf(crepeLine, { ...noAverage, referenceCostCents: null })
+			)
+		).toBe("Ponto sem custo médio: 3,40 m sem custo");
 	});
 
 	test("troca só com a mesma unidade", () => {
@@ -979,5 +1276,153 @@ describe("falhas dos comandos da reconciliação", () => {
 			kind: "other",
 			message: commandMessages.reconciliationNotFound,
 		});
+	});
+});
+
+describe("desfecho dos comandos da reconciliação", () => {
+	test("registro já existente do próprio id vira aviso, e o de outra janela, falha", () => {
+		expect(
+			reconcileSettlement(
+				new ORPCError("CONFLICT", { message: commandMessages.aggregateExists })
+			)
+		).toEqual({
+			kind: "notice",
+			message:
+				"Esta reconciliação já tinha sido registrada. Confira os materiais.",
+		});
+		expect(
+			reconcileSettlement(
+				new ORPCError("CONFLICT", {
+					message: commandMessages.reconciliationExists,
+				})
+			)
+		).toEqual({
+			failure: {
+				kind: "exists",
+				message:
+					"Esta peça já foi reconciliada em outra janela. Confira os materiais.",
+			},
+			kind: "failed",
+		});
+		expect(
+			reconcileSettlement(
+				new ORPCError("NOT_FOUND", {
+					message: commandMessages.reconciliationSwapUnit,
+				})
+			)
+		).toEqual({
+			failure: {
+				kind: "other",
+				message: commandMessages.reconciliationSwapUnit,
+			},
+			kind: "failed",
+		});
+	});
+
+	test("estorno já registrado ou já feito em outra janela vira aviso", () => {
+		expect(
+			reverseSettlement(
+				new ORPCError("CONFLICT", {
+					message: commandMessages.reconciliationReversed,
+				})
+			)
+		).toEqual({
+			kind: "notice",
+			message: "Esta reconciliação já foi estornada em outra janela.",
+		});
+		expect(
+			reverseSettlement(
+				new ORPCError("CONFLICT", { message: commandMessages.aggregateExists })
+			)
+		).toEqual({
+			kind: "notice",
+			message: "Este estorno já tinha sido registrado. Confira os materiais.",
+		});
+		expect(
+			reverseSettlement(
+				new ORPCError("NOT_FOUND", {
+					message: commandMessages.reconciliationNotFound,
+				})
+			)
+		).toEqual({
+			failure: {
+				kind: "other",
+				message: commandMessages.reconciliationNotFound,
+			},
+			kind: "failed",
+		});
+	});
+
+	test("estorno aberto cuja reconciliação sumiu da leitura fecha com aviso, fora do envio", () => {
+		expect(
+			reverseDialogNotice({ open: true, reconciliation: null, sending: false })
+		).toBe("Esta reconciliação já tinha sido estornada.");
+		expect(
+			reverseDialogNotice({ open: true, reconciliation: null, sending: true })
+		).toBeNull();
+		expect(
+			reverseDialogNotice({ open: false, reconciliation: null, sending: false })
+		).toBeNull();
+		expect(
+			reverseDialogNotice({
+				open: true,
+				reconciliation: { id: id(900) },
+				sending: false,
+			})
+		).toBeNull();
+	});
+});
+
+function movementIdsOf(draft: ReconciliationDraft): string[] {
+	return draft.lines.flatMap((current) =>
+		current.parts.map((part) => part.movementId)
+	);
+}
+
+describe("rascunho guardado da página", () => {
+	const open = { id: itemId, reconciled: false };
+
+	test("reabrir devolve o mesmo id, as mesmas saídas e o mesmo opId", () => {
+		const drafts = reconciliationDrafts(sequence(900));
+		const kept = drafts.keep(itemId, freshDraft());
+		const opId = kept.opIdFor("chave");
+		expect(drafts.draftOf(open)).toEqual(kept.draft);
+		const again = drafts.keep(itemId, drafts.draftOf(open) ?? freshDraft());
+		expect(again.reconciliationId).toBe(kept.reconciliationId);
+		expect(movementIdsOf(again.draft)).toEqual(movementIdsOf(kept.draft));
+		expect(again.opIdFor("chave")).toBe(opId);
+	});
+
+	test("a leitura reconciliada e o registro já existente descartam a entrada", () => {
+		const other = { id: id(802), reconciled: false };
+		const drafts = reconciliationDrafts(sequence(900));
+		drafts.keep(itemId, freshDraft());
+		drafts.keep(other.id, freshDraft());
+		drafts.forgetSettled([{ ...open, reconciled: true }, other]);
+		expect(drafts.draftOf(open)).toBeNull();
+		expect(drafts.draftOf(other)).not.toBeNull();
+		drafts.forget(other.id);
+		expect(drafts.draftOf(other)).toBeNull();
+		drafts.keep(itemId, freshDraft());
+		expect(drafts.draftOf({ ...open, reconciled: true })).toBeNull();
+		expect(drafts.draftOf(open)).toBeNull();
+	});
+
+	test("depois do descarte, o id, as saídas e o opId são novos", () => {
+		const drafts = reconciliationDrafts(sequence(900));
+		const first = drafts.keep(itemId, freshDraft());
+		const opId = first.opIdFor("chave");
+		drafts.forget(itemId);
+		const second = drafts.keep(itemId, first.draft);
+		expect(second.reconciliationId).not.toBe(first.reconciliationId);
+		expect(
+			movementIdsOf(second.draft).some((movementId) =>
+				movementIdsOf(first.draft).includes(movementId)
+			)
+		).toBe(false);
+		expect(second.opIdFor("chave")).not.toBe(opId);
+		expect(second.draft.lines.map((current) => current.consumed)).toEqual(
+			first.draft.lines.map((current) => current.consumed)
+		);
 	});
 });

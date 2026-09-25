@@ -6,6 +6,7 @@ import {
 	reconciliationLimits,
 	reconciliationOutcome,
 	suggestConsumptionParts,
+	valueConsumptionParts,
 } from "./reconciliation";
 
 const cabinet = "d0000000-0000-4000-8000-000000000001";
@@ -106,6 +107,43 @@ describe("suggestConsumptionParts", () => {
 		).toEqual([]);
 	});
 
+	test("o lote mais antigo vem primeiro mesmo com id maior", () => {
+		expect(
+			suggestConsumptionParts(
+				[
+					point(cabinet, "Armário", rollA, "2026-09-10", 1_000_000n),
+					point(cabinet, "Armário", rollB, "2026-09-01", 1_000_000n),
+				],
+				1_500_000n
+			)
+		).toEqual([
+			{ locationId: cabinet, lotId: rollB, quantityMicros: 1_000_000n },
+			{ locationId: cabinet, lotId: rollA, quantityMicros: 500_000n },
+		]);
+	});
+
+	test("para em 20 saídas e a última leva o resto", () => {
+		const many = Array.from({ length: 25 }, (_, n) =>
+			point(
+				`d0000000-0000-4000-8000-${String(100 + n).padStart(12, "0")}`,
+				`Local ${String(n).padStart(2, "0")}`,
+				null,
+				null,
+				1_000_000n
+			)
+		);
+		const parts = suggestConsumptionParts(many, 30_000_000n);
+		expect(parts).toHaveLength(reconciliationLimits.parts.max);
+		expect(parts.slice(0, 19).map((part) => part.quantityMicros)).toEqual(
+			Array.from({ length: 19 }, () => 1_000_000n)
+		);
+		expect(parts.at(-1)).toEqual({
+			locationId: "d0000000-0000-4000-8000-000000000119",
+			lotId: null,
+			quantityMicros: 11_000_000n,
+		});
+	});
+
 	test("mesmo lote no tempo desempata pelo nome do local e depois pelo id", () => {
 		expect(
 			suggestConsumptionParts(
@@ -159,6 +197,74 @@ describe("consumptionPartValue", () => {
 			provisionalCents: 1000n,
 			provisionalMicros: 1_000_000n,
 			valueCents: 1000n,
+		});
+	});
+
+	test("ponto com quantidade e valor não positivo não tem média", () => {
+		expect(consumptionPartValue(100_000n, -700n, 500_000n, 3000n)).toEqual({
+			provisionalCents: 1500n,
+			provisionalMicros: 500_000n,
+			valueCents: 1500n,
+		});
+		expect(consumptionPartValue(100_000n, 0n, 50_000n, null)).toEqual({
+			provisionalCents: 0n,
+			provisionalMicros: 50_000n,
+			valueCents: 0n,
+		});
+	});
+});
+
+describe("valueConsumptionParts", () => {
+	test("cada parte sai do saldo que as anteriores deixaram no ponto", () => {
+		const balances = new Map([
+			["crepe|armario", { quantityMicros: 2_500_000n, valueCents: 7500n }],
+			["crepe|gaveta", { quantityMicros: 1_000_000n, valueCents: 2000n }],
+		]);
+		const part = (
+			line: number,
+			pointKey: string,
+			quantityMicros: bigint,
+			referenceCostCents: bigint | null
+		) => ({ line, pointKey, quantityMicros, referenceCostCents });
+		const parts = [
+			part(0, "crepe|armario", 2_000_000n, 3000n),
+			part(0, "crepe|gaveta", 500_000n, 3000n),
+			part(1, "crepe|armario", 1_000_000n, 3000n),
+			part(2, "crepe|prateleira", 200_000n, null),
+		];
+		expect(valueConsumptionParts(balances, parts)).toEqual([
+			{
+				...part(0, "crepe|armario", 2_000_000n, 3000n),
+				before: { quantityMicros: 2_500_000n, valueCents: 7500n },
+				provisionalCents: 0n,
+				provisionalMicros: 0n,
+				valueCents: 6000n,
+			},
+			{
+				...part(0, "crepe|gaveta", 500_000n, 3000n),
+				before: { quantityMicros: 1_000_000n, valueCents: 2000n },
+				provisionalCents: 0n,
+				provisionalMicros: 0n,
+				valueCents: 1000n,
+			},
+			{
+				...part(1, "crepe|armario", 1_000_000n, 3000n),
+				before: { quantityMicros: 500_000n, valueCents: 1500n },
+				provisionalCents: 1500n,
+				provisionalMicros: 500_000n,
+				valueCents: 3000n,
+			},
+			{
+				...part(2, "crepe|prateleira", 200_000n, null),
+				before: { quantityMicros: 0n, valueCents: 0n },
+				provisionalCents: 0n,
+				provisionalMicros: 200_000n,
+				valueCents: 0n,
+			},
+		]);
+		expect(balances.get("crepe|armario")).toEqual({
+			quantityMicros: 2_500_000n,
+			valueCents: 7500n,
 		});
 	});
 });

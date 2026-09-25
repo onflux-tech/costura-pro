@@ -338,7 +338,7 @@ function plannedCostOf(line: QuoteLine, variantId: string): string | null {
 	if (line.kind !== "custom") {
 		return null;
 	}
-	let total = 0n;
+	let perPiece = 0n;
 	for (const component of line.components) {
 		if (
 			component.kind === "material" &&
@@ -347,13 +347,13 @@ function plannedCostOf(line: QuoteLine, variantId: string): string | null {
 			if (component.unitCostCents === null) {
 				return null;
 			}
-			total += multiplyHalfUp(
-				component.quantityMicros * BigInt(line.quantity),
+			perPiece += multiplyHalfUp(
+				component.quantityMicros,
 				component.unitCostCents
 			);
 		}
 	}
-	return total.toString();
+	return (perPiece * BigInt(line.quantity)).toString();
 }
 
 function known<T>(values: ReadonlyMap<string, T>, id: string): T {

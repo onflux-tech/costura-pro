@@ -11,6 +11,7 @@ import {
 	stockLot,
 	stockMovement,
 } from "@costura-pro/db/schema/stock";
+import { reconciliationLimits } from "@costura-pro/domain/reconciliation";
 import { searchTokens } from "@costura-pro/domain/search";
 import { inventoryLimits } from "@costura-pro/domain/stock";
 import type { BaseUnitCode } from "@costura-pro/domain/unit";
@@ -185,7 +186,10 @@ export function getVariantBalance(
 }
 
 export const variantPointsInput = z.object({
-	variantIds: z.array(z.uuid()).min(1).max(60),
+	variantIds: z
+		.array(z.uuid())
+		.min(1)
+		.max(reconciliationLimits.lines.max * 2),
 });
 
 export type VariantPoints = {

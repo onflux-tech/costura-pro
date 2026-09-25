@@ -65,7 +65,7 @@ export function suggestConsumptionParts(
 	const parts: SuggestedPart[] = [];
 	let missing = needMicros;
 	for (const point of available) {
-		if (missing <= 0n) {
+		if (missing <= 0n || parts.length >= reconciliationLimits.parts.max) {
 			break;
 		}
 		const taken =
@@ -84,34 +84,82 @@ export function suggestConsumptionParts(
 	return parts;
 }
 
+export function hasAverageCost(
+	pointQuantityMicros: bigint,
+	pointValueCents: bigint
+): boolean {
+	return pointQuantityMicros > 0n && pointValueCents > 0n;
+}
+
 export function consumptionPartValue(
 	pointQuantityMicros: bigint,
 	pointValueCents: bigint,
 	partMicros: bigint,
 	referenceCostCents: bigint | null
 ): PartValue {
-	const positive = pointQuantityMicros > 0n ? pointQuantityMicros : 0n;
-	const covered = partMicros < positive ? partMicros : positive;
-	const provisionalMicros = partMicros - covered;
-	const coveredValue =
-		covered > 0n
-			? exitValueCents(pointQuantityMicros, pointValueCents, covered)
-			: 0n;
-	let provisionalCents = 0n;
-	if (pointQuantityMicros > 0n) {
-		provisionalCents = exitValueCents(
-			pointQuantityMicros,
-			pointValueCents,
-			provisionalMicros
-		);
-	} else if (referenceCostCents !== null) {
-		provisionalCents = multiplyHalfUp(provisionalMicros, referenceCostCents);
+	if (!hasAverageCost(pointQuantityMicros, pointValueCents)) {
+		const provisionalCents =
+			referenceCostCents === null
+				? 0n
+				: multiplyHalfUp(partMicros, referenceCostCents);
+		return {
+			provisionalCents,
+			provisionalMicros: partMicros,
+			valueCents: provisionalCents,
+		};
 	}
+	const covered =
+		partMicros < pointQuantityMicros ? partMicros : pointQuantityMicros;
+	const provisionalMicros = partMicros - covered;
+	const coveredValue = exitValueCents(
+		pointQuantityMicros,
+		pointValueCents,
+		covered
+	);
+	const provisionalCents = exitValueCents(
+		pointQuantityMicros,
+		pointValueCents,
+		provisionalMicros
+	);
 	return {
 		provisionalCents,
 		provisionalMicros,
 		valueCents: coveredValue + provisionalCents,
 	};
+}
+
+export type PointBalance = { quantityMicros: bigint; valueCents: bigint };
+
+export type ConsumptionPart = {
+	pointKey: string;
+	quantityMicros: bigint;
+	referenceCostCents: bigint | null;
+};
+
+export type ValuedPart = PartValue & { before: PointBalance };
+
+export function valueConsumptionParts<Part extends ConsumptionPart>(
+	balances: ReadonlyMap<string, PointBalance>,
+	parts: readonly Part[]
+): (Part & ValuedPart)[] {
+	const current = new Map(balances);
+	return parts.map((part) => {
+		const before = current.get(part.pointKey) ?? {
+			quantityMicros: 0n,
+			valueCents: 0n,
+		};
+		const value = consumptionPartValue(
+			before.quantityMicros,
+			before.valueCents,
+			part.quantityMicros,
+			part.referenceCostCents
+		);
+		current.set(part.pointKey, {
+			quantityMicros: before.quantityMicros - part.quantityMicros,
+			valueCents: before.valueCents - value.valueCents,
+		});
+		return { ...part, ...value, before };
+	});
 }
 
 export function reconciliationOutcome(

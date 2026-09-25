@@ -7,6 +7,7 @@ import {
 	pieceLine,
 	readyToReconcile,
 	reconcileInput,
+	reconcileLine,
 	reverseInput,
 	seedPerson,
 	seedStock,
@@ -158,6 +159,32 @@ describe("material reconciliation sync", () => {
 		]);
 	});
 
+	test("quarantines a movement id already taken", async () => {
+		const setup = await syncSetup(servers);
+		const { items, stock } = await readyOrder(setup);
+		const taken =
+			setup.server
+				.native()
+				.query<{ id: string }, []>("SELECT id FROM stock_movement LIMIT 1")
+				.get()?.id ?? "";
+		const input = reconcileInput({ itemId: items.piece, stock });
+		const [crepe, zipper] = input.lines;
+		const operation = reconcileEnvelope(setup, {
+			...input,
+			lines: [
+				{
+					...crepe,
+					parts: crepe?.parts.map((part) => ({ ...part, movementId: taken })),
+				},
+				zipper,
+			],
+		} as typeof input);
+		const pushed = await setup.sync.sync.push({ operations: [operation] });
+		expect(pushed.quarantined).toEqual([
+			{ opId: operation.opId, reason: "aggregateExists" },
+		]);
+	});
+
 	test("quarantines parts that do not add up to the output", async () => {
 		const setup = await syncSetup(servers);
 		const { items, stock } = await readyOrder(setup);
@@ -249,6 +276,30 @@ describe("material reconciliation reversal sync", () => {
 			stageId: acabamento,
 			version: 5,
 		});
+	});
+
+	test("reverses over push a reconciliation with nothing out of stock", async () => {
+		const setup = await syncSetup(servers);
+		const { acabamento, items, stock } = await readyOrder(setup);
+		const empty = (variantId: string) => ({
+			...reconcileLine(variantId, stock.locationId, "0"),
+			parts: [],
+		});
+		const reconciled = reconcileInput(
+			{ itemId: items.piece, stock },
+			{ lines: [empty(stock.crepeId), empty(stock.zipperId)] }
+		);
+		await setup.local.serviceOrderItems.reconcile(reconciled);
+		const input = reverseInput(reconciled);
+		expect(input.movementIds).toEqual([]);
+		const operation = reverseEnvelope(setup, input);
+		const pushed = await setup.sync.sync.push({ operations: [operation] });
+		expect(pushed.accepted).toEqual([{ newVersion: 1, opId: operation.opId }]);
+		const changes = await pulledChanges(setup);
+		expect(
+			changes.filter((change) => change.aggregateId === items.piece).at(-1)
+				?.data
+		).toMatchObject({ productionStatus: "inProgress", stageId: acabamento });
 	});
 
 	test("quarantines a second reversal with the hash withheld", async () => {

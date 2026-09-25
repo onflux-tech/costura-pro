@@ -271,6 +271,34 @@ describe("material reconciliation schema", () => {
 		]);
 	});
 
+	test("links the reconciliation, its reversal and the stock movement by foreign key", async () => {
+		const database = await migratedDatabase();
+		const native = getNativeDatabase(database);
+		const keys = (table: string) =>
+			native
+				.query<{ from: string; table: string; to: string }, []>(
+					`SELECT "from", "table", "to" FROM pragma_foreign_key_list('${table}')`
+				)
+				.all()
+				.filter(
+					(key) =>
+						key.table.includes("reconciliation") || table !== "stock_movement"
+				);
+		expect(keys("material_reconciliation")).toEqual([
+			{ from: "service_order_item_id", table: "service_order_item", to: "id" },
+		]);
+		expect(keys("material_reconciliation_reversal")).toEqual([
+			{ from: "reconciliation_id", table: "material_reconciliation", to: "id" },
+		]);
+		expect(keys("stock_movement")).toEqual([
+			{
+				from: "material_reconciliation_id",
+				table: "material_reconciliation",
+				to: "id",
+			},
+		]);
+	});
+
 	test("keeps the reconciled lines with their parts as written", async () => {
 		const { database } = await seededDatabase();
 		const row = database
