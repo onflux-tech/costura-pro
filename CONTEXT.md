@@ -352,7 +352,7 @@ Uso de material diferente do planejado, com a mesma unidade base, registrando pr
 _Evitar_: substituição silenciosa
 
 **Custo provisório**:
-Valor temporário da parte de um consumo ou venda legítima que passa do saldo do ponto: o custo médio do ponto quando ele ainda tinha saldo, senão o custo de referência da variante, senão zero (sem custo). Fica marcado para o ajuste de custo.
+Valor temporário da parte de um consumo ou venda legítima que o custo médio do ponto não cobre: a que passa do saldo, pelo custo médio quando o ponto ainda tinha saldo e valor positivos, ou a saída inteira de um ponto sem custo médio, pelo custo de referência da variante, senão zero (sem custo). Fica marcado para o ajuste de custo.
 
 **Ajuste de custo**:
 Evento posterior e auditável que corrige a diferença entre o custo provisório e o custo real, sem reescrever o evento original.
